@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Separator } from "./ui/separator";
 import { Loader2, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { getIntegrationConfig, saveIntegrationConfig, testIntegrationConnection } from '@/lib/actions';
+import { getIntegrationConfig, saveIntegrationConfig, testIntegrationConnection, runManualSync, getSyncStatus } from '@/lib/actions';
 import type { IntegrationConfig } from "@/lib/schemas";
 import { Skeleton } from "./ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,24 +28,30 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
   const [isLoading, setIsLoading] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (open) {
-      const loadConfig = async () => {
-        setIsLoading(true);
-        try {
-          const savedConfig = await getIntegrationConfig();
-          setConfig(savedConfig);
-        } catch (error) {
-          console.error('Erro ao carregar configuração:', error);
-          toast({ title: "Erro", description: "Não foi possível carregar as configurações de integração.", variant: "destructive" });
-        } finally {
-          setIsLoading(false);
+    const loadData = async () => {
+        if (open) {
+            setIsLoading(true);
+            try {
+                const [savedConfig, status] = await Promise.all([
+                    getIntegrationConfig(),
+                    getSyncStatus()
+                ]);
+                setConfig(savedConfig);
+                setSyncStatus(status);
+            } catch (error) {
+                console.error('Erro ao carregar configuração:', error);
+                toast({ title: "Erro", description: "Não foi possível carregar as configurações de integração.", variant: "destructive" });
+            } finally {
+                setIsLoading(false);
+            }
         }
-      };
-      loadConfig();
-    }
+    };
+    loadData();
   }, [open, toast]);
 
   const handleFieldChange = (field: keyof IntegrationConfig, value: any) => {
@@ -76,8 +81,8 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
         description: result.message,
         variant: result.success ? "default" : "destructive"
       });
-    } catch (error) {
-      toast({ title: "Erro", description: "Ocorreu um erro ao testar a conexão.", variant: "destructive" });
+    } catch (error: any) {
+      toast({ title: "Erro", description: error.message || "Ocorreu um erro ao testar a conexão.", variant: "destructive" });
     } finally {
       setIsTesting(false);
     }
@@ -99,6 +104,30 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleManualSync = async () => {
+      setIsSyncing(true);
+      try {
+          const result = await runManualSync();
+          toast({
+              title: result.success ? "Sincronização Concluída" : "Erro na Sincronização",
+              description: result.message,
+              variant: result.success ? "default" : "destructive"
+          });
+          if (result.success) {
+              const status = await getSyncStatus();
+              setSyncStatus(status);
+          }
+      } catch (error: any) {
+          toast({
+              title: "Erro",
+              description: error.message || "Erro inesperado na sincronização",
+              variant: "destructive"
+          });
+      } finally {
+          setIsSyncing(false);
+      }
   };
 
   return (
@@ -128,6 +157,31 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
             </div>
         ) : config && (
           <div className="space-y-6 py-2 max-h-[70vh] overflow-y-auto px-1">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Status da Sincronização</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex justify-between items-center">
+                    <div>
+                        <p className="text-sm text-muted-foreground">
+                        Última sincronização: {syncStatus?.lastSync ? new Date(syncStatus.lastSync).toLocaleString('pt-BR') : 'Nunca'}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                        Próxima sincronização automática: {syncStatus?.enabled ? `a cada ${syncStatus.syncInterval} minutos` : 'Desativada'}
+                        </p>
+                    </div>
+                    <Button
+                        onClick={handleManualSync}
+                        disabled={isSyncing || !config?.enabled}
+                        variant="outline"
+                    >
+                        {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {isSyncing ? "Sincronizando..." : "Sincronizar Agora"}
+                    </Button>
+                    </div>
+                </CardContent>
+            </Card>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

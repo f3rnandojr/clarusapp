@@ -584,26 +584,139 @@ export async function saveIntegrationConfig(configData: Partial<IntegrationConfi
 }
 
 export async function testIntegrationConnection(configData: any) {
-  if (!configData.host || !configData.database || !configData.username || !configData.password) {
-    return { 
-        success: false, 
-        message: 'Por favor, preencha Host, Banco, Usuário e Senha para testar a conexão.' 
+  try {
+    const { testExternalConnection } = await import('./external-db-connection');
+    const result = await testExternalConnection(configData);
+    return result;
+  } catch (error: any) {
+    console.error('Erro no teste de conexão:', error);
+    return {
+      success: false,
+      message: `Erro no teste de conexão: ${error.message}`
     };
   }
+}
 
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  const success = Math.random() > 0.2;
-  
-  if (success) {
-    return { 
-      success: true, 
-      message: 'Conexão teste bem-sucedida! (simulado)' 
+export async function runManualSync() {
+  try {
+    const db = await dbConnect();
+    const config = await getIntegrationConfig();
+    
+    if (!config.enabled) {
+      return {
+        success: false,
+        message: 'Integração não está ativada. Ative a integração primeiro.'
+      };
+    }
+
+    if (!config.host || !config.database || !config.username) {
+      return {
+        success: false,
+        message: 'Configuração incompleta. Verifique host, banco e usuário.'
+      };
+    }
+
+    console.log('Iniciando sincronização manual...');
+    
+    // 1. Buscar dados do banco externo
+    const { fetchExternalData } = await import('./external-db-connection');
+    const externalData = await fetchExternalData(config);
+    
+    if (externalData.length === 0) {
+      return {
+        success: true,
+        message: 'Sincronização concluída. Nenhum dado encontrado no sistema externo.',
+        stats: { updated: 0, total: 0 }
+      };
+    }
+
+    // 2. Transformar dados
+    const { transformLeitoData, validateTransformedData } = await import('./data-transformation');
+    const transformedData = transformLeitoData(externalData, config);
+    const { valid: validData, invalid: invalidData } = validateTransformedData(transformedData);
+    
+    console.log(`Dados válidos: ${validData.length}, Inválidos: ${invalidData.length}`);
+
+    // 3. Atualizar MongoDB Atlas
+    const locationsCollection = db.collection('locations');
+    let updatedCount = 0;
+
+    for (const leito of validData) {
+      // NÃO atualizar leitos que estão em higienização
+      const existingLeito = await locationsCollection.findOne({
+        name: leito.name,
+        number: leito.number,
+        status: { $ne: 'in_cleaning' } // Não sobrescrever se estiver em limpeza
+      });
+
+      if (existingLeito) {
+        // Atualizar apenas se o status mudou
+        if (existingLeito.status !== leito.status) {
+          await locationsCollection.updateOne(
+            { _id: existingLeito._id },
+            { 
+              $set: { 
+                status: leito.status,
+                updatedAt: new Date()
+              }
+            }
+          );
+          updatedCount++;
+        }
+      } else {
+        // Criar novo leito
+        await locationsCollection.insertOne({
+          ...leito,
+          currentCleaning: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        updatedCount++;
+      }
+    }
+
+    // 4. Atualizar último sync
+    const integrationCollection = db.collection('integration_config');
+    await integrationCollection.updateOne(
+      { _id: 'integration_settings' },
+      { $set: { lastSync: new Date() } }
+    );
+
+    revalidatePath('/dashboard');
+
+    return {
+      success: true,
+      message: `Sincronização concluída com sucesso! ${updatedCount} leitos atualizados.`,
+      stats: {
+        updated: updatedCount,
+        total: validData.length,
+        invalid: invalidData.length
+      }
     };
-  } else {
-    return { 
-      success: false, 
-      message: 'Falha na conexão teste. Verifique as configurações. (simulado)' 
+
+  } catch (error: any) {
+    console.error('Erro na sincronização manual:', error);
+    return {
+      success: false,
+      message: `Erro na sincronização: ${error.message}`,
+      stats: { updated: 0, total: 0, invalid: 0 }
+    };
+  }
+}
+
+export async function getSyncStatus() {
+  try {
+    const config = await getIntegrationConfig();
+    return {
+      lastSync: config.lastSync,
+      enabled: config.enabled,
+      syncInterval: config.syncInterval
+    };
+  } catch (error) {
+    return {
+      lastSync: null,
+      enabled: false,
+      syncInterval: 5
     };
   }
 }
