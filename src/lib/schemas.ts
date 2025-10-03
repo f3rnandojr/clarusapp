@@ -148,9 +148,14 @@ export const IntegrationConfigSchema = z.object({
     available: z.string().default("L"),   // 'L' = Disponível
     occupied: z.string().default("*")     // '*' = Ocupado
   }),
+  fieldMappings: z.object({
+    codeField: z.string().default("code1"),
+    statusField: z.string().default("tipobloq"),
+    nameSeparator: z.string().default(" "), // Como separar code1 em name/number
+  }),
   lastSync: z.date().optional(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
 });
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;

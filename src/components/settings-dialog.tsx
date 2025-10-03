@@ -22,6 +22,7 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, cleaningSettings }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -58,8 +59,8 @@ export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, clean
                 Relatórios e Estatísticas
               </Button>
             </ReportsDialog>
-            <IntegrationsDialog>
-                <Button variant="outline" className="w-full justify-start">
+            <IntegrationsDialog open={integrationsOpen} onOpenChange={setIntegrationsOpen}>
+                <Button variant="outline" className="w-full justify-start" onClick={() => setIntegrationsOpen(true)}>
                     <LinkIcon className="mr-2 h-4 w-4" />
                     Integrações
                 </Button>

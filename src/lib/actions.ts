@@ -481,7 +481,6 @@ export async function getLogs() {
 
 // --- Integration Actions ---
 
-// Configuração padrão
 const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
   _id: 'integration_settings',
   enabled: false,
@@ -496,11 +495,15 @@ const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
     available: 'L',
     occupied: '*'
   },
+  fieldMappings: {
+    codeField: 'code1',
+    statusField: 'tipobloq', 
+    nameSeparator: ' '
+  },
   createdAt: new Date(),
   updatedAt: new Date()
 };
 
-// Buscar configuração de integração
 export async function getIntegrationConfig(): Promise<IntegrationConfig> {
   try {
     const db = await dbConnect();
@@ -509,7 +512,6 @@ export async function getIntegrationConfig(): Promise<IntegrationConfig> {
     const config = await collection.findOne({ _id: 'integration_settings' });
     
     if (!config) {
-      // Retorna configuração padrão se não existir
       // @ts-ignore
       return DEFAULT_INTEGRATION_CONFIG;
     }
@@ -523,17 +525,45 @@ export async function getIntegrationConfig(): Promise<IntegrationConfig> {
   }
 }
 
-// Salvar configuração de integração
+export async function validateIntegrationConfig(configData: any) {
+  try {
+    const validated = IntegrationConfigSchema.parse(configData);
+    
+    if (configData.host && !configData.host.includes('.')) {
+      return { isValid: false, message: 'Host deve ser um endereço válido' };
+    }
+    
+    if (configData.port && (configData.port < 1 || configData.port > 65535)) {
+      return { isValid: false, message: 'Porta deve estar entre 1 e 65535' };
+    }
+    
+    return { isValid: true, data: validated };
+  } catch (error) {
+    return { isValid: false, message: 'Dados de configuração inválidos' };
+  }
+}
+
 export async function saveIntegrationConfig(configData: Partial<IntegrationConfig>) {
   try {
     const db = await dbConnect();
     const collection = db.collection('integration_config');
     
-    const dataToSave = { ...configData, updatedAt: new Date() };
+    const validation = await validateIntegrationConfig(configData);
+    if (!validation.isValid) {
+      return { 
+        success: false, 
+        message: validation.message 
+      };
+    }
 
     const result = await collection.updateOne(
       { _id: 'integration_settings' },
-      { $set: dataToSave },
+      { 
+        $set: {
+          ...validation.data,
+          updatedAt: new Date()
+        }
+      },
       { upsert: true }
     );
 
@@ -542,19 +572,17 @@ export async function saveIntegrationConfig(configData: Partial<IntegrationConfi
     return { 
       success: true, 
       message: 'Configurações salvas com sucesso',
-      result 
+      data: validation.data
     };
   } catch (error: any) {
     console.error('Erro ao salvar configuração de integração:', error);
     return { 
       success: false, 
-      message: 'Erro ao salvar configurações',
-      error: error.message 
+      message: 'Erro ao salvar configurações: ' + error.message 
     };
   }
 }
 
-// Testar conexão (simulação para FASE 1)
 export async function testIntegrationConnection(configData: any) {
   if (!configData.host || !configData.database || !configData.username || !configData.password) {
     return { 
