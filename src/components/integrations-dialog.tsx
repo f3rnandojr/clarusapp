@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -9,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "./ui/separator";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 interface IntegrationsDialogProps {
   children: React.ReactNode;
@@ -71,7 +73,6 @@ export function IntegrationsDialog({ children }: IntegrationsDialogProps) {
       host,
       port,
       database,
-      user,
       // Não logar a senha em um app real
       interval,
       query
@@ -145,6 +146,23 @@ export function IntegrationsDialog({ children }: IntegrationsDialogProps) {
                     <Textarea id="query" rows={4} value={query} onChange={(e) => setQuery(e.target.value)} />
                 </div>
             </div>
+
+             <Separator />
+
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Estrutura de Dados Esperada</AlertTitle>
+              <AlertDescription>
+                <p className="mb-2">Os dados da sua query precisam ser transformados para o seguinte formato JSON antes de serem processados pela aplicação:</p>
+                <pre className="text-xs bg-muted p-2 rounded-md overflow-x-auto">
+                  {`{
+  "name": "Quarto",
+  "number": "203-A",
+  "status": "available" // ou "occupied"
+}`}
+                </pre>
+              </AlertDescription>
+            </Alert>
 
         </div>
         <DialogFooter>
