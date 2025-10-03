@@ -8,13 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription, DialogClose } from "@/components/ui/dialog";
-import { Separator } from "./ui/separator";
-import { Loader2, Info } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { getIntegrationConfig, saveIntegrationConfig, testIntegrationConnection, runManualSync, getSyncStatus, testTransformation } from '@/lib/actions';
-import type { IntegrationConfig } from "@/lib/schemas";
+import { Loader2 } from "lucide-react";
 import { Skeleton } from "./ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getIntegrationConfig, saveIntegrationConfig, testIntegrationConnection, runManualSync, getSyncStatus, testTransformation } from '@/lib/actions';
+import type { IntegrationConfig } from "@/lib/schemas";
+import SyncDashboard from "./sync-dashboard";
 
 
 interface IntegrationsDialogProps {
@@ -28,8 +27,6 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
   const [isLoading, setIsLoading] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<any>(null);
   const { toast } = useToast();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
@@ -39,12 +36,8 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
         if (open) {
             setIsLoading(true);
             try {
-                const [savedConfig, status] = await Promise.all([
-                    getIntegrationConfig(),
-                    getSyncStatus()
-                ]);
+                const savedConfig = await getIntegrationConfig();
                 setConfig(savedConfig);
-                setSyncStatus(status);
             } catch (error) {
                 console.error('Erro ao carregar configuração:', error);
                 toast({ title: "Erro", description: "Não foi possível carregar as configurações de integração.", variant: "destructive" });
@@ -107,30 +100,6 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
       setIsSaving(false);
     }
   };
-
-  const handleManualSync = async () => {
-      setIsSyncing(true);
-      try {
-          const result = await runManualSync();
-          toast({
-              title: result.success ? "Sincronização Concluída" : "Erro na Sincronização",
-              description: result.message,
-              variant: result.success ? "default" : "destructive"
-          });
-          if (result.success) {
-              const status = await getSyncStatus();
-              setSyncStatus(status);
-          }
-      } catch (error: any) {
-          toast({
-              title: "Erro",
-              description: error.message || "Erro inesperado na sincronização",
-              variant: "destructive"
-          });
-      } finally {
-          setIsSyncing(false);
-      }
-  };
   
   const handleTestTransformation = async () => {
     try {
@@ -157,23 +126,21 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>🔗 Integração com Sistema de Leitos</DialogTitle>
           <DialogDescription>
-            Configure a sincronização automática com o sistema externo para atualização de status dos leitos.
+            Configure e monitore a sincronização automática com o sistema externo para atualização de status dos leitos.
           </DialogDescription>
         </DialogHeader>
+
         {isLoading ? (
-            <div className="space-y-6 py-2">
+             <div className="space-y-6 py-2">
+                <Skeleton className="h-24 w-full" />
                 <Skeleton className="h-8 w-1/3" />
-                <Separator />
                 <div className="space-y-4">
                     <Skeleton className="h-6 w-1/4" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
                     </div>
@@ -181,39 +148,17 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
             </div>
         ) : config && (
           <div className="space-y-6 py-2 max-h-[70vh] overflow-y-auto px-1">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Status da Sincronização</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex justify-between items-center">
-                    <div>
-                        <p className="text-sm text-muted-foreground">
-                          Última sincronização: {syncStatus?.lastSync ? new Date(syncStatus.lastSync).toLocaleString('pt-BR') : 'Nunca'}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Próxima sincronização automática: {syncStatus?.enabled ? `a cada ${syncStatus.syncInterval} minutos` : 'Desativada'}
-                        </p>
-                    </div>
-                    <Button
-                        onClick={handleManualSync}
-                        disabled={isSyncing || !config?.enabled}
-                        variant="outline"
-                    >
-                        {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {isSyncing ? "Sincronizando..." : "Sincronizar Agora"}
-                    </Button>
-                    </div>
-                </CardContent>
-            </Card>
+            <SyncDashboard />
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Switch
+                    id="integration-enabled"
                     checked={config.enabled}
                     onCheckedChange={(checked) => handleFieldChange('enabled', checked)}
                   />
-                  Ativar Integração Automática
+                  <Label htmlFor="integration-enabled">Ativar Integração Automática</Label>
                 </CardTitle>
               </CardHeader>
             </Card>
@@ -226,26 +171,26 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="host">Host</Label>
-                    <Input id="host" placeholder="ex: db.hospital.com.br" value={config.host} onChange={(e) => handleFieldChange('host', e.target.value)} />
+                    <Input id="host" placeholder="ex: db.hospital.com.br" value={config.host || ''} onChange={(e) => handleFieldChange('host', e.target.value)} />
                   </div>
                   <div>
                     <Label htmlFor="port">Porta</Label>
-                    <Input id="port" type="number" value={config.port} onChange={(e) => handleFieldChange('port', Number(e.target.value))} />
+                    <Input id="port" type="number" value={config.port || 5432} onChange={(e) => handleFieldChange('port', Number(e.target.value))} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="database">Banco</Label>
-                    <Input id="database" placeholder="ex: leitos_db" value={config.database} onChange={(e) => handleFieldChange('database', e.target.value)} />
+                    <Input id="database" placeholder="ex: leitos_db" value={config.database || ''} onChange={(e) => handleFieldChange('database', e.target.value)} />
                   </div>
                   <div>
                     <Label htmlFor="username">Usuário</Label>
-                    <Input id="user" placeholder="ex: admin_leitos" value={config.username} onChange={(e) => handleFieldChange('username', e.target.value)} />
+                    <Input id="user" placeholder="ex: admin_leitos" value={config.username || ''} onChange={(e) => handleFieldChange('username', e.target.value)} />
                   </div>
                 </div>
                 <div>
                   <Label htmlFor="password">Senha</Label>
-                  <Input id="password" type="password" value={config.password} onChange={(e) => handleFieldChange('password', e.target.value)} />
+                  <Input id="password" type="password" value={config.password || ''} onChange={(e) => handleFieldChange('password', e.target.value)} />
                 </div>
               </CardContent>
             </Card>
@@ -259,11 +204,11 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="availableMapping">Valor para "Disponível"</Label>
-                    <Input id="availableMapping" value={config.statusMappings.available} onChange={(e) => handleNestedFieldChange('statusMappings', 'available', e.target.value)} />
+                    <Input id="availableMapping" value={config.statusMappings?.available || ''} onChange={(e) => handleNestedFieldChange('statusMappings', 'available', e.target.value)} />
                   </div>
                   <div>
                     <Label htmlFor="occupiedMapping">Valor para "Ocupado"</Label>
-                    <Input id="occupiedMapping" value={config.statusMappings.occupied} onChange={(e) => handleNestedFieldChange('statusMappings', 'occupied', e.target.value)} />
+                    <Input id="occupiedMapping" value={config.statusMappings?.occupied || ''} onChange={(e) => handleNestedFieldChange('statusMappings', 'occupied', e.target.value)} />
                   </div>
                 </div>
               </CardContent>
@@ -272,7 +217,7 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
-                    <span>Configurações Avançadas</span>
+                    <span>Configurações Avançadas de Transformação</span>
                     <Button
                         variant="outline"
                         size="sm"
@@ -284,11 +229,10 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
                 </CardHeader>
                 
                 {showAdvanced && (
-                    <CardContent className="space-y-4">
-                    {/* Mapeamento de Campos */}
+                    <CardContent className="space-y-4 pt-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                        <Label htmlFor="codeField">Campo do Código</Label>
+                        <Label htmlFor="codeField">Campo do Código do Leito</Label>
                         <Input
                             id="codeField"
                             value={config.fieldMappings?.codeField || 'code1'}
@@ -297,7 +241,7 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
                         />
                         </div>
                         <div>
-                        <Label htmlFor="statusField">Campo do Status</Label>
+                        <Label htmlFor="statusField">Campo do Status do Leito</Label>
                         <Input
                             id="statusField"
                             value={config.fieldMappings?.statusField || 'tipoblog'}
@@ -307,31 +251,29 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
                         </div>
                     </div>
 
-                    {/* Padrões de Transformação */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                        <Label htmlFor="namePattern">Padrão para Nome (Regex)</Label>
+                        <Label htmlFor="namePattern">Padrão de Nome (Regex)</Label>
                         <Input
                             id="namePattern"
                             value={config.transformation?.namePattern || ''}
                             onChange={(e) => handleNestedFieldChange('transformation', 'namePattern', e.target.value)}
                             placeholder="([A-Za-z]+)"
                         />
-                        <p className="text-xs text-muted-foreground">Ex: ([A-Za-z]+) para extrair letras</p>
+                        <p className="text-xs text-muted-foreground">Ex: ([A-Za-z]+)</p>
                         </div>
                         <div>
-                        <Label htmlFor="numberPattern">Padrão para Número (Regex)</Label>
+                        <Label htmlFor="numberPattern">Padrão de Número (Regex)</Label>
                         <Input
                             id="numberPattern"
                             value={config.transformation?.numberPattern || ''}
                             onChange={(e) => handleNestedFieldChange('transformation', 'numberPattern', e.target.value)}
                             placeholder="([0-9]+)"
                         />
-                        <p className="text-xs text-muted-foreground">Ex: ([0-9]+) para extrair números</p>
+                        <p className="text-xs text-muted-foreground">Ex: ([0-9]+)</p>
                         </div>
                     </div>
 
-                    {/* Botão de teste de transformação */}
                     <Button
                         onClick={handleTestTransformation}
                         variant="outline"
@@ -340,11 +282,10 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
                         Testar Transformação
                     </Button>
 
-                    {/* Resultado do teste */}
                     {testResult && (
-                        <div className="p-3 border rounded-lg bg-muted">
-                        <h4 className="font-medium mb-2">Resultado do Teste:</h4>
-                        <pre className="text-xs overflow-auto">
+                        <div className="p-3 border rounded-lg bg-muted mt-4">
+                        <h4 className="font-medium mb-2">Resultado do Teste de Transformação:</h4>
+                        <pre className="text-xs overflow-auto bg-background p-2 rounded">
                             {JSON.stringify(testResult, null, 2)}
                         </pre>
                         </div>
@@ -355,16 +296,16 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
 
             <Card>
               <CardHeader>
-                <CardTitle>Configuração da Sincronização</CardTitle>
+                <CardTitle>Configuração da Query</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="interval">Intervalo de Sincronização (minutos)</Label>
-                  <Input id="interval" type="number" value={config.syncInterval} onChange={(e) => handleFieldChange('syncInterval', Number(e.target.value))} />
+                  <Input id="interval" type="number" value={config.syncInterval || 5} onChange={(e) => handleFieldChange('syncInterval', Number(e.target.value))} />
                 </div>
                 <div>
-                  <Label htmlFor="query">Query de Consulta</Label>
-                  <Textarea id="query" rows={4} value={config.query} onChange={(e) => handleFieldChange('query', e.target.value)} />
+                  <Label htmlFor="query">Query de Consulta SQL</Label>
+                  <Textarea id="query" rows={4} value={config.query || ''} onChange={(e) => handleFieldChange('query', e.target.value)} />
                 </div>
               </CardContent>
             </Card>

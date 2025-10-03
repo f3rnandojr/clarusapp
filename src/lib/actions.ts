@@ -11,6 +11,7 @@ import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
 import { convertToPlainObject } from './utils';
 import { DataTransformer, validateTransformationConfig, generateSampleTransformation } from './advanced-transformation';
 import { syncLogger } from './logger';
+import { syncService } from './sync-service'; // Garante que o serviço seja inicializado
 
 
 // --- Logger Action ---
@@ -500,12 +501,10 @@ const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
   },
   fieldMappings: {
     codeField: 'code1',
-    statusField: 'tipobloq', 
-    nameSeparator: ' '
+    statusField: 'tipobloq',
   },
   transformation: {
     nameSeparator: " ",
-    customTransform: false
   },
   createdAt: new Date(),
   updatedAt: new Date()
