@@ -9,6 +9,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
 import { convertToPlainObject } from './utils';
+import { DataTransformer, validateTransformationConfig, generateSampleTransformation } from './advanced-transformation';
+
 
 // --- Logger Action ---
 async function logAction(action: string, details: Record<string, any>) {
@@ -500,6 +502,10 @@ const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
     statusField: 'tipobloq', 
     nameSeparator: ' '
   },
+  transformation: {
+    nameSeparator: " ",
+    customTransform: false
+  },
   createdAt: new Date(),
   updatedAt: new Date()
 };
@@ -538,8 +544,8 @@ export async function validateIntegrationConfig(configData: any) {
     }
     
     return { isValid: true, data: validated };
-  } catch (error) {
-    return { isValid: false, message: 'Dados de configuração inválidos' };
+  } catch (error: any) {
+    return { isValid: false, message: 'Dados de configuração inválidos: ' + error.message };
   }
 }
 
@@ -609,14 +615,16 @@ export async function runManualSync() {
       };
     }
 
-    if (!config.host || !config.database || !config.username) {
+    // Validar configuração de transformação
+    const configErrors = validateTransformationConfig(config);
+    if (configErrors.length > 0) {
       return {
         success: false,
-        message: 'Configuração incompleta. Verifique host, banco e usuário.'
+        message: `Configuração incompleta: ${configErrors.join(', ')}`
       };
     }
 
-    console.log('Iniciando sincronização manual...');
+    console.log('Iniciando sincronização manual com transformação avançada...');
     
     // 1. Buscar dados do banco externo
     const { fetchExternalData } = await import('./external-db-connection');
@@ -626,72 +634,113 @@ export async function runManualSync() {
       return {
         success: true,
         message: 'Sincronização concluída. Nenhum dado encontrado no sistema externo.',
-        stats: { updated: 0, total: 0 }
+        stats: { 
+          total: 0, 
+          updated: 0, 
+          created: 0, 
+          skipped: 0, 
+          errors: 0 
+        }
       };
     }
 
-    // 2. Transformar dados
-    const { transformLeitoData, validateTransformedData } = await import('./data-transformation');
-    const transformedData = transformLeitoData(externalData, config);
-    const { valid: validData, invalid: invalidData } = validateTransformedData(transformedData);
+    // 2. Transformar dados com sistema avançado
+    const transformer = new DataTransformer(config);
+    const transformationResult = transformer.transform(externalData);
     
-    console.log(`Dados válidos: ${validData.length}, Inválidos: ${invalidData.length}`);
+    console.log('Resultado da transformação:', transformationResult.stats);
 
     // 3. Atualizar MongoDB Atlas
     const locationsCollection = db.collection('locations');
     let updatedCount = 0;
+    let createdCount = 0;
+    let skippedCount = 0;
 
-    for (const leito of validData) {
-      // NÃO atualizar leitos que estão em higienização
-      const existingLeito = await locationsCollection.findOne({
-        name: leito.name,
-        number: leito.number,
-        status: { $ne: 'in_cleaning' } // Não sobrescrever se estiver em limpeza
-      });
-
-      if (existingLeito) {
-        // Atualizar apenas se o status mudou
-        if (existingLeito.status !== leito.status) {
-          await locationsCollection.updateOne(
-            { _id: existingLeito._id },
-            { 
-              $set: { 
-                status: leito.status,
-                updatedAt: new Date()
-              }
-            }
-          );
-          updatedCount++;
-        }
-      } else {
-        // Criar novo leito
-        await locationsCollection.insertOne({
-          ...leito,
-          currentCleaning: null,
-          createdAt: new Date(),
-          updatedAt: new Date()
+    for (const leito of transformationResult.data) {
+      try {
+        // NÃO atualizar leitos que estão em higienização
+        const existingLeito = await locationsCollection.findOne({
+          $or: [
+            { name: leito.name, number: leito.number },
+            { externalCode: leito.externalCode }
+          ],
+          status: { $ne: 'in_cleaning' } // Não sobrescrever se estiver em limpeza
         });
-        updatedCount++;
+
+        if (existingLeito) {
+          // Verificar se houve mudanças relevantes
+          const hasChanges = 
+            existingLeito.status !== leito.status ||
+            existingLeito.name !== leito.name ||
+            existingLeito.number !== leito.number;
+
+          if (hasChanges) {
+            await locationsCollection.updateOne(
+              { _id: existingLeito._id },
+              { 
+                $set: { 
+                  name: leito.name,
+                  number: leito.number,
+                  status: leito.status,
+                  externalCode: leito.externalCode,
+                  externalStatus: leito.externalStatus,
+                  lastExternalUpdate: new Date(),
+                  updatedAt: new Date()
+                }
+              }
+            );
+            updatedCount++;
+          } else {
+            skippedCount++;
+          }
+        } else {
+          // Criar novo leito
+          await locationsCollection.insertOne({
+            ...leito,
+            currentCleaning: null,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          });
+          createdCount++;
+        }
+      } catch (error: any) {
+        console.error('Erro ao processar leito:', leito, error);
+        transformationResult.stats.errors++;
       }
     }
 
-    // 4. Atualizar último sync
+    // 4. Atualizar estatísticas de sync
     const integrationCollection = db.collection('integration_config');
+    const syncStats = {
+      total: transformationResult.stats.total,
+      updated: updatedCount,
+      created: createdCount,
+      skipped: skippedCount + transformationResult.stats.skipped,
+      errors: transformationResult.stats.errors
+    };
+
     await integrationCollection.updateOne(
       { _id: 'integration_settings' },
-      { $set: { lastSync: new Date() } }
+      { 
+        $set: { 
+          lastSync: new Date(),
+          lastSyncStats: syncStats
+        }
+      }
     );
-
+    
     revalidatePath('/dashboard');
 
+    // Montar mensagem detalhada
+    const message = `Sincronização concluída! 
+      ${createdCount} novos, ${updatedCount} atualizados, 
+      ${syncStats.skipped} ignorados, ${syncStats.errors} erros.`;
+
     return {
-      success: true,
-      message: `Sincronização concluída com sucesso! ${updatedCount} leitos atualizados.`,
-      stats: {
-        updated: updatedCount,
-        total: validData.length,
-        invalid: invalidData.length
-      }
+      success: transformationResult.stats.errors === 0,
+      message,
+      stats: syncStats,
+      transformation: transformationResult
     };
 
   } catch (error: any) {
@@ -699,7 +748,7 @@ export async function runManualSync() {
     return {
       success: false,
       message: `Erro na sincronização: ${error.message}`,
-      stats: { updated: 0, total: 0, invalid: 0 }
+      stats: { total: 0, updated: 0, created: 0, skipped: 0, errors: 1 }
     };
   }
 }
@@ -717,6 +766,32 @@ export async function getSyncStatus() {
       lastSync: null,
       enabled: false,
       syncInterval: 5
+    };
+  }
+}
+
+export async function testTransformation() {
+  try {
+    const config = await getIntegrationConfig();
+    const result = generateSampleTransformation(config);
+    
+    return {
+      success: true,
+      sampleInput: [
+        { [config.fieldMappings.codeField]: "QTO101", [config.fieldMappings.statusField]: config.statusMappings.available },
+        { [config.fieldMappings.codeField]: "APTO202", [config.fieldMappings.statusField]: config.statusMappings.occupied },
+      ],
+      sampleOutput: result.data,
+      config: {
+        fieldMappings: config.fieldMappings,
+        statusMappings: config.statusMappings,
+        transformation: config.transformation
+      }
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message
     };
   }
 }
