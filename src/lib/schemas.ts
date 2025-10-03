@@ -144,18 +144,40 @@ export const IntegrationConfigSchema = z.object({
   password: z.string(),
   syncInterval: z.number().default(5),
   query: z.string().default("SELECT code1, tipobloq FROM cable1 WHERE tipobloq IN ('*', 'L')"),
+  
+  // Mapeamento de status aprimorado
   statusMappings: z.object({
-    available: z.string().default("L"),   // 'L' = Disponível
-    occupied: z.string().default("*")     // '*' = Ocupado
+    available: z.string().default("L"),
+    occupied: z.string().default("*"),
+    in_cleaning: z.string().optional(), // Para sistemas que têm status de limpeza
   }),
+  
+  // Mapeamento de campos flexível
   fieldMappings: z.object({
     codeField: z.string().default("code1"),
     statusField: z.string().default("tipobloq"),
-    nameSeparator: z.string().default(" "), // Como separar code1 em name/number
+    nameField: z.string().optional(), // Campo específico para nome (se existir)
+    numberField: z.string().optional(), // Campo específico para número (se existir)
   }),
+  
+  // Configurações de transformação avançadas
+  transformation: z.object({
+    nameSeparator: z.string().default(" "), // Como separar code1 em name/number
+    namePattern: z.string().optional(), // Regex para extrair nome: "([A-Za-z]+)"
+    numberPattern: z.string().optional(), // Regex para extrair número: "([0-9]+)"
+    customTransform: z.boolean().default(false), // Usar transformação customizada
+  }),
+  
   lastSync: z.date().optional(),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
+  lastSyncStats: z.object({
+    total: z.number().default(0),
+    updated: z.number().default(0),
+    created: z.number().default(0),
+    skipped: z.number().default(0),
+    errors: z.number().default(0),
+  }).optional(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
 });
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
