@@ -131,3 +131,26 @@ export const UpdateUserSchema = UserSchema.pick({
 }).extend({
     password: z.string().optional(),
 });
+
+
+// Schema para configurações de integração
+export const IntegrationConfigSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  enabled: z.boolean().default(false),
+  host: z.string(),
+  port: z.number().default(5432),
+  database: z.string(),
+  username: z.string(),
+  password: z.string(),
+  syncInterval: z.number().default(5),
+  query: z.string().default("SELECT code1, tipobloq FROM cable1 WHERE tipobloq IN ('*', 'L')"),
+  statusMappings: z.object({
+    available: z.string().default("L"),   // 'L' = Disponível
+    occupied: z.string().default("*")     // '*' = Ocupado
+  }),
+  lastSync: z.date().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;

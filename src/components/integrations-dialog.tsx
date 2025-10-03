@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,77 +12,90 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Separator } from "./ui/separator";
 import { Loader2, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+import { getIntegrationConfig, saveIntegrationConfig, testIntegrationConnection } from '@/lib/actions';
+import type { IntegrationConfig } from "@/lib/schemas";
+import { Skeleton } from "./ui/skeleton";
 
-interface IntegrationsDialogProps {
-  children: React.ReactNode;
-}
 
-export function IntegrationsDialog({ children }: IntegrationsDialogProps) {
+const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
+  _id: 'integration_settings',
+  enabled: false,
+  host: '',
+  port: 5432,
+  database: '',
+  username: '',
+  password: '',
+  syncInterval: 5,
+  query: "SELECT code1, tipobloq FROM cable1 WHERE tipobloq IN ('*', 'L')",
+  statusMappings: {
+    available: 'L',
+    occupied: '*'
+  },
+  createdAt: new Date(),
+  updatedAt: new Date()
+};
+
+export function IntegrationsDialog({ children }: { children: React.ReactNode; }) {
   const [open, setOpen] = useState(false);
-  const [integrationActive, setIntegrationActive] = useState(false);
+  const [config, setConfig] = useState<IntegrationConfig>(DEFAULT_INTEGRATION_CONFIG);
+  const [isLoading, setIsLoading] = useState(true);
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
-  const [host, setHost] = useState('');
-  const [port, setPort] = useState('5432');
-  const [database, setDatabase] = useState('');
-  const [user, setUser] = useState('');
-  const [password, setPassword] = useState('');
-  const [interval, setInterval] = useState('5');
-  const [query, setQuery] = useState("SELECT code1, tipobloq FROM cable1 \nWHERE tipobloq IN ('*', 'L')");
+  useEffect(() => {
+    if (open) {
+      const loadConfig = async () => {
+        setIsLoading(true);
+        try {
+          const savedConfig = await getIntegrationConfig();
+          setConfig(savedConfig);
+        } catch (error) {
+          console.error('Erro ao carregar configuração:', error);
+          toast({ title: "Erro", description: "Não foi possível carregar as configurações de integração.", variant: "destructive" });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadConfig();
+    }
+  }, [open, toast]);
 
+  const handleFieldChange = (field: keyof IntegrationConfig, value: any) => {
+    setConfig(prev => ({ ...prev, [field]: value }));
+  };
 
   const handleTestConnection = async () => {
-    // Valida se os campos essenciais estão preenchidos
-    if (!host || !database || !user || !password) {
-      toast({
-        title: "❌ Campos Incompletos",
-        description: "Por favor, preencha Host, Banco, Usuário e Senha para testar a conexão.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsTesting(true);
-    // Simula uma chamada de API
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsTesting(false);
-    
-    // Simula sucesso ou falha, mas com maior chance de sucesso se os campos estiverem preenchidos
-    if (Math.random() > 0.2) { // 80% de chance de sucesso
+    try {
+      const result = await testIntegrationConnection(config);
       toast({
-        title: "✅ Sucesso!",
-        description: "A conexão com o banco de dados foi bem-sucedida (simulação).",
+        title: result.success ? "Conexão Testada" : "Falha na Conexão",
+        description: result.message,
+        variant: result.success ? "default" : "destructive"
       });
-    } else {
-      toast({
-        title: "❌ Falha na Conexão",
-        description: "Não foi possível conectar ao banco de dados. Verifique as credenciais (simulação).",
-        variant: "destructive",
-      });
+    } catch (error) {
+      toast({ title: "Erro", description: "Ocorreu um erro ao testar a conexão.", variant: "destructive" });
+    } finally {
+      setIsTesting(false);
     }
   };
 
   const handleSave = async () => {
     setIsSaving(true);
-    // Simula uma chamada de API para salvar
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log("Salvando configurações:", {
-      integrationActive,
-      host,
-      port,
-      database,
-      // Não logar a senha em um app real
-      interval,
-      query
-    });
-    setIsSaving(false);
-    toast({
-      title: "Configurações Salvas",
-      description: "As configurações de integração foram salvas com sucesso.",
-    });
-    setOpen(false);
+    try {
+      const result = await saveIntegrationConfig(config);
+      if (result.success) {
+        toast({ title: "Configurações Salvas", description: result.message });
+        setOpen(false);
+      } else {
+        toast({ title: "Erro ao Salvar", description: result.message, variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Erro Inesperado", description: "Não foi possível salvar as configurações.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -95,12 +108,28 @@ export function IntegrationsDialog({ children }: IntegrationsDialogProps) {
             Configure a sincronização automática com o sistema externo para atualização de status dos leitos.
           </DialogDescription>
         </DialogHeader>
+        {isLoading ? (
+            <div className="space-y-6 py-2">
+                <Skeleton className="h-8 w-1/3" />
+                <Separator />
+                <div className="space-y-4">
+                    <Skeleton className="h-6 w-1/4" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                </div>
+            </div>
+        ) : (
         <div className="space-y-6 py-2 max-h-[70vh] overflow-y-auto px-1">
             <div className="flex items-center space-x-2">
                 <Switch 
                   id="integration-active"
-                  checked={integrationActive}
-                  onCheckedChange={setIntegrationActive}
+                  checked={config.enabled}
+                  onCheckedChange={(checked) => handleFieldChange('enabled', checked)}
                 />
                 <Label htmlFor="integration-active" className="text-base">Ativar Integração Automática</Label>
             </div>
@@ -112,23 +141,23 @@ export function IntegrationsDialog({ children }: IntegrationsDialogProps) {
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="host">Host</Label>
-                        <Input id="host" placeholder="ex: db.hospital.com.br" value={host} onChange={(e) => setHost(e.target.value)} />
+                        <Input id="host" placeholder="ex: db.hospital.com.br" value={config.host} onChange={(e) => handleFieldChange('host', e.target.value)} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="port">Porta</Label>
-                        <Input id="port" type="number" value={port} onChange={(e) => setPort(e.target.value)} />
+                        <Input id="port" type="number" value={config.port} onChange={(e) => handleFieldChange('port', Number(e.target.value))} />
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="database">Banco</Label>
-                        <Input id="database" placeholder="ex: leitos_db" value={database} onChange={(e) => setDatabase(e.target.value)} />
+                        <Input id="database" placeholder="ex: leitos_db" value={config.database} onChange={(e) => handleFieldChange('database', e.target.value)} />
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="user">Usuário</Label>
-                        <Input id="user" placeholder="ex: admin_leitos" value={user} onChange={(e) => setUser(e.target.value)} />
+                        <Input id="user" placeholder="ex: admin_leitos" value={config.username} onChange={(e) => handleFieldChange('username', e.target.value)} />
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="password">Senha</Label>
-                        <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                        <Input id="password" type="password" value={config.password} onChange={(e) => handleFieldChange('password', e.target.value)} />
                     </div>
                  </div>
             </div>
@@ -139,11 +168,11 @@ export function IntegrationsDialog({ children }: IntegrationsDialogProps) {
                 <h3 className="font-semibold text-lg">🕐 Configuração da Sincronização</h3>
                  <div className="space-y-2">
                     <Label htmlFor="interval">Intervalo de Sincronização (minutos)</Label>
-                    <Input id="interval" type="number" value={interval} onChange={(e) => setInterval(e.target.value)} />
+                    <Input id="interval" type="number" value={config.syncInterval} onChange={(e) => handleFieldChange('syncInterval', Number(e.target.value))} />
                 </div>
                  <div className="space-y-2">
                     <Label htmlFor="query">Query de Consulta</Label>
-                    <Textarea id="query" rows={4} value={query} onChange={(e) => setQuery(e.target.value)} />
+                    <Textarea id="query" rows={4} value={config.query} onChange={(e) => handleFieldChange('query', e.target.value)} />
                 </div>
             </div>
 
@@ -165,15 +194,16 @@ export function IntegrationsDialog({ children }: IntegrationsDialogProps) {
             </Alert>
 
         </div>
+        )}
         <DialogFooter>
             <DialogClose asChild>
                 <Button type="button" variant="secondary" disabled={isTesting || isSaving}>Cancelar</Button>
             </DialogClose>
-            <Button type="button" onClick={handleTestConnection} disabled={isTesting || isSaving}>
+            <Button type="button" onClick={handleTestConnection} disabled={isTesting || isSaving || isLoading}>
                 {isTesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Testar Conexão
             </Button>
-            <Button type="submit" onClick={handleSave} disabled={isTesting || isSaving}>
+            <Button type="submit" onClick={handleSave} disabled={isTesting || isSaving || isLoading}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Salvar Configurações
             </Button>

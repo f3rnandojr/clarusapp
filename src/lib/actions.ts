@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig } from './schemas';
 import type { CleaningType } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -476,4 +476,106 @@ export async function getLogs() {
   const db = await dbConnect();
   const logs = await db.collection('app_logs').find().sort({ timestamp: -1 }).limit(100).toArray();
   return convertToPlainObject(logs);
+}
+
+
+// --- Integration Actions ---
+
+// Configuração padrão
+const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
+  _id: 'integration_settings',
+  enabled: false,
+  host: '',
+  port: 5432,
+  database: '',
+  username: '',
+  password: '',
+  syncInterval: 5,
+  query: "SELECT code1, tipobloq FROM cable1 WHERE tipobloq IN ('*', 'L')",
+  statusMappings: {
+    available: 'L',
+    occupied: '*'
+  },
+  createdAt: new Date(),
+  updatedAt: new Date()
+};
+
+// Buscar configuração de integração
+export async function getIntegrationConfig(): Promise<IntegrationConfig> {
+  try {
+    const db = await dbConnect();
+    const collection = db.collection('integration_config');
+    
+    const config = await collection.findOne({ _id: 'integration_settings' });
+    
+    if (!config) {
+      // Retorna configuração padrão se não existir
+      // @ts-ignore
+      return DEFAULT_INTEGRATION_CONFIG;
+    }
+    
+    // @ts-ignore
+    return convertToPlainObject(config);
+  } catch (error) {
+    console.error('Erro ao buscar configuração de integração:', error);
+    // @ts-ignore
+    return DEFAULT_INTEGRATION_CONFIG;
+  }
+}
+
+// Salvar configuração de integração
+export async function saveIntegrationConfig(configData: Partial<IntegrationConfig>) {
+  try {
+    const db = await dbConnect();
+    const collection = db.collection('integration_config');
+    
+    const dataToSave = { ...configData, updatedAt: new Date() };
+
+    const result = await collection.updateOne(
+      { _id: 'integration_settings' },
+      { $set: dataToSave },
+      { upsert: true }
+    );
+
+    revalidatePath('/dashboard');
+
+    return { 
+      success: true, 
+      message: 'Configurações salvas com sucesso',
+      result 
+    };
+  } catch (error: any) {
+    console.error('Erro ao salvar configuração de integração:', error);
+    return { 
+      success: false, 
+      message: 'Erro ao salvar configurações',
+      error: error.message 
+    };
+  }
+}
+
+// Testar conexão (simulação para FASE 1)
+export async function testIntegrationConnection(configData: any) {
+  if (!configData.host || !configData.database || !configData.username || !configData.password) {
+    return { 
+        success: false, 
+        message: 'Por favor, preencha Host, Banco, Usuário e Senha para testar a conexão.' 
+    };
+  }
+
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  const success = Math.random() > 0.2;
+  
+  if (success) {
+    return { 
+      success: true, 
+      message: 'Conexão teste bem-sucedida! (simulado)' 
+    };
+  } else {
+    return { 
+      success: false, 
+      message: 'Falha na conexão teste. Verifique as configurações. (simulado)' 
+    };
+  }
 }
