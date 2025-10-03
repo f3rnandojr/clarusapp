@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Separator } from "./ui/separator";
 import { Loader2, Info } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
-import { getIntegrationConfig, saveIntegrationConfig, testIntegrationConnection, runManualSync, getSyncStatus } from '@/lib/actions';
+import { getIntegrationConfig, saveIntegrationConfig, testIntegrationConnection, runManualSync, getSyncStatus, testTransformation } from '@/lib/actions';
 import type { IntegrationConfig } from "@/lib/schemas";
 import { Skeleton } from "./ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,6 +31,8 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const { toast } = useToast();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -59,7 +61,7 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
     setConfig(prev => ({ ...prev!, [field]: value }));
   };
   
-  const handleNestedFieldChange = (section: 'statusMappings' | 'fieldMappings', field: string, value: any) => {
+  const handleNestedFieldChange = (section: 'statusMappings' | 'fieldMappings' | 'transformation', field: string, value: any) => {
     if (!config) return;
     setConfig(prev => ({
       ...prev!,
@@ -129,6 +131,28 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
           setIsSyncing(false);
       }
   };
+  
+  const handleTestTransformation = async () => {
+    try {
+      const result = await testTransformation();
+      setTestResult(result);
+      
+      if (result.success) {
+        toast({
+          title: "Teste de Transformação",
+          description: "Transformação testada com sucesso!",
+          variant: "default"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro no Teste",
+        description: error.message || "Falha ao testar transformação",
+        variant: "destructive"
+      });
+    }
+  };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -165,10 +189,10 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
                     <div className="flex justify-between items-center">
                     <div>
                         <p className="text-sm text-muted-foreground">
-                        Última sincronização: {syncStatus?.lastSync ? new Date(syncStatus.lastSync).toLocaleString('pt-BR') : 'Nunca'}
+                          Última sincronização: {syncStatus?.lastSync ? new Date(syncStatus.lastSync).toLocaleString('pt-BR') : 'Nunca'}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                        Próxima sincronização automática: {syncStatus?.enabled ? `a cada ${syncStatus.syncInterval} minutos` : 'Desativada'}
+                          Próxima sincronização automática: {syncStatus?.enabled ? `a cada ${syncStatus.syncInterval} minutos` : 'Desativada'}
                         </p>
                     </div>
                     <Button
@@ -243,6 +267,90 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
                   </div>
                 </div>
               </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                    <span>Configurações Avançadas</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAdvanced(!showAdvanced)}
+                    >
+                        {showAdvanced ? "Ocultar" : "Mostrar"}
+                    </Button>
+                    </CardTitle>
+                </CardHeader>
+                
+                {showAdvanced && (
+                    <CardContent className="space-y-4">
+                    {/* Mapeamento de Campos */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                        <Label htmlFor="codeField">Campo do Código</Label>
+                        <Input
+                            id="codeField"
+                            value={config.fieldMappings?.codeField || 'code1'}
+                            onChange={(e) => handleNestedFieldChange('fieldMappings', 'codeField', e.target.value)}
+                            placeholder="code1"
+                        />
+                        </div>
+                        <div>
+                        <Label htmlFor="statusField">Campo do Status</Label>
+                        <Input
+                            id="statusField"
+                            value={config.fieldMappings?.statusField || 'tipoblog'}
+                            onChange={(e) => handleNestedFieldChange('fieldMappings', 'statusField', e.target.value)}
+                            placeholder="tipoblog"
+                        />
+                        </div>
+                    </div>
+
+                    {/* Padrões de Transformação */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                        <Label htmlFor="namePattern">Padrão para Nome (Regex)</Label>
+                        <Input
+                            id="namePattern"
+                            value={config.transformation?.namePattern || ''}
+                            onChange={(e) => handleNestedFieldChange('transformation', 'namePattern', e.target.value)}
+                            placeholder="([A-Za-z]+)"
+                        />
+                        <p className="text-xs text-muted-foreground">Ex: ([A-Za-z]+) para extrair letras</p>
+                        </div>
+                        <div>
+                        <Label htmlFor="numberPattern">Padrão para Número (Regex)</Label>
+                        <Input
+                            id="numberPattern"
+                            value={config.transformation?.numberPattern || ''}
+                            onChange={(e) => handleNestedFieldChange('transformation', 'numberPattern', e.target.value)}
+                            placeholder="([0-9]+)"
+                        />
+                        <p className="text-xs text-muted-foreground">Ex: ([0-9]+) para extrair números</p>
+                        </div>
+                    </div>
+
+                    {/* Botão de teste de transformação */}
+                    <Button
+                        onClick={handleTestTransformation}
+                        variant="outline"
+                        size="sm"
+                    >
+                        Testar Transformação
+                    </Button>
+
+                    {/* Resultado do teste */}
+                    {testResult && (
+                        <div className="p-3 border rounded-lg bg-muted">
+                        <h4 className="font-medium mb-2">Resultado do Teste:</h4>
+                        <pre className="text-xs overflow-auto">
+                            {JSON.stringify(testResult, null, 2)}
+                        </pre>
+                        </div>
+                    )}
+                    </CardContent>
+                )}
             </Card>
 
             <Card>
