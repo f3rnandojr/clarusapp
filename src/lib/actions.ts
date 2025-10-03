@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
 import { convertToPlainObject } from './utils';
 import { DataTransformer, validateTransformationConfig, generateSampleTransformation } from './advanced-transformation';
+import { syncLogger } from './logger';
 
 
 // --- Logger Action ---
@@ -604,53 +605,61 @@ export async function testIntegrationConnection(configData: any) {
 }
 
 export async function runManualSync() {
+  const syncId = `sync-${Date.now()}`;
+  const startTime = Date.now();
+  
+  syncLogger.info('Iniciando sincronização manual', { syncId });
+
   try {
     const db = await dbConnect();
     const config = await getIntegrationConfig();
     
     if (!config.enabled) {
+      syncLogger.warn('Tentativa de sync com integração desativada', { syncId });
       return {
         success: false,
-        message: 'Integração não está ativada. Ative a integração primeiro.'
+        message: 'Integração não está ativada.',
+        syncId
       };
     }
 
     // Validar configuração de transformação
     const configErrors = validateTransformationConfig(config);
     if (configErrors.length > 0) {
+       syncLogger.error('Configuração de sync inválida', { syncId, errors: configErrors });
       return {
         success: false,
         message: `Configuração incompleta: ${configErrors.join(', ')}`
       };
     }
 
-    console.log('Iniciando sincronização manual com transformação avançada...');
+    syncLogger.info('Buscando dados do sistema externo', { syncId });
     
     // 1. Buscar dados do banco externo
     const { fetchExternalData } = await import('./external-db-connection');
     const externalData = await fetchExternalData(config);
     
     if (externalData.length === 0) {
+      syncLogger.info('Nenhum dado encontrado no sistema externo', { syncId });
       return {
         success: true,
         message: 'Sincronização concluída. Nenhum dado encontrado no sistema externo.',
-        stats: { 
-          total: 0, 
-          updated: 0, 
-          created: 0, 
-          skipped: 0, 
-          errors: 0 
-        }
+        stats: { total: 0, updated: 0, created: 0, skipped: 0, errors: 0 }
       };
     }
 
     // 2. Transformar dados com sistema avançado
+    syncLogger.info(`Transformando ${externalData.length} registros`, { syncId });
     const transformer = new DataTransformer(config);
     const transformationResult = transformer.transform(externalData);
     
-    console.log('Resultado da transformação:', transformationResult.stats);
+    syncLogger.info('Resultado da transformação', { syncId, stats: transformationResult.stats });
+    if (transformationResult.errors.length > 0) {
+      syncLogger.warn('Erros durante a transformação', { syncId, errors: transformationResult.errors });
+    }
 
     // 3. Atualizar MongoDB Atlas
+    syncLogger.info('Atualizando banco de dados local', { syncId });
     const locationsCollection = db.collection('locations');
     let updatedCount = 0;
     let createdCount = 0;
@@ -658,17 +667,15 @@ export async function runManualSync() {
 
     for (const leito of transformationResult.data) {
       try {
-        // NÃO atualizar leitos que estão em higienização
         const existingLeito = await locationsCollection.findOne({
           $or: [
             { name: leito.name, number: leito.number },
             { externalCode: leito.externalCode }
           ],
-          status: { $ne: 'in_cleaning' } // Não sobrescrever se estiver em limpeza
+          status: { $ne: 'in_cleaning' }
         });
 
         if (existingLeito) {
-          // Verificar se houve mudanças relevantes
           const hasChanges = 
             existingLeito.status !== leito.status ||
             existingLeito.name !== leito.name ||
@@ -677,24 +684,13 @@ export async function runManualSync() {
           if (hasChanges) {
             await locationsCollection.updateOne(
               { _id: existingLeito._id },
-              { 
-                $set: { 
-                  name: leito.name,
-                  number: leito.number,
-                  status: leito.status,
-                  externalCode: leito.externalCode,
-                  externalStatus: leito.externalStatus,
-                  lastExternalUpdate: new Date(),
-                  updatedAt: new Date()
-                }
-              }
+              { $set: { ...leito, updatedAt: new Date() } }
             );
             updatedCount++;
           } else {
             skippedCount++;
           }
         } else {
-          // Criar novo leito
           await locationsCollection.insertOne({
             ...leito,
             currentCleaning: null,
@@ -704,7 +700,7 @@ export async function runManualSync() {
           createdCount++;
         }
       } catch (error: any) {
-        console.error('Erro ao processar leito:', leito, error);
+        syncLogger.error('Erro ao processar leito no banco local', { syncId, leito, error: error.message });
         transformationResult.stats.errors++;
       }
     }
@@ -721,35 +717,101 @@ export async function runManualSync() {
 
     await integrationCollection.updateOne(
       { _id: 'integration_settings' },
-      { 
-        $set: { 
-          lastSync: new Date(),
-          lastSyncStats: syncStats
-        }
-      }
+      { $set: { lastSync: new Date(), lastSyncStats: syncStats } }
     );
     
-    revalidatePath('/dashboard');
+    const message = `Sincronização concluída! ${createdCount} novos, ${updatedCount} atualizados, ${syncStats.skipped} ignorados, ${syncStats.errors} erros.`;
+    
+    syncLogger.info('Sincronização concluída com sucesso', {
+      syncId,
+      stats: syncStats,
+      duration: Date.now() - startTime
+    });
 
-    // Montar mensagem detalhada
-    const message = `Sincronização concluída! 
-      ${createdCount} novos, ${updatedCount} atualizados, 
-      ${syncStats.skipped} ignorados, ${syncStats.errors} erros.`;
+    await saveSyncHistory({
+      syncId,
+      timestamp: new Date(),
+      type: 'manual',
+      success: true,
+      stats: syncStats,
+      duration: Date.now() - startTime,
+      config: { host: config.host, database: config.database }
+    });
+
+    revalidatePath('/dashboard');
 
     return {
       success: transformationResult.stats.errors === 0,
       message,
       stats: syncStats,
-      transformation: transformationResult
+      syncId
     };
 
   } catch (error: any) {
-    console.error('Erro na sincronização manual:', error);
+    const duration = Date.now() - startTime;
+    syncLogger.error('Erro na sincronização', { syncId, error: error.message, duration });
+    
+    await saveSyncHistory({
+      syncId,
+      timestamp: new Date(),
+      type: 'manual',
+      success: false,
+      error: error.message,
+      duration
+    });
+
     return {
       success: false,
       message: `Erro na sincronização: ${error.message}`,
-      stats: { total: 0, updated: 0, created: 0, skipped: 0, errors: 1 }
+      stats: { total: 0, updated: 0, created: 0, skipped: 0, errors: 1 },
+      syncId
     };
+  }
+}
+
+async function saveSyncHistory(historyItem: any) {
+  try {
+    const db = await dbConnect();
+    const collection = db.collection('sync_history');
+    await collection.insertOne(historyItem);
+  } catch (error: any) {
+    syncLogger.error('Erro ao salvar histórico de sync:', { error: error.message });
+  }
+}
+
+export async function getSyncStatistics() {
+  try {
+    const db = await dbConnect();
+    const collection = db.collection('sync_history');
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const stats = await collection.aggregate([
+      { $match: { timestamp: { $gte: last24h } } },
+      {
+        $group: {
+          _id: '$success',
+          count: { $sum: 1 },
+          avgDuration: { $avg: '$duration' },
+          lastSync: { $max: '$timestamp' }
+        }
+      }
+    ]).toArray();
+
+    const successCount = stats.find(s => s._id === true)?.count || 0;
+    const errorCount = stats.find(s => s._id === false)?.count || 0;
+    const total = successCount + errorCount;
+    const successRate = total > 0 ? (successCount / total) * 100 : 0;
+
+    return {
+      successRate,
+      totalSyncs: total,
+      successfulSyncs: successCount,
+      failedSyncs: errorCount,
+      lastSync: stats[0]?.lastSync || null
+    };
+  } catch (error: any) {
+    syncLogger.error('Erro ao obter estatísticas de sync', { error: error.message });
+    return null;
   }
 }
 

@@ -30,14 +30,9 @@ async function seedDatabase(db: Db) {
 }
 
 export async function dbConnect(): Promise<Db> {
-  console.log('🔄 dbConnect() chamado - cachedDb existe?', !!cachedDb);
-  
   if (cachedDb) {
-    console.log('✅ Usando conexão cacheada');
     return cachedDb;
   }
-
-  console.log('🔗 Criando nova conexão MongoDB...');
 
   if (!cachedClient) {
     cachedClient = await MongoClient.connect(MONGODB_URI!);
