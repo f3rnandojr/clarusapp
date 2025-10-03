@@ -10,20 +10,8 @@ export const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'cleanflow-sync' },
   transports: [
-    // Arquivo de logs de erro
-    new winston.transports.File({ 
-      filename: 'logs/error.log', 
-      level: 'error',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5
-    }),
-    // Arquivo de logs combinados
-    new winston.transports.File({ 
-      filename: 'logs/combined.log',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5
-    }),
-    // Console para desenvolvimento
+    // Para ambientes de desenvolvimento e produção na nuvem, logar no console é o mais comum.
+    // O sistema de hospedagem (como o Firebase App Hosting) coletará esses logs.
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.colorize(),
