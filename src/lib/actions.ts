@@ -122,7 +122,6 @@ export async function startCleaning(prevState: any, formData: FormData) {
 
   await db.collection('asgs').updateOne({ _id: new ObjectId(asgId) }, { $set: { status: 'busy' } });
 
-  revalidatePath('/');
   revalidatePath('/dashboard');
   return { success: true, message: 'Higienização iniciada com sucesso!' };
 }
@@ -850,3 +849,5 @@ export async function testTransformation() {
     };
   }
 }
+
+    
