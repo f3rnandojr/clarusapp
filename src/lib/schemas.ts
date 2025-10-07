@@ -143,7 +143,7 @@ export const IntegrationConfigSchema = z.object({
   username: z.string(),
   password: z.string(),
   syncInterval: z.number().default(5),
-  query: z.string().default("SELECT code1, tipobloq FROM cable1 WHERE tipobloq IN ('*', 'L')"),
+  query: z.string().default("SELECT code1, tipobloq FROM cable1"),
   
   // Mapeamento de status aprimorado
   statusMappings: z.object({

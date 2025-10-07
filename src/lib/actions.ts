@@ -494,7 +494,7 @@ const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
   username: '',
   password: '',
   syncInterval: 5,
-  query: "SELECT code1, tipobloq FROM cable1 WHERE tipobloq IN ('*', 'L')",
+  query: "SELECT code1, tipobloq FROM cable1",
   statusMappings: {
     available: 'L',
     occupied: '*'
