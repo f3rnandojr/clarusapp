@@ -34,27 +34,35 @@ export default function LoginPage() {
       justifyContent: 'center', 
       alignItems: 'center', 
       height: '100vh',
-      background: '#f5f5f5'
+      background: 'hsl(var(--background))'
     }}>
-      <form onSubmit={handleSubmit} style={{ 
-        background: 'white', 
-        padding: '40px', 
+      <div style={{
+        background: 'hsl(var(--card))',
+        padding: '40px',
         borderRadius: '8px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+        boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+        textAlign: 'center',
+        border: '1px solid hsl(var(--border))'
       }}>
-        <h2>Clarus - Login</h2>
-        <p>Use: admin / admin</p>
-        <button type="submit" disabled={loading} style={{ 
-          marginTop: '20px', 
-          padding: '10px 20px',
-          background: '#007acc',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px'
-        }}>
-          {loading ? 'Entrando...' : 'Entrar'}
-        </button>
-      </form>
+        <h1 style={{fontSize: '2rem', fontWeight: 'bold', color: 'hsl(var(--foreground))'}}>Clarus</h1>
+        <p style={{color: 'hsl(var(--muted-foreground))', marginTop: '8px', marginBottom: '24px'}}>
+          Faça login para continuar. Use: admin / admin
+        </p>
+        <form onSubmit={handleSubmit}>
+          <button type="submit" disabled={loading} style={{ 
+            width: '100%',
+            padding: '10px 20px',
+            background: 'hsl(var(--primary))',
+            color: 'hsl(var(--primary-foreground))',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            opacity: loading ? 0.7 : 1
+          }}>
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
