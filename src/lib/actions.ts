@@ -622,7 +622,6 @@ export async function runManualSync() {
       };
     }
 
-    // Validar configuração de transformação
     const configErrors = validateTransformationConfig(config);
     if (configErrors.length > 0) {
        syncLogger.error('Configuração de sync inválida', { syncId, errors: configErrors });
@@ -634,7 +633,6 @@ export async function runManualSync() {
 
     syncLogger.info('Buscando dados do sistema externo', { syncId });
     
-    // 1. Buscar dados do banco externo
     const { fetchExternalData } = await import('./external-db-connection');
     const externalData = await fetchExternalData(config);
     
@@ -647,7 +645,6 @@ export async function runManualSync() {
       };
     }
 
-    // 2. Transformar dados com sistema avançado
     syncLogger.info(`Transformando ${externalData.length} registros`, { syncId });
     const transformer = new DataTransformer(config);
     const transformationResult = transformer.transform(externalData);
@@ -657,8 +654,6 @@ export async function runManualSync() {
       syncLogger.warn('Erros durante a transformação', { syncId, errors: transformationResult.errors });
     }
 
-    // 3. Atualizar MongoDB Atlas
-    syncLogger.info('Atualizando banco de dados local', { syncId });
     const locationsCollection = db.collection('locations');
     let updatedCount = 0;
     let createdCount = 0;
@@ -683,7 +678,7 @@ export async function runManualSync() {
           if (hasChanges) {
             await locationsCollection.updateOne(
               { _id: existingLeito._id },
-              { $set: { ...leito, updatedAt: new Date() } }
+              { $set: { status: leito.status, updatedAt: new Date() } }
             );
             updatedCount++;
           } else {
@@ -704,7 +699,6 @@ export async function runManualSync() {
       }
     }
 
-    // 4. Atualizar estatísticas de sync
     const integrationCollection = db.collection('integration_config');
     const syncStats = {
       total: transformationResult.stats.total,
