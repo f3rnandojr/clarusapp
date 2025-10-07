@@ -53,7 +53,7 @@ export class DataTransformer {
         } else {
           result.stats.skipped++;
         }
-      } catch (error) {
+      } catch (error: any) {
         result.stats.errors++;
         result.errors.push({
           originalData: item,
@@ -85,6 +85,8 @@ export class DataTransformer {
     
     // Validar dados transformados
     if (!name || !number || !status) {
+      // Se o status for null, é um status não mapeado, então pulamos em vez de dar erro
+      if (status === null) return null;
       throw new Error('Dados transformados inválidos');
     }
 
@@ -101,15 +103,18 @@ export class DataTransformer {
   private mapStatus(externalStatus: string): 'available' | 'occupied' | 'in_cleaning' | null {
     const { statusMappings } = this.config;
     
-    if (externalStatus === statusMappings.available) {
+    // Normalizar o valor externo para comparação (remover espaços, etc.)
+    const normalizedStatus = (externalStatus || '').trim();
+
+    if (normalizedStatus === statusMappings.available) {
       return 'available';
-    } else if (externalStatus === statusMappings.occupied) {
+    } else if (normalizedStatus === statusMappings.occupied) {
       return 'occupied';
-    } else if (statusMappings.in_cleaning && externalStatus === statusMappings.in_cleaning) {
+    } else if (statusMappings.in_cleaning && normalizedStatus === statusMappings.in_cleaning) {
       return 'in_cleaning';
     }
     
-    console.warn(`Status não mapeado: "${externalStatus}"`);
+    console.warn(`Status não mapeado: "${normalizedStatus}"`);
     return null;
   }
 
@@ -155,6 +160,15 @@ export class DataTransformer {
   private defaultCodeTransformation(codeValue: string): { name: string; number: string } {
     // Lógica inteligente para diferentes formatos
     
+    // NOVO: Formato: "LT-01A", "L-13A"
+    const formatComplex = codeValue.match(/^([A-Za-z]+)-([0-9A-Za-z]+)$/);
+    if (formatComplex) {
+      return {
+        name: this.mapCommonNames(formatComplex[1]),
+        number: formatComplex[2]
+      };
+    }
+
     // Formato: "QTO101", "APTO202", "LEITO305"
     const format1 = codeValue.match(/^([A-Za-z]+)([0-9]+)$/);
     if (format1) {
@@ -199,7 +213,11 @@ export class DataTransformer {
       'SL': 'Sala',
       'SALA': 'Sala',
       'CX': 'Caixa',
-      'BOX': 'Box'
+      'BOX': 'Box',
+      'UTI': 'UTI',
+      'SPA': 'SPA',
+      'LBX': 'Laboratório',
+      'LT': 'Leito'
     };
     
     return nameMap[abbreviation.toUpperCase()] || abbreviation;
