@@ -26,7 +26,7 @@ export default function LocationCardColumn({ title, icon, locations, availableAs
                 <h2 className="text-base font-bold">{title}</h2>
                 <span className="ml-auto bg-card text-card-foreground rounded-full px-2.5 py-0.5 text-xs font-semibold">{count}</span>
             </div>
-            <div className="flex flex-col gap-2 overflow-y-auto">
+            <div className="flex flex-col gap-2 overflow-y-auto scroll-container">
                 {locations.length > 0 ? (
                     locations.map(location => (
                         <LocationCard key={location._id} location={location} availableAsgs={availableAsgs} cleaningSettings={cleaningSettings} />

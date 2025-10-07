@@ -70,4 +70,30 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Estilos de scrollbar customizados */
+  .scroll-container {
+      scrollbar-width: thin;
+      scrollbar-color: hsl(var(--border)) hsl(var(--background));
+  }
+
+  .scroll-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scroll-container::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+    border-radius: 4px;
+  }
+
+  .scroll-container::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+    transition: background 0.2s ease-in-out;
+  }
+
+  .scroll-container::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--accent));
+  }
 }
