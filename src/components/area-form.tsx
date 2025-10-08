@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState, useFormStatus } from "react-dom";
 import { useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Area } from "@/lib/schemas";
@@ -34,7 +34,7 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
     ? (prevState: any, formData: FormData) => updateArea(area!._id.toString(), prevState, formData)
     : createArea;
     
-  const [state, formAction] = useFormState(action, { error: null, fieldErrors: {}, success: false, message: '' });
+  const [state, formAction] = useActionState(action, { error: null, fieldErrors: {}, success: false, message: '' });
 
   useEffect(() => {
     if (state.success) {
