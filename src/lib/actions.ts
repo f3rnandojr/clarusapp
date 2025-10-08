@@ -319,6 +319,9 @@ export async function getAreas() {
 }
 
 export async function createArea(prevState: any, formData: FormData) {
+    console.log('🔴🔴🔴 CREATE AREA INICIADO - ESTAMOS AQUI!');
+    console.log('🔴 FormData recebido:', formData);
+    
     console.log('🔍 Iniciando createArea...');
     try {
         const rawData = {
@@ -987,3 +990,4 @@ export async function testTransformation() {
     
 
     
+
