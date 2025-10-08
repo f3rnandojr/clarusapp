@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode } from "@/lib/actions";
 import CleaningDashboard from "@/components/cleaning-dashboard";
 import Header from "@/components/header";
-import { Loader2, LayoutGrid, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area } from "@/lib/schemas";
 import { StartCleaningDialog } from "@/components/start-cleaning-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CleaningSections } from "@/components/cleaning-sections";
+import { Separator } from "@/components/ui/separator";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -94,26 +94,25 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-screen bg-background">
       <Header asgs={asgs} users={users} nextAsgCode={nextAsgCode} cleaningSettings={cleaningSettings} occurrences={occurrences} allAreas={areas} />
-      <main className="flex-1 p-2 md:p-4 overflow-hidden flex flex-col">
-        <Tabs defaultValue="cleaning" className="flex flex-col flex-1 overflow-hidden">
-          <TabsList className="shrink-0">
-            <TabsTrigger value="cleaning"><Sparkles className="mr-2" />Em Higienização ({inCleaningLocations.length})</TabsTrigger>
-            <TabsTrigger value="overview"><LayoutGrid className="mr-2" />Visão Geral</TabsTrigger>
-          </TabsList>
-          <TabsContent value="cleaning" className="flex-1 mt-2 overflow-y-auto scroll-container">
-             <CleaningSections 
-                locations={inCleaningLocations} 
-                cleaningSettings={cleaningSettings}
-             />
-          </TabsContent>
-          <TabsContent value="overview" className="flex-1 mt-2 overflow-hidden">
-            <CleaningDashboard
+      <main className="flex-1 p-2 md:p-4 overflow-hidden flex flex-col gap-4">
+        
+        <div className="flex-shrink-0">
+          <CleaningSections 
+              locations={inCleaningLocations} 
+              cleaningSettings={cleaningSettings}
+          />
+        </div>
+
+        <Separator />
+        
+        <div className="flex-1 overflow-hidden">
+           <CleaningDashboard
               availableLocations={availableLocations}
               occupiedLocations={occupiedLocations}
               cleaningSettings={cleaningSettings}
             />
-          </TabsContent>
-        </Tabs>
+        </div>
+
       </main>
       
       {cleaningLocation && (
