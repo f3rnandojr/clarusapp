@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas } from "@/lib/actions";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode } from "@/lib/actions";
 import CleaningDashboard from "@/components/cleaning-dashboard";
 import Header from "@/components/header";
 import { Loader2 } from "lucide-react";
 import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area } from "@/lib/schemas";
+import { StartCleaningDialog } from "@/components/start-cleaning-dialog";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<{
     locations: Location[];
@@ -20,6 +22,10 @@ export default function DashboardPage() {
     occurrences: CleaningOccurrence[];
     areas: Area[];
   } | null>(null);
+
+  // State for the auto-triggered cleaning dialog
+  const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,6 +50,23 @@ export default function DashboardPage() {
         
         setData({ locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas });
 
+        // --- QR Code Logic ---
+        const locationCodeToClean = searchParams.get("startCleaning");
+        if (locationCodeToClean) {
+          console.log(`QR Scan detected: Looking for location with code '${locationCodeToClean}'`);
+          const foundLocation = await getLocationByCode(locationCodeToClean);
+          if (foundLocation) {
+            console.log("Location found, triggering dialog:", foundLocation);
+            setCleaningLocation(foundLocation);
+            setDialogOpen(true);
+          } else {
+            console.warn("Location code from QR scan not found.");
+          }
+          // Clean up URL
+          router.replace('/dashboard', { scroll: false });
+        }
+        // --- End QR Code Logic ---
+
       } catch (error) {
         console.error("Erro ao carregar dashboard:", error);
       } finally {
@@ -52,7 +75,8 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   if (loading || !data) {
     return (
@@ -82,6 +106,18 @@ export default function DashboardPage() {
           cleaningSettings={cleaningSettings}
         />
       </main>
+      
+      {/* Auto-triggered dialog for QR code scan */}
+      {cleaningLocation && (
+        <StartCleaningDialog
+          location={cleaningLocation}
+          availableAsgs={availableAsgs}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+        >
+          {/* This dialog is opened programmatically, no trigger needed here */}
+        </StartCleaningDialog>
+      )}
     </div>
   );
 }

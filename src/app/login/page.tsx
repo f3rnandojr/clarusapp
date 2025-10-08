@@ -1,11 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { getSession } from '@/lib/session';
 
 export default function LoginPage() {
   const [login, setLogin] = useState('');
@@ -33,8 +34,18 @@ export default function LoginPage() {
       console.log('🔐 4. Response data:', data);
 
       if (response.ok) {
-        console.log('🔐 5. Login OK - Redirecionando...');
-        router.push('/dashboard');
+        console.log('🔐 5. Login OK - Verificando limpeza pendente...');
+        
+        const pendingLocation = sessionStorage.getItem('pendingCleaningLocation');
+        if (pendingLocation) {
+          console.log(`found pending location: ${pendingLocation}, redirecting to clean flow...`);
+          sessionStorage.removeItem('pendingCleaningLocation');
+          router.push(`/clean/${pendingLocation}`);
+        } else {
+          console.log('Nenhuma limpeza pendente, redirecionando para o dashboard...');
+          router.push('/dashboard');
+        }
+
       } else {
         console.log('🔐 5. Login FALHOU');
         toast({

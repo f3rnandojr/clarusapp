@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema } from './schemas';
 import type { CleaningType } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -75,6 +75,34 @@ export async function getLocations() {
   const locations = await db.collection('locations').find().sort({ name: 1, number: 1 }).toArray();
   return convertToPlainObject(locations);
 }
+
+export async function getLocationByCode(code: string) {
+    const db = await dbConnect();
+    
+    // First, try to find in 'areas' by locationId
+    const area = await db.collection('areas').findOne({ locationId: code, isActive: true });
+    
+    let query = {};
+    if (area) {
+        // If an area is found, we need to find the corresponding 'location'
+        // This assumes a naming convention between area.locationId and location properties.
+        // This part might need adjustment based on how they are linked.
+        // For now, let's assume `externalCode` in `locations` matches `locationId` in `areas`.
+        query = { externalCode: code };
+    } else {
+        // If no area is found, maybe the code directly refers to a location's externalCode
+        query = { externalCode: code };
+    }
+
+    const location = await db.collection('locations').findOne(query);
+
+    if (location) {
+        return convertToPlainObject(location);
+    }
+    
+    return null;
+}
+
 
 export async function startCleaning(prevState: any, formData: FormData) {
   const validatedFields = StartCleaningFormSchema.safeParse({

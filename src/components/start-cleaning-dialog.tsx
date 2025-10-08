@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { startCleaning } from "@/lib/actions";
 import type { Asg, Location } from "@/lib/schemas";
@@ -18,7 +18,9 @@ interface StartCleaningDialogProps {
   location: Location;
   availableAsgs: Asg[];
   isOccupied?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function SubmitButton() {
@@ -31,10 +33,12 @@ function SubmitButton() {
   );
 }
 
-export function StartCleaningDialog({ location, availableAsgs, isOccupied = false, children }: StartCleaningDialogProps) {
+export function StartCleaningDialog({ location, availableAsgs, isOccupied = false, children, open, onOpenChange }: StartCleaningDialogProps) {
   const [state, formAction] = useActionState(startCleaning, null);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
+  
+  // Use a ref for the close button if you need to imperatively click it.
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -43,7 +47,8 @@ export function StartCleaningDialog({ location, availableAsgs, isOccupied = fals
         title: "Sucesso!",
         description: state.success,
       });
-      closeButtonRef.current?.click();
+      // Close dialog via state change passed to onOpenChange
+      onOpenChange?.(false);
       formRef.current?.reset();
     }
     if (state?.error) {
@@ -53,11 +58,11 @@ export function StartCleaningDialog({ location, availableAsgs, isOccupied = fals
         variant: "destructive",
       });
     }
-  }, [state, toast]);
+  }, [state, toast, onOpenChange]);
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Iniciar Higienização</DialogTitle>
