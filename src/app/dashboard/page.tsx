@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode } from "@/lib/actions";
 import CleaningDashboard from "@/components/cleaning-dashboard";
 import Header from "@/components/header";
-import { Loader2 } from "lucide-react";
+import { Loader2, LayoutGrid, Sparkles } from "lucide-react";
 import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area } from "@/lib/schemas";
 import { StartCleaningDialog } from "@/components/start-cleaning-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CleaningSections } from "@/components/cleaning-sections";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -23,7 +25,6 @@ export default function DashboardPage() {
     areas: Area[];
   } | null>(null);
 
-  // State for the auto-triggered cleaning dialog
   const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -51,7 +52,6 @@ export default function DashboardPage() {
         
         setData({ locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas });
 
-        // --- QR Code Logic ---
         const locationCodeToClean = searchParams.get("startCleaning");
         if (locationCodeToClean) {
           console.log(`[Dashboard] QR Scan detectado: Procurando local com código '${locationCodeToClean}'`);
@@ -62,12 +62,9 @@ export default function DashboardPage() {
             setDialogOpen(true);
           } else {
             console.warn(`[Dashboard] Código do local do QR scan ('${locationCodeToClean}') não encontrado.`);
-            // Optionally, show a toast message to the user
           }
-          // Limpa a URL para que o modal não reabra em um refresh.
           router.replace('/dashboard', { scroll: false });
         }
-        // --- End QR Code Logic ---
 
       } catch (error) {
         console.error("Erro ao carregar dashboard:", error);
@@ -97,16 +94,28 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col h-screen bg-background">
       <Header asgs={asgs} users={users} nextAsgCode={nextAsgCode} cleaningSettings={cleaningSettings} occurrences={occurrences} allAreas={areas} />
-      <main className="flex-1 p-2 md:p-4 overflow-hidden">
-        <CleaningDashboard
-          availableLocations={availableLocations}
-          inCleaningLocations={inCleaningLocations}
-          occupiedLocations={occupiedLocations}
-          cleaningSettings={cleaningSettings}
-        />
+      <main className="flex-1 p-2 md:p-4 overflow-hidden flex flex-col">
+        <Tabs defaultValue="cleaning" className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="shrink-0">
+            <TabsTrigger value="cleaning"><Sparkles className="mr-2" />Em Higienização ({inCleaningLocations.length})</TabsTrigger>
+            <TabsTrigger value="overview"><LayoutGrid className="mr-2" />Visão Geral</TabsTrigger>
+          </TabsList>
+          <TabsContent value="cleaning" className="flex-1 mt-2 overflow-y-auto scroll-container">
+             <CleaningSections 
+                locations={inCleaningLocations} 
+                cleaningSettings={cleaningSettings}
+             />
+          </TabsContent>
+          <TabsContent value="overview" className="flex-1 mt-2 overflow-hidden">
+            <CleaningDashboard
+              availableLocations={availableLocations}
+              occupiedLocations={occupiedLocations}
+              cleaningSettings={cleaningSettings}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
       
-      {/* Auto-triggered dialog for QR code scan */}
       {cleaningLocation && (
         <StartCleaningDialog
           location={cleaningLocation}
@@ -114,12 +123,10 @@ export default function DashboardPage() {
           onOpenChange={(isOpen) => {
             setDialogOpen(isOpen);
             if (!isOpen) {
-              // Limpa a localização para não reabrir o dialog acidentalmente
               setCleaningLocation(null);
             }
           }}
         >
-          {/* This dialog is opened programmatically, no trigger needed here */}
         </StartCleaningDialog>
       )}
     </div>

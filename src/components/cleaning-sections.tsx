@@ -109,6 +109,6 @@ export function CleaningSections({ locations, cleaningSettings }: CleaningSectio
             </AccordionContent>
         </AccordionItem>
       )}
-    </div>
+    </Accordion>
   );
 }
