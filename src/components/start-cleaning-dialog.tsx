@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { startCleaning } from "@/lib/actions";
 import type { Location } from "@/lib/schemas";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -18,7 +18,6 @@ interface StartCleaningDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
-
 
 export function StartCleaningDialog({ location, isOccupied = false, children, open, onOpenChange }: StartCleaningDialogProps) {
   const [result, setResult] = useState<{ success?: boolean; message?: string; error?: string | null } | null>(null);
@@ -53,7 +52,7 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
           description: response.message,
         });
         if (onOpenChange) {
-            onOpenChange(false);
+          onOpenChange(false);
         }
       } else if (response.error) {
          toast({

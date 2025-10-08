@@ -135,9 +135,9 @@ export async function startCleaning(prevState: any, formData: FormData) {
   const locationId = formData.get('locationId') as string;
   const type = formData.get('type') as CleaningType;
 
-  console.log('🔍 Dados recebidos na action startCleaning:');
-  console.log('locationId:', locationId);
-  console.log('type:', type);
+  console.log('=== DEBUG START CLEANING ===');
+  console.log('locationId recebido:', locationId);
+  console.log('Tipo de Higienização:', type);
 
   // Validações básicas de entrada
   if (!locationId) {
@@ -149,31 +149,41 @@ export async function startCleaning(prevState: any, formData: FormData) {
 
   try {
     const db = await dbConnect();
-    let location = null;
+    const locationsCollection = db.collection('locations');
+    const areasCollection = db.collection('areas');
 
-    // Tenta encontrar por ObjectId primeiro, que é o caso mais comum
+    let location: any = null;
+
+    // 1. Tenta buscar por ObjectId válido nas coleções
     if (ObjectId.isValid(locationId)) {
-      console.log('🔎 Tentando buscar por ObjectId:', locationId);
-      location = await db.collection('locations').findOne({ _id: new ObjectId(locationId) });
+        console.log('🔍 Tentando buscar por ObjectId...');
+        const objectId = new ObjectId(locationId);
+        location = await locationsCollection.findOne({ _id: objectId }) || await areasCollection.findOne({ _id: objectId });
+        console.log('📦 Resultado da busca por ObjectId:', location ? 'ENCONTRADO' : 'NÃO ENCONTRADO');
     }
 
-    // Se não encontrou, pode ser uma 'área' que usa um ID de string customizado
+    // 2. Se não encontrou, tenta buscar por campos de código (string)
     if (!location) {
-        console.log('...Não encontrado por ObjectId, tentando buscar como área por locationId (string)');
-        location = await db.collection('areas').findOne({ locationId: locationId });
+        console.log('🔍 Tentando buscar por códigos de string...');
+        location = await locationsCollection.findOne({ externalCode: locationId }) || await areasCollection.findOne({ locationId: locationId });
+        console.log('📦 Resultado da busca por string:', location ? 'ENCONTRADO' : 'NÃO ENCONTRADO');
     }
-    
-    console.log('📦 Local encontrado no banco:', location);
-    
+
     if (!location) {
+      console.log(`❌ Local não encontrado com ID/código: ${locationId}`);
       return { success: false, error: 'Local não encontrado no banco de dados.' };
     }
-    // @ts-ignore
+
+    console.log('✅ Local encontrado:', location);
+
     if (location.status === 'in_cleaning') {
       return { success: false, error: 'Este local já está em higienização.' };
     }
 
-    const updateResult = await db.collection('locations').updateOne({ _id: location._id }, {
+    // A coleção a ser atualizada pode ser 'locations' ou 'areas'
+    const collectionToUpdate = (await db.listCollections({ name: 'locations' }).hasNext()) && (await locationsCollection.findOne({ _id: location._id })) ? locationsCollection : areasCollection;
+
+    const updateResult = await collectionToUpdate.updateOne({ _id: location._id }, {
       $set: {
           status: 'in_cleaning',
           currentCleaning: {
@@ -186,7 +196,11 @@ export async function startCleaning(prevState: any, formData: FormData) {
       }
     });
 
-    console.log('✅ Local atualizado:', updateResult);
+    console.log('🔄 Resultado da atualização:', updateResult);
+    if(updateResult.matchedCount === 0) {
+        return { success: false, error: 'Falha ao atualizar o status do local. Nenhum documento correspondente encontrado.' };
+    }
+
 
     revalidatePath('/dashboard');
     return { success: true, message: `Higienização ${type} iniciada com sucesso!` };
@@ -439,12 +453,18 @@ export async function createArea(prevState: any, formData: FormData) {
 
 
 export async function updateArea(id: string, prevState: any, formData: FormData) {
-    const validatedFields = UpdateAreaSchema.safeParse(Object.fromEntries(formData.entries()));
+    const rawData = {
+        setor: formData.get('setor'),
+        description: formData.get('description'),
+    };
+
+    const validatedFields = UpdateAreaSchema.safeParse(rawData);
 
     if (!validatedFields.success) {
         return {
             error: "Dados inválidos.",
             fieldErrors: validatedFields.error.flatten().fieldErrors,
+            success: false,
         };
     }
 
@@ -1038,6 +1058,7 @@ export async function testTransformation() {
     
 
     
+
 
 
 

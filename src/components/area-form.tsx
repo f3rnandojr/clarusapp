@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Area } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
@@ -19,38 +19,37 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
   const isEditing = !!area;
   const { toast } = useToast();
   
-  const [state, setState] = useState({
-    error: null as string | null,
-    fieldErrors: {} as Record<string, string[] | undefined>,
-    success: false,
-    message: ''
-  });
-  const [isPending, startTransition] = useTransition();
+  const [result, setResult] = useState<{
+    error?: string | null;
+    fieldErrors?: Record<string, string[] | undefined>;
+    success?: boolean;
+    message?: string;
+  } | null>(null);
 
-  const action = isEditing 
-    ? (formData: FormData) => updateArea(area!._id.toString(), null, formData)
-    : createArea;
-  
-  useEffect(() => {
-    if (state.success) {
-      toast({ title: "Sucesso!", description: state.message });
-      onFinished();
-    } else if (state.error) {
-      toast({ 
-        title: "Erro", 
-        description: state.error, 
-        variant: "destructive" 
-      });
-    }
-  }, [state, toast, onFinished]);
+  const [isPending, startTransition] = useTransition();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     
     startTransition(async () => {
-      const result = await action(formData);
-      setState(result);
+      const action = isEditing 
+        ? () => updateArea(area!._id.toString(), null, formData)
+        : () => createArea(null, formData);
+        
+      const response = await action();
+      setResult(response);
+
+      if (response.success) {
+        toast({ title: "Sucesso!", description: response.message });
+        onFinished();
+      } else if (response.error) {
+        toast({ 
+          title: "Erro", 
+          description: response.error, 
+          variant: "destructive" 
+        });
+      }
     });
   };
 
@@ -65,15 +64,15 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
           required 
           placeholder="Ex: Centro Cirúrgico, UTI, Pronto Socorro"
         />
-        {state.fieldErrors?.setor && (
-          <p className="text-sm text-destructive">{state.fieldErrors.setor[0]}</p>
+        {result?.fieldErrors?.setor && (
+          <p className="text-sm text-destructive">{result.fieldErrors.setor[0]}</p>
         )}
       </div>
       
       <div className="space-y-2">
         <Label htmlFor="locationId">ID da Localização</Label>
         <Input 
-          id="locationId" _
+          id="locationId"
           name="locationId" 
           defaultValue={area?.locationId} 
           required 
@@ -81,8 +80,8 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
           disabled={isEditing}
           placeholder="Ex: sala-01, consultorio-a, uti-leito-10"
         />
-        {state.fieldErrors?.locationId && (
-          <p className="text-sm text-destructive">{state.fieldErrors.locationId[0]}</p>
+        {result?.fieldErrors?.locationId && (
+          <p className="text-sm text-destructive">{result.fieldErrors.locationId[0]}</p>
         )}
         {!isEditing && (
             <p className="text-xs text-muted-foreground">Deve ser único, sem espaços, em minúsculas. Será usado para o QR Code.</p>
@@ -97,8 +96,8 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
           defaultValue={area?.description}
           placeholder="Qualquer informação adicional sobre a área"
         />
-         {state.fieldErrors?.description && (
-          <p className="text-sm text-destructive">{state.fieldErrors.description[0]}</p>
+         {result?.fieldErrors?.description && (
+          <p className="text-sm text-destructive">{result.fieldErrors.description[0]}</p>
         )}
       </div>
       
