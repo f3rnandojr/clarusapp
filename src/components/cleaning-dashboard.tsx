@@ -9,12 +9,14 @@ interface CleaningDashboardProps {
   availableLocations: Location[];
   occupiedLocations: Location[];
   cleaningSettings: CleaningSettings;
+  onStartCleaning: (location: Location) => void;
 }
 
 export default function CleaningDashboard({
   availableLocations,
   occupiedLocations,
-  cleaningSettings
+  cleaningSettings,
+  onStartCleaning,
 }: CleaningDashboardProps) {
 
   return (
@@ -26,6 +28,7 @@ export default function CleaningDashboard({
           cleaningSettings={cleaningSettings}
           count={availableLocations.length}
           status="available"
+          onCardClick={onStartCleaning}
         />
         <LocationColumn
           title="Ocupados"
@@ -34,6 +37,7 @@ export default function CleaningDashboard({
           cleaningSettings={cleaningSettings}
           count={occupiedLocations.length}
           status="occupied"
+          onCardClick={onStartCleaning}
         />
       </div>
   );

@@ -9,6 +9,7 @@ interface LocationColumnProps {
   cleaningSettings: CleaningSettings;
   count: number;
   status: LocationStatus;
+  onCardClick: (location: Location) => void;
 }
 
 const statusClasses = {
@@ -17,7 +18,7 @@ const statusClasses = {
   occupied: "bg-status-occupied-bg",
 }
 
-export default function LocationColumn({ title, icon, locations, cleaningSettings, count, status }: LocationColumnProps) {
+export default function LocationColumn({ title, icon, locations, cleaningSettings, count, status, onCardClick }: LocationColumnProps) {
     return (
         <div className={cn("flex flex-col gap-2 p-2 rounded-lg h-full", statusClasses[status])}>
             <div className={cn("flex items-center gap-2 p-1 sticky top-0 z-10", statusClasses[status])}>
@@ -28,7 +29,12 @@ export default function LocationColumn({ title, icon, locations, cleaningSetting
             <div className="flex flex-col gap-2 overflow-y-auto scroll-container">
                 {locations.length > 0 ? (
                     locations.map(location => (
-                        <LocationCard key={location._id.toString()} location={location} cleaningSettings={cleaningSettings} />
+                        <LocationCard 
+                            key={location._id.toString()} 
+                            location={location} 
+                            cleaningSettings={cleaningSettings}
+                            onStartClick={onCardClick}
+                        />
                     ))
                 ) : (
                     <div className="text-center text-muted-foreground italic py-6 text-sm">

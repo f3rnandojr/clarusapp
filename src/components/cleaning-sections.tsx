@@ -1,21 +1,20 @@
 
 'use client';
 
-import { useState } from 'react';
 import type { Location, CleaningSettings } from '@/lib/schemas';
 import LocationCard from './location-card';
-import { Sparkles, Bed, Building } from 'lucide-react';
+import { Sparkles, Bed, Building, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+import { Button } from './ui/button';
 
 interface CleaningSectionsProps {
   locations: Location[];
   cleaningSettings: CleaningSettings;
+  onFinalizeCleaning: (locationId: string) => void;
+  isFinalizing: boolean;
 }
 
-export function CleaningSections({ locations, cleaningSettings }: CleaningSectionsProps) {
-
-  // Separar locais em leitos e áreas
+export function CleaningSections({ locations, cleaningSettings, onFinalizeCleaning, isFinalizing }: CleaningSectionsProps) {
   const bedsCleaning = locations.filter(loc => loc.locationType === 'leito');
   const areasCleaning = locations.filter(loc => loc.locationType === 'area');
 
@@ -30,6 +29,20 @@ export function CleaningSections({ locations, cleaningSettings }: CleaningSectio
       </div>
     );
   }
+
+  const renderCardList = (locationList: Location[]) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {locationList.map(location => (
+          <LocationCard 
+              key={location._id.toString()} 
+              location={location} 
+              cleaningSettings={cleaningSettings}
+              onFinalizeClick={() => onFinalizeCleaning(location._id.toString())}
+              isFinalizing={isFinalizing}
+          />
+        ))}
+    </div>
+  );
 
   return (
     <Tabs defaultValue="all" className="w-full">
@@ -46,37 +59,22 @@ export function CleaningSections({ locations, cleaningSettings }: CleaningSectio
         </TabsList>
         
         <TabsContent value="all" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {locations.map(location => (
-                <LocationCard 
-                    key={location._id.toString()} 
-                    location={location} 
-                    cleaningSettings={cleaningSettings}
-                />
-                ))}
-            </div>
+            {locations.length > 0 
+                ? renderCardList(locations) 
+                : <p className='text-muted-foreground text-sm italic col-span-full text-center py-4'>Nenhum local em higienização.</p>
+            }
         </TabsContent>
         <TabsContent value="beds" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {bedsCleaning.length > 0 ? bedsCleaning.map(location => (
-                <LocationCard 
-                  key={location._id.toString()} 
-                  location={location} 
-                  cleaningSettings={cleaningSettings}
-                />
-              )) : <p className='text-muted-foreground text-sm italic col-span-full text-center py-4'>Nenhum leito em higienização.</p>}
-            </div>
+             {bedsCleaning.length > 0 
+                ? renderCardList(bedsCleaning)
+                : <p className='text-muted-foreground text-sm italic col-span-full text-center py-4'>Nenhum leito em higienização.</p>
+            }
         </TabsContent>
         <TabsContent value="areas" className="mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {areasCleaning.length > 0 ? areasCleaning.map(location => (
-                <LocationCard 
-                  key={location._id.toString()} 
-                  location={location} 
-                  cleaningSettings={cleaningSettings}
-                />
-              )): <p className='text-muted-foreground text-sm italic col-span-full text-center py-4'>Nenhuma área em higienização.</p>}
-            </div>
+            {areasCleaning.length > 0
+                ? renderCardList(areasCleaning)
+                : <p className='text-muted-foreground text-sm italic col-span-full text-center py-4'>Nenhuma área em higienização.</p>
+            }
         </TabsContent>
     </Tabs>
   );

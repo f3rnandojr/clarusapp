@@ -17,9 +17,10 @@ interface StartCleaningDialogProps {
   children?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onCleaningStarted?: () => void;
 }
 
-export function StartCleaningDialog({ location, isOccupied = false, children, open, onOpenChange }: StartCleaningDialogProps) {
+export function StartCleaningDialog({ location, isOccupied = false, children, open, onOpenChange, onCleaningStarted }: StartCleaningDialogProps) {
   const [result, setResult] = useState<{ success?: boolean; message?: string; error?: string | null } | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -47,13 +48,8 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
           description: response.message,
         });
         
-        // A action já chama revalidatePath, então só precisamos fechar o modal.
-        if (onOpenChange) {
-          // Adiciona um pequeno delay para o usuário ver a mensagem de sucesso se necessário,
-          // mas o ideal é fechar logo para ver a atualização na grid.
-          setTimeout(() => {
-             onOpenChange(false);
-          }, 500);
+        if (onCleaningStarted) {
+          onCleaningStarted();
         }
       } else if (response.error) {
          toast({
@@ -70,16 +66,14 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
       onOpenChange(isOpen);
     }
     if (!isOpen) {
-      // Reseta o estado ao fechar
       setResult(null);
       setCleaningType(isOccupied ? 'concurrent' : '');
     }
   };
 
-  // Garante que o tipo de limpeza seja resetado se a localização mudar enquanto o diálogo está aberto
   useEffect(() => {
     setCleaningType(isOccupied ? 'concurrent' : '');
-    setResult(null); // Limpa resultados anteriores
+    setResult(null);
   }, [location, isOccupied, open]);
 
 
