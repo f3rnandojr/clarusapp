@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Download, FileDown, ImageDown } from "lucide-react";
+import { Download, FileDown, ImageDown, Link as LinkIcon } from "lucide-react";
 
 interface QrCodeItem {
   type: 'leito' | 'area';
@@ -84,6 +85,12 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
       img.src = `data:image/svg+xml;base64,${btoa(svgString)}`;
     }
   };
+  
+  const handleTestLink = () => {
+    if (fullUrl) {
+      window.open(fullUrl, '_blank');
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -110,15 +117,22 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
           <p className="mt-4 text-sm text-muted-foreground">
             Escaneie para iniciar a higienização.
           </p>
+           <p className="text-xs text-muted-foreground mt-2 text-center">
+             Use "Testar Link" para simular o escaneamento do QR Code no navegador.
+           </p>
         </div>
         <DialogFooter className="gap-2 sm:justify-end">
+          <Button variant="outline" onClick={handleTestLink} disabled={!fullUrl}>
+            <LinkIcon className="mr-2 h-4 w-4" />
+            Testar Link
+          </Button>
           <Button variant="outline" onClick={() => downloadAs("svg")}>
             <FileDown className="mr-2" />
-            Download SVG
+            Baixar SVG
           </Button>
           <Button onClick={() => downloadAs("png")}>
             <ImageDown className="mr-2" />
-            Download PNG
+            Baixar PNG
           </Button>
         </DialogFooter>
       </DialogContent>
