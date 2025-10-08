@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { startCleaning } from "@/lib/actions";
 import type { Location } from "@/lib/schemas";
@@ -37,12 +37,7 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
       formData.append('locationId', location._id.toString());
       formData.append('type', cleaningType);
 
-      console.log('📤 Enviando dados para startCleaning:');
-      console.log('locationId:', location._id.toString());
-      console.log('type:', cleaningType);
-
       const response = await startCleaning(null, formData);
-      console.log('📥 Resposta da action:', response);
       
       setResult(response);
 
@@ -51,6 +46,7 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
           title: "Sucesso!",
           description: response.message,
         });
+        // A action já chama revalidatePath, então só precisamos fechar o modal.
         if (onOpenChange) {
           onOpenChange(false);
         }
@@ -69,10 +65,16 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
       onOpenChange(isOpen);
     }
     if (!isOpen) {
+      // Reseta o estado ao fechar
       setResult(null);
       setCleaningType(isOccupied ? 'concurrent' : '');
     }
   };
+
+  // Garante que o tipo de limpeza seja resetado se a localização mudar enquanto o diálogo está aberto
+  useEffect(() => {
+    setCleaningType(isOccupied ? 'concurrent' : '');
+  }, [location, isOccupied]);
 
 
   return (
@@ -103,11 +105,21 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
             </div>
           )}
 
+          {isOccupied && (
+             <Alert>
+              <Sparkles className="h-4 w-4" />
+              <AlertTitle>Limpeza em Local Ocupado</AlertTitle>
+              <AlertDescription>
+                Apenas a limpeza <strong>concorrente</strong> pode ser realizada em locais ocupados.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <p className="text-sm text-muted-foreground pt-2">
             Você será registrado como o responsável por esta higienização.
           </p>
 
-          {result?.error && (
+          {result?.error && !response.success && (
             <Alert variant="destructive">
               <AlertTitle>Erro</AlertTitle>
               <AlertDescription>
