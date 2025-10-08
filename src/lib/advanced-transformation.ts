@@ -158,17 +158,27 @@ export class DataTransformer {
   }
 
   private defaultCodeTransformation(codeValue: string): { name: string; number: string } {
-    // Lógica inteligente para diferentes formatos
-    
-    // NOVO: Formato: "LT-01A", "L-13A"
-    const formatComplex = codeValue.match(/^([A-Za-z]+)-([0-9A-Za-z]+)$/);
-    if (formatComplex) {
+    // Nova lógica aprimorada para lidar com padrões complexos
+
+    // Padrão: LT-18B, L-13A (com hífen e letra no final)
+    const formatComplexWithHyphen = codeValue.match(/^([A-Za-z]+)-([0-9]+[A-Za-z]?)$/);
+    if (formatComplexWithHyphen) {
       return {
-        name: this.mapCommonNames(formatComplex[1]),
-        number: formatComplex[2]
+        name: this.mapCommonNames(formatComplexWithHyphen[1]),
+        number: formatComplexWithHyphen[2]
+      };
+    }
+    
+    // Padrão: BOX1T (sem hífen e letra no final)
+    const formatComplexNoHyphen = codeValue.match(/^([A-Za-z]+)([0-9]+[A-Za-z]?)$/);
+     if (formatComplexNoHyphen) {
+      return {
+        name: this.mapCommonNames(formatComplexNoHyphen[1]),
+        number: formatComplexNoHyphen[2]
       };
     }
 
+    // Fallback para lógica antiga (mais simples)
     // Formato: "QTO101", "APTO202", "LEITO305"
     const format1 = codeValue.match(/^([A-Za-z]+)([0-9]+)$/);
     if (format1) {
@@ -196,7 +206,7 @@ export class DataTransformer {
       };
     }
     
-    // Fallback: separar por onde encontrar números
+    // Fallback final: separar por onde encontrar números
     const name = codeValue.replace(/[0-9]/g, '').trim() || 'Leito';
     const number = codeValue.replace(/[^0-9]/g, '').trim() || codeValue;
     
