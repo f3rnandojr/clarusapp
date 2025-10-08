@@ -32,7 +32,10 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
         title: "Sucesso!",
         description: state.message,
       });
-      closeButtonRef.current?.click();
+      // A responsabilidade de fechar o dialog agora é do componente pai (onOpenChange)
+      if (onOpenChange) {
+        onOpenChange(false);
+      }
       formRef.current?.reset();
     }
     if (state?.error) {
@@ -42,18 +45,33 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
         variant: "destructive",
       });
     }
-  }, [state, toast]);
+  }, [state, toast, onOpenChange]);
   
   const handleAction = (formData: FormData) => {
+    // Garante que o locationId correto está no FormData
+    if (location?._id) {
+        formData.set('locationId', location._id.toString());
+    }
+      
     startTransition(async () => {
       const result = await startCleaning(null, formData);
       setState(result);
     });
   };
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (onOpenChange) {
+      onOpenChange(isOpen);
+    }
+    // Limpa o estado de erro/sucesso ao fechar o modal
+    if (!isOpen) {
+      setState(null);
+    }
+  };
+
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -63,7 +81,8 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
           </DialogDescription>
         </DialogHeader>
         <form ref={formRef} action={handleAction} className="space-y-4">
-          <input type="hidden" name="locationId" value={location._id.toString()} />
+          {/* O input hidden será preenchido dinamicamente pelo handleAction */}
+          <input type="hidden" name="locationId" defaultValue={location._id.toString()} />
           
           {!isOccupied && (
             <div className="space-y-2">

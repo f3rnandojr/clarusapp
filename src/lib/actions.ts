@@ -132,10 +132,16 @@ export async function startCleaning(prevState: any, formData: FormData) {
     return { error: "Usuário não autenticado. Por favor, faça login novamente." };
   }
 
-  const validatedFields = StartCleaningFormSchema.safeParse({
+  const rawData = {
     locationId: formData.get('locationId'),
     type: formData.get('type'),
-  });
+  };
+
+  if (!rawData.locationId || !ObjectId.isValid(rawData.locationId as string)) {
+      return { error: 'ID do local inválido ou não fornecido.' };
+  }
+
+  const validatedFields = StartCleaningFormSchema.safeParse(rawData);
 
   if (!validatedFields.success) {
     return {
@@ -1010,6 +1016,7 @@ export async function testTransformation() {
     
 
     
+
 
 
 
