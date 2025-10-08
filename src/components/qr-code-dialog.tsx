@@ -14,14 +14,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Download, FileDown, ImageDown } from "lucide-react";
-import type { Area } from "@/lib/schemas";
+
+interface QrCodeItem {
+  type: 'leito' | 'area';
+  displayName: string;
+  code: string;
+  shortCode: string;
+}
 
 interface QrCodeDialogProps {
-  area: Area;
+  item: QrCodeItem;
   children: React.ReactNode;
 }
 
-export function QrCodeDialog({ area, children }: QrCodeDialogProps) {
+export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
   const [open, setOpen] = useState(false);
   const [fullUrl, setFullUrl] = useState("");
   const qrRef = useRef<HTMLDivElement>(null);
@@ -29,9 +35,10 @@ export function QrCodeDialog({ area, children }: QrCodeDialogProps) {
 
   useEffect(() => {
     if (open) {
-      setFullUrl(`${window.location.origin}${area.qrCodeUrl}`);
+      // A URL é sempre construída no lado do cliente
+      setFullUrl(`${window.location.origin}/clean/${item.code}`);
     }
-  }, [open, area.qrCodeUrl]);
+  }, [open, item.code]);
 
   const downloadAs = async (format: "svg" | "png") => {
     if (!qrRef.current) return;
@@ -53,7 +60,7 @@ export function QrCodeDialog({ area, children }: QrCodeDialogProps) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${area.shortCode}_qrcode.svg`;
+      a.download = `${item.shortCode}_qrcode.svg`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -70,7 +77,7 @@ export function QrCodeDialog({ area, children }: QrCodeDialogProps) {
         const pngUrl = canvas.toDataURL("image/png");
         const a = document.createElement("a");
         a.href = pngUrl;
-        a.download = `${area.shortCode}_qrcode.png`;
+        a.download = `${item.shortCode}_qrcode.png`;
         a.click();
       };
       
@@ -83,9 +90,9 @@ export function QrCodeDialog({ area, children }: QrCodeDialogProps) {
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>QR Code para: {area.setor}</DialogTitle>
+          <DialogTitle>QR Code para: {item.displayName}</DialogTitle>
           <DialogDescription>
-            Código: {area.shortCode} - {area.locationId}
+            Código: {item.shortCode}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg">

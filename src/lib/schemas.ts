@@ -40,6 +40,7 @@ export const LocationSchema = z.object({
   number: z.string(),
   status: LocationStatusEnum,
   currentCleaning: CurrentCleaningSchema,
+  externalCode: z.string().optional(),
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),
 });

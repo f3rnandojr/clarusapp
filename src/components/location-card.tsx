@@ -3,12 +3,13 @@
 import type { Location, Asg, CleaningSettings } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bed, Clock, Sparkles, User } from "lucide-react";
+import { Bed, Clock, Sparkles, User, QrCode } from "lucide-react";
 import { StatusBadge } from "./status-badge";
 import { ElapsedTime } from "./elapsed-time";
 import { StartCleaningDialog } from "./start-cleaning-dialog";
 import { FinishCleaningDialog } from "./finish-cleaning-dialog";
 import { ProgressBar } from "./progress-bar";
+import { QrCodeDialog } from "./qr-code-dialog";
 
 interface LocationCardProps {
   location: Location;
@@ -88,7 +89,23 @@ export default function LocationCard({ location, availableAsgs, cleaningSettings
             <Bed className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold">{location.name} - {location.number}</span>
           </div>
-          <StatusBadge status={location.status} />
+          <div className="flex items-center gap-1">
+             {location.externalCode && (
+              <QrCodeDialog
+                item={{
+                  type: 'leito',
+                  displayName: `${location.name} - ${location.number}`,
+                  code: location.externalCode,
+                  shortCode: location.externalCode,
+                }}
+              >
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <QrCode className="h-4 w-4" />
+                </Button>
+              </QrCodeDialog>
+            )}
+            <StatusBadge status={location.status} />
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="p-2.5 pt-1 pb-1.5">

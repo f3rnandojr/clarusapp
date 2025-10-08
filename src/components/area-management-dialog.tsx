@@ -117,7 +117,14 @@ export function AreaManagementDialog({ allAreas, children }: AreaManagementDialo
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <QrCodeDialog area={area}>
+                        <QrCodeDialog
+                          item={{
+                            type: 'area',
+                            displayName: area.setor,
+                            code: area.locationId,
+                            shortCode: area.shortCode
+                          }}
+                        >
                           <Button variant="outline" size="sm">
                             <QrCode className="mr-2 h-4 w-4" />
                             Gerar QR
