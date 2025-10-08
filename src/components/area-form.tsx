@@ -1,7 +1,6 @@
 "use client";
 
-import { useActionState, useFormStatus } from "react-dom";
-import { useRef, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { Area } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
@@ -16,26 +15,22 @@ interface AreaFormProps {
   onFinished: () => void;
 }
 
-function SubmitButton({ isEditing }: { isEditing: boolean }) {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      {isEditing ? 'Salvar Alterações' : 'Adicionar Área'}
-    </Button>
-  );
-}
-
 export function AreaForm({ area, onFinished }: AreaFormProps) {
   const isEditing = !!area;
   const { toast } = useToast();
   
-  const action = isEditing 
-    ? (prevState: any, formData: FormData) => updateArea(area!._id.toString(), prevState, formData)
-    : createArea;
-    
-  const [state, formAction] = useActionState(action, { error: null, fieldErrors: {}, success: false, message: '' });
+  const [state, setState] = useState({
+    error: null as string | null,
+    fieldErrors: {} as Record<string, string[] | undefined>,
+    success: false,
+    message: ''
+  });
+  const [isPending, startTransition] = useTransition();
 
+  const action = isEditing 
+    ? (formData: FormData) => updateArea(area!._id.toString(), null, formData)
+    : createArea;
+  
   useEffect(() => {
     if (state.success) {
       toast({ title: "Sucesso!", description: state.message });
@@ -49,8 +44,18 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
     }
   }, [state, toast, onFinished]);
 
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    
+    startTransition(async () => {
+      const result = await action(formData);
+      setState(result);
+    });
+  };
+
   return (
-    <form action={formAction} className="space-y-4 p-1">
+    <form onSubmit={handleSubmit} className="space-y-4 p-1">
       <div className="space-y-2">
         <Label htmlFor="setor">Setor</Label>
         <Input 
@@ -101,7 +106,10 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
         <Button type="button" variant="ghost" onClick={onFinished}>
           Cancelar
         </Button>
-        <SubmitButton isEditing={isEditing} />
+        <Button type="submit" disabled={isPending}>
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isEditing ? 'Salvar Alterações' : 'Adicionar Área'}
+        </Button>
       </div>
     </form>
   );
