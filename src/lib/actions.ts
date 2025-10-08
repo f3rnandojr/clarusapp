@@ -319,38 +319,62 @@ export async function getAreas() {
 }
 
 export async function createArea(prevState: any, formData: FormData) {
-    const validatedFields = CreateAreaSchema.safeParse(Object.fromEntries(formData.entries()));
+    try {
+        const rawData = {
+            setor: formData.get('setor'),
+            locationId: formData.get('locationId'),
+            description: formData.get('description'),
+        };
 
-    if (!validatedFields.success) {
+        const validatedFields = CreateAreaSchema.safeParse(rawData);
+
+        if (!validatedFields.success) {
+            return {
+                error: "Dados inválidos.",
+                fieldErrors: validatedFields.error.flatten().fieldErrors,
+                success: false,
+                message: 'Por favor, corrija os erros no formulário.'
+            };
+        }
+
+        const { locationId, setor, description } = validatedFields.data;
+
+        const db = await dbConnect();
+        const existingArea = await db.collection('areas').findOne({ locationId });
+        if (existingArea) {
+            return { 
+                error: 'O ID da Localização já está em uso.', 
+                fieldErrors: { locationId: ['Este ID já está em uso.'] },
+                success: false,
+                message: ''
+            };
+        }
+
+        const newArea = {
+            setor,
+            locationId,
+            description: description || '',
+            qrCodeUrl: `/clean/${locationId}`,
+            shortCode: locationId.replace(/-/g, '').toUpperCase(),
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+
+        await db.collection('areas').insertOne(newArea);
+        revalidatePath('/dashboard');
+        return { success: true, message: 'Área criada com sucesso!', fieldErrors: {}, error: null };
+    } catch (error: any) {
+        console.error('💥 Erro em createArea:', error);
         return {
-            error: "Dados inválidos.",
-            fieldErrors: validatedFields.error.flatten().fieldErrors,
+            error: 'Erro interno do servidor ao criar área.',
+            fieldErrors: {},
+            success: false,
+            message: error.message
         };
     }
-
-    const { locationId, setor, description } = validatedFields.data;
-
-    const db = await dbConnect();
-    const existingArea = await db.collection('areas').findOne({ locationId });
-    if (existingArea) {
-        return { error: 'O ID da Localização já está em uso.' };
-    }
-
-    const newArea = {
-        setor,
-        locationId,
-        description: description || '',
-        qrCodeUrl: `/clean/${locationId}`,
-        shortCode: locationId.replace(/-/g, '').toUpperCase(),
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
-
-    await db.collection('areas').insertOne(newArea);
-    revalidatePath('/dashboard');
-    return { success: true, message: 'Área criada com sucesso!' };
 }
+
 
 export async function updateArea(id: string, prevState: any, formData: FormData) {
     const validatedFields = UpdateAreaSchema.safeParse(Object.fromEntries(formData.entries()));
@@ -948,5 +972,7 @@ export async function testTransformation() {
     };
   }
 }
+
+    
 
     
