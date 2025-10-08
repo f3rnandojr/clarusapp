@@ -11,6 +11,7 @@ import { AreaForm } from "./area-form";
 import { useToast } from "@/hooks/use-toast";
 import { getAreas, toggleAreaActive } from "@/lib/actions";
 import { Loader2, Pencil, PlusCircle, List, QrCode } from "lucide-react";
+import { QrCodeDialog } from "./qr-code-dialog";
 
 interface AreaManagementDialogProps {
   allAreas: Area[];
@@ -81,7 +82,7 @@ export function AreaManagementDialog({ allAreas, children }: AreaManagementDialo
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-4xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle>Gerenciamento de Áreas (QR Code)</DialogTitle>
         </DialogHeader>
@@ -100,7 +101,6 @@ export function AreaManagementDialog({ allAreas, children }: AreaManagementDialo
                     <TableHead>Setor</TableHead>
                     <TableHead>ID da Localização</TableHead>
                     <TableHead>Código Curto</TableHead>
-                    <TableHead>QR Code URL</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -111,13 +111,18 @@ export function AreaManagementDialog({ allAreas, children }: AreaManagementDialo
                       <TableCell className="font-medium">{area.setor}</TableCell>
                       <TableCell>{area.locationId}</TableCell>
                       <TableCell><Badge variant="secondary">{area.shortCode}</Badge></TableCell>
-                      <TableCell className="text-xs font-mono">{area.qrCodeUrl}</TableCell>
                       <TableCell>
                          <Badge variant={area.isActive ? 'default' : 'outline'}>
                           {area.isActive ? 'Ativa' : 'Inativa'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
+                        <QrCodeDialog area={area}>
+                          <Button variant="outline" size="sm">
+                            <QrCode className="mr-2 h-4 w-4" />
+                            Gerar QR
+                          </Button>
+                        </QrCodeDialog>
                         <Button variant="ghost" size="icon" onClick={() => handleEditClick(area)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
