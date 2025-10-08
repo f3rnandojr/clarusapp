@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Asg, CleaningSettings, User } from "@/lib/schemas";
+import type { Area, Asg, CleaningSettings, User } from "@/lib/schemas";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AsgManagementDialog } from "./asg-management-dialog";
@@ -9,8 +9,9 @@ import { CleaningTimesDialog } from "./cleaning-times-dialog";
 import { ReportsDialog } from "./reports-dialog";
 import { IntegrationsDialog } from "./integrations-dialog";
 import { UserManagementDialog } from "./user-management-dialog";
-import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText } from "lucide-react";
+import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText, QrCode } from "lucide-react";
 import { LogsDialog } from "./logs-dialog";
+import { AreaManagementDialog } from "./area-management-dialog";
 
 interface SettingsDialogProps {
   allAsgs: Asg[];
@@ -18,9 +19,10 @@ interface SettingsDialogProps {
   children: React.ReactNode;
   nextAsgCode: string;
   cleaningSettings: CleaningSettings;
+  allAreas: Area[];
 }
 
-export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, cleaningSettings }: SettingsDialogProps) {
+export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, cleaningSettings, allAreas }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
 
@@ -47,6 +49,12 @@ export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, clean
               Gerenciar Colaboradores
             </Button>
           </AsgManagementDialog>
+           <AreaManagementDialog allAreas={allAreas}>
+             <Button variant="outline" className="w-full justify-start">
+               <QrCode className="mr-2 h-4 w-4" />
+               Gerenciar Áreas (QR Code)
+             </Button>
+           </AreaManagementDialog>
           <CleaningTimesDialog settings={cleaningSettings}>
             <Button variant="outline" className="w-full justify-start">
               <Clock className="mr-2 h-4 w-4" />

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema } from './schemas';
 import type { CleaningType } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -280,6 +280,77 @@ export async function toggleAsgActive(id: string, active: boolean) {
   revalidatePath('/');
   revalidatePath('/dashboard');
   return { success: true, message: `Colaborador ${active ? 'ativado' : 'desativado'} com sucesso!` };
+}
+
+// --- Area (QR Code) Actions ---
+
+export async function getAreas() {
+    const db = await dbConnect();
+    const areas = await db.collection('areas').find().sort({ setor: 1, locationId: 1 }).toArray();
+    return convertToPlainObject(areas);
+}
+
+export async function createArea(prevState: any, formData: FormData) {
+    const validatedFields = CreateAreaSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return {
+            error: "Dados inválidos.",
+            fieldErrors: validatedFields.error.flatten().fieldErrors,
+        };
+    }
+
+    const { locationId, setor, description } = validatedFields.data;
+
+    const db = await dbConnect();
+    const existingArea = await db.collection('areas').findOne({ locationId });
+    if (existingArea) {
+        return { error: 'O ID da Localização já está em uso.' };
+    }
+
+    const newArea = {
+        setor,
+        locationId,
+        description: description || '',
+        qrCodeUrl: `/clean/${locationId}`,
+        shortCode: locationId.replace(/-/g, '').toUpperCase(),
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+
+    await db.collection('areas').insertOne(newArea);
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Área criada com sucesso!' };
+}
+
+export async function updateArea(id: string, prevState: any, formData: FormData) {
+    const validatedFields = UpdateAreaSchema.safeParse(Object.fromEntries(formData.entries()));
+
+    if (!validatedFields.success) {
+        return {
+            error: "Dados inválidos.",
+            fieldErrors: validatedFields.error.flatten().fieldErrors,
+        };
+    }
+
+    const dataToUpdate = {
+        ...validatedFields.data,
+        updatedAt: new Date(),
+    };
+
+    const db = await dbConnect();
+    await db.collection('areas').updateOne({ _id: new ObjectId(id) }, { $set: dataToUpdate });
+
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Área atualizada com sucesso!' };
+}
+
+export async function toggleAreaActive(id: string, isActive: boolean) {
+    const db = await dbConnect();
+    await db.collection('areas').updateOne({ _id: new ObjectId(id) }, { $set: { isActive, updatedAt: new Date() } });
+    revalidatePath('/dashboard');
+    return { success: true, message: `Área ${isActive ? 'ativada' : 'desativada'} com sucesso!` };
 }
 
 // --- Settings Actions ---

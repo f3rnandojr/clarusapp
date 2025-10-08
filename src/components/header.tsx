@@ -1,4 +1,4 @@
-import type { Asg, CleaningOccurrence, CleaningSettings, User } from '@/lib/schemas';
+import type { Area, Asg, CleaningOccurrence, CleaningSettings, User } from '@/lib/schemas';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { OccurrencesDialog } from '@/components/occurrences-dialog';
 import { Button } from '@/components/ui/button';
@@ -11,9 +11,10 @@ type HeaderProps = {
   nextAsgCode: string;
   cleaningSettings: CleaningSettings;
   occurrences: CleaningOccurrence[];
+  allAreas: Area[];
 };
 
-export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occurrences }: HeaderProps) {
+export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occurrences, allAreas }: HeaderProps) {
   return (
     <header className="flex items-center justify-between p-4 border-b bg-card shadow-sm shrink-0">
       <div className="flex items-center gap-3">
@@ -26,7 +27,7 @@ export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occ
                 Ocorrências
             </Button>
         </OccurrencesDialog>
-        <SettingsDialog allAsgs={asgs} allUsers={users} nextAsgCode={nextAsgCode} cleaningSettings={cleaningSettings}>
+        <SettingsDialog allAsgs={asgs} allUsers={users} nextAsgCode={nextAsgCode} cleaningSettings={cleaningSettings} allAreas={allAreas}>
             <Button variant="outline">
             <Settings className="mr-2 h-4 w-4" />
             Configurações

@@ -45,6 +45,32 @@ export const LocationSchema = z.object({
 });
 export type Location = z.infer<typeof LocationSchema>;
 
+// --- Areas (QR Code) ---
+export const AreaSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  setor: z.string().min(3, "Setor é obrigatório e deve ter no mínimo 3 caracteres."),
+  locationId: z.string().min(3, "ID da Localização é obrigatório e deve ter no mínimo 3 caracteres.").regex(/^[a-z0-9-]+$/, "ID da Localização deve conter apenas letras minúsculas, números e hífens."),
+  description: z.string().optional(),
+  qrCodeUrl: z.string(),
+  shortCode: z.string(),
+  isActive: z.boolean(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
+});
+export type Area = z.infer<typeof AreaSchema>;
+
+export const CreateAreaSchema = AreaSchema.pick({
+  setor: true,
+  locationId: true,
+  description: true,
+});
+
+export const UpdateAreaSchema = AreaSchema.pick({
+  setor: true,
+  description: true,
+});
+
+
 export const CreateAsgSchema = AsgSchema.pick({
   name: true,
   code: true, 
