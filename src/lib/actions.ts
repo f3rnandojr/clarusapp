@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location } from './schemas';
 import type { CleaningType } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -71,10 +71,56 @@ export async function logout() {
 
 // --- Location Actions ---
 
-export async function getLocations() {
+export async function getLocations(): Promise<Location[]> {
   const db = await dbConnect();
-  const locations = await db.collection('locations').find().sort({ name: 1, number: 1 }).toArray();
-  return convertToPlainObject(locations);
+  
+  const leitos = await db.collection('locations').find().sort({ name: 1, number: 1 }).toArray();
+  const areas = await db.collection('areas').find().sort({ setor: 1 }).toArray();
+
+  const combinedLocations: Location[] = [];
+
+  // Mapeia leitos para o schema Location
+  leitos.forEach(leito => {
+    combinedLocations.push({
+      _id: leito._id,
+      name: leito.name,
+      number: leito.number,
+      status: leito.status,
+      currentCleaning: leito.currentCleaning,
+      externalCode: leito.externalCode,
+      locationType: 'leito', // Tipo definido
+      createdAt: leito.createdAt,
+      updatedAt: leito.updatedAt,
+    });
+  });
+
+  // Mapeia áreas para o schema Location
+  areas.forEach(area => {
+    combinedLocations.push({
+      _id: area._id,
+      name: area.setor,
+      number: area.shortCode, // Usando shortCode como "número" para consistência
+      // @ts-ignore - status pode não existir em 'areas' ainda
+      status: area.status || 'available', // Se não tiver status, assume 'available'
+      // @ts-ignore
+      currentCleaning: area.currentCleaning || null,
+      externalCode: area.locationId,
+      locationType: 'area', // Tipo definido
+      createdAt: area.createdAt,
+      updatedAt: area.updatedAt,
+    });
+  });
+
+  // Ordena a lista combinada
+  combinedLocations.sort((a, b) => {
+    if (a.name < b.name) return -1;
+    if (a.name > b.name) return 1;
+    if (a.number < b.number) return -1;
+    if (a.number > b.number) return 1;
+    return 0;
+  });
+
+  return convertToPlainObject(combinedLocations);
 }
 
 export async function getLocationByCode(code: string) {
@@ -83,35 +129,42 @@ export async function getLocationByCode(code: string) {
     
     try {
         const db = await dbConnect();
-        
+        const areasCollection = db.collection('areas');
+        const locationsCollection = db.collection('locations');
+
         // 1. Tenta encontrar em 'areas'
         console.log('1. Buscando na coleção "areas"...');
-        const area = await db.collection('areas').findOne({ locationId: code, isActive: true });
+        const area = await areasCollection.findOne({ locationId: code, isActive: true });
 
         if (area) {
             console.log('✅ Área encontrada:', area);
-            // Simula uma estrutura de 'Location' para consistência, se necessário
-            const mockLocationFromArea = {
-                _id: area._id.toString(),
+            // Transforma o objeto 'area' para se parecer com 'Location'
+            const locationFromArea = {
+                _id: area._id,
                 name: area.setor,
-                number: area.shortCode, // ou outra propriedade apropriada
-                status: 'available', // Áreas geralmente estão 'disponíveis' por padrão
-                currentCleaning: null,
+                number: area.shortCode,
+                status: area.status || 'available',
+                currentCleaning: area.currentCleaning || null,
                 externalCode: area.locationId,
+                locationType: 'area',
                 createdAt: area.createdAt,
                 updatedAt: area.updatedAt,
             };
-            return convertToPlainObject(mockLocationFromArea);
+            return convertToPlainObject(locationFromArea);
         }
         console.log('... Nenhuma área ativa encontrada com esse código.');
 
         // 2. Se não encontrou, tenta em 'locations'
         console.log('2. Buscando na coleção "locations"...');
-        const location = await db.collection('locations').findOne({ externalCode: code });
+        const location = await locationsCollection.findOne({ externalCode: code });
 
         if (location) {
             console.log('✅ Leito encontrado:', location);
-            return convertToPlainObject(location);
+             const locationFromLeito = {
+                ...location,
+                locationType: 'leito',
+            };
+            return convertToPlainObject(locationFromLeito);
         }
         console.log('... Nenhum leito encontrado com esse código.');
 
@@ -153,19 +206,37 @@ export async function startCleaning(prevState: any, formData: FormData) {
     const areasCollection = db.collection('areas');
 
     let location: any = null;
+    let collectionToUpdate: any = null;
 
     // 1. Tenta buscar por ObjectId válido nas coleções
     if (ObjectId.isValid(locationId)) {
         console.log('🔍 Tentando buscar por ObjectId...');
         const objectId = new ObjectId(locationId);
-        location = await locationsCollection.findOne({ _id: objectId }) || await areasCollection.findOne({ _id: objectId });
+        
+        location = await locationsCollection.findOne({ _id: objectId });
+        if (location) {
+            collectionToUpdate = locationsCollection;
+        } else {
+            location = await areasCollection.findOne({ _id: objectId });
+            if (location) {
+                collectionToUpdate = areasCollection;
+            }
+        }
         console.log('📦 Resultado da busca por ObjectId:', location ? 'ENCONTRADO' : 'NÃO ENCONTRADO');
     }
 
     // 2. Se não encontrou, tenta buscar por campos de código (string)
     if (!location) {
         console.log('🔍 Tentando buscar por códigos de string...');
-        location = await locationsCollection.findOne({ externalCode: locationId }) || await areasCollection.findOne({ locationId: locationId });
+        location = await locationsCollection.findOne({ externalCode: locationId });
+        if (location) {
+            collectionToUpdate = locationsCollection;
+        } else {
+            location = await areasCollection.findOne({ locationId: locationId });
+            if (location) {
+                collectionToUpdate = areasCollection;
+            }
+        }
         console.log('📦 Resultado da busca por string:', location ? 'ENCONTRADO' : 'NÃO ENCONTRADO');
     }
 
@@ -179,9 +250,6 @@ export async function startCleaning(prevState: any, formData: FormData) {
     if (location.status === 'in_cleaning') {
       return { success: false, error: 'Este local já está em higienização.' };
     }
-
-    // A coleção a ser atualizada pode ser 'locations' ou 'areas'
-    const collectionToUpdate = (await db.listCollections({ name: 'locations' }).hasNext()) && (await locationsCollection.findOne({ _id: location._id })) ? locationsCollection : areasCollection;
 
     const updateResult = await collectionToUpdate.updateOne({ _id: location._id }, {
       $set: {
@@ -216,11 +284,29 @@ export async function startCleaning(prevState: any, formData: FormData) {
 
 export async function finishCleaning(locationId: string) {
   const db = await dbConnect();
-  const location = await db.collection('locations').findOne({ _id: new ObjectId(locationId) });
+  
+  let location: Location | null = null;
+  let collectionToUpdateName: 'locations' | 'areas' | null = null;
 
-  if (!location || !location.currentCleaning) {
+  const objectId = new ObjectId(locationId);
+
+  // @ts-ignore
+  location = await db.collection('locations').findOne({ _id: objectId });
+  if (location) {
+    collectionToUpdateName = 'locations';
+  } else {
+    // @ts-ignore
+    location = await db.collection('areas').findOne({ _id: objectId });
+    if(location) {
+      collectionToUpdateName = 'areas';
+    }
+  }
+
+  if (!location || !location.currentCleaning || !collectionToUpdateName) {
     return { error: 'Higienização não encontrada para este local.' };
   }
+  
+  const collectionToUpdate = db.collection(collectionToUpdateName);
 
   const { userId, userName, type, startTime } = location.currentCleaning;
   
@@ -235,7 +321,7 @@ export async function finishCleaning(locationId: string) {
     await db.collection('cleaning_occurrences').insertOne({
       locationName: `${location.name} - ${location.number}`,
       cleaningType: type,
-      userName: userName, // MUDOU DE asgName PARA userName
+      userName: userName,
       delayInMinutes: delayInMinutes,
       occurredAt: finishTime,
     });
@@ -244,7 +330,7 @@ export async function finishCleaning(locationId: string) {
   const record: Omit<CleaningRecord, '_id'> = {
     locationId: location._id.toString(),
     locationName: `${location.name} - ${location.number}`,
-    locationType: 'leito', // Assumindo 'leito' por enquanto
+    locationType: location.locationType,
     cleaningType: type,
     userId: new ObjectId(userId),
     userName: userName,
@@ -261,16 +347,13 @@ export async function finishCleaning(locationId: string) {
 
   const newStatus = type === 'terminal' ? 'available' : 'occupied';
 
-  await db.collection('locations').updateOne({ _id: new ObjectId(locationId) }, {
+  await collectionToUpdate.updateOne({ _id: objectId }, {
     $set: {
         status: newStatus,
         currentCleaning: null,
         updatedAt: new Date()
     },
   });
-
-  // Não precisamos mais atualizar o status do ASG
-  // await db.collection('asgs').updateOne({ _id: new ObjectId(asgId) }, { $set: { status: 'available' } });
 
   revalidatePath('/');
   revalidatePath('/dashboard');
@@ -1054,15 +1137,3 @@ export async function testTransformation() {
     };
   }
 }
-
-    
-
-    
-
-
-
-
-
-
-
-

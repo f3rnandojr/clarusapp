@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 // --- AUTH ---
@@ -41,6 +42,7 @@ export const LocationSchema = z.object({
   status: LocationStatusEnum,
   currentCleaning: CurrentCleaningSchema,
   externalCode: z.string().optional(),
+  locationType: z.enum(['leito', 'area']), // NOVO CAMPO
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),
 });
