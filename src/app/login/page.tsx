@@ -18,6 +18,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     
+    console.log('🔐 1. Iniciando login...');
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -25,10 +26,17 @@ export default function LoginPage() {
         body: JSON.stringify({ login, password })
       });
 
+      console.log('🔐 2. Response status:', response.status);
+      console.log('🔐 3. Response ok:', response.ok);
+      
+      const data = await response.json();
+      console.log('🔐 4. Response data:', data);
+
       if (response.ok) {
+        console.log('🔐 5. Login OK - Redirecionando...');
         router.push('/dashboard');
       } else {
-        const data = await response.json();
+        console.log('🔐 5. Login FALHOU');
         toast({
           title: "Falha no Login",
           description: data.error || "Credenciais inválidas. Verifique seus dados.",
@@ -36,6 +44,7 @@ export default function LoginPage() {
         });
       }
     } catch (error) {
+      console.error('💥 Erro de Conexão:', error);
       toast({
           title: "Erro de Conexão",
           description: "Não foi possível conectar ao servidor. Tente novamente mais tarde.",
