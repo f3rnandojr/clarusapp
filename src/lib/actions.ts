@@ -345,7 +345,8 @@ export async function finishCleaning(locationId: string) {
   await db.collection('cleaning_records').insertOne(record);
 
 
-  const newStatus = type === 'terminal' ? 'available' : 'occupied';
+  // ✅ CORREÇÃO: O status final deve ser sempre 'available'
+  const newStatus = 'available';
 
   await collectionToUpdate.updateOne({ _id: objectId }, {
     $set: {
