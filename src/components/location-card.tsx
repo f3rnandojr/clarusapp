@@ -3,7 +3,7 @@
 import type { Location, CleaningSettings } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bed, Clock, Sparkles, User, QrCode } from "lucide-react";
+import { Bed, Building, Clock, Sparkles, User, QrCode } from "lucide-react";
 import { StatusBadge } from "./status-badge";
 import { ElapsedTime } from "./elapsed-time";
 import { StartCleaningDialog } from "./start-cleaning-dialog";
@@ -80,22 +80,24 @@ export default function LocationCard({ location, cleaningSettings }: LocationCar
     }
   };
 
+  const Icon = location.locationType === 'leito' ? Bed : Building;
+
   return (
     <Card className="shadow-md hover:shadow-lg transition-shadow">
       <CardHeader className="p-2.5 pb-1">
         <CardTitle className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
-            <Bed className="h-4 w-4 text-muted-foreground" />
+            <Icon className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold">{location.name} - {location.number}</span>
           </div>
           <div className="flex items-center gap-1">
              {location.externalCode && (
               <QrCodeDialog
                 item={{
-                  type: 'leito',
+                  type: location.locationType,
                   displayName: `${location.name} - ${location.number}`,
                   code: location.externalCode,
-                  shortCode: location.externalCode,
+                  shortCode: location.locationType === 'area' ? location.number : location.externalCode,
                 }}
               >
                 <Button variant="ghost" size="icon" className="h-6 w-6">
