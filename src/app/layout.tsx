@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Clarus",
+  title: "Basiclean",
   description: "Sistema de gestão de higienização de leitos e salas.",
 };
 
