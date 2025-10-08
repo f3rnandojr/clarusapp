@@ -1,8 +1,6 @@
 "use client";
 
-import { useActionState } from "react-dom";
-import { useFormStatus } from "react-dom";
-import { useEffect, useRef } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { startCleaning } from "@/lib/actions";
 import type { Location } from "@/lib/schemas";
@@ -20,18 +18,10 @@ interface StartCleaningDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-      Confirmar Início
-    </Button>
-  );
-}
 
 export function StartCleaningDialog({ location, isOccupied = false, children, open, onOpenChange }: StartCleaningDialogProps) {
-  const [state, formAction] = useActionState(startCleaning, null);
+  const [state, setState] = useState<{success?: boolean, message?: string, error?: string | null} | null>(null);
+  const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -40,9 +30,9 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
     if (state?.success) {
       toast({
         title: "Sucesso!",
-        description: state.success,
+        description: state.message,
       });
-      onOpenChange?.(false);
+      closeButtonRef.current?.click();
       formRef.current?.reset();
     }
     if (state?.error) {
@@ -52,7 +42,15 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
         variant: "destructive",
       });
     }
-  }, [state, toast, onOpenChange]);
+  }, [state, toast]);
+  
+  const handleAction = (formData: FormData) => {
+    startTransition(async () => {
+      const result = await startCleaning(null, formData);
+      setState(result);
+    });
+  };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,7 +62,7 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
             Local: {location.name} - {location.number}
           </DialogDescription>
         </DialogHeader>
-        <form ref={formRef} action={formAction} className="space-y-4">
+        <form ref={formRef} action={handleAction} className="space-y-4">
           <input type="hidden" name="locationId" value={location._id.toString()} />
           
           {!isOccupied && (
@@ -93,7 +91,10 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
             <DialogClose asChild>
                 <Button ref={closeButtonRef} type="button" variant="secondary">Cancelar</Button>
             </DialogClose>
-            <SubmitButton />
+            <Button type="submit" disabled={isPending}>
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Confirmar Início
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>
