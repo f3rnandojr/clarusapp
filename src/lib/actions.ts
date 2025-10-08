@@ -75,7 +75,7 @@ export async function getLocations(): Promise<Location[]> {
   const db = await dbConnect();
   
   const leitos = await db.collection('locations').find().sort({ name: 1, number: 1 }).toArray();
-  const areas = await db.collection('areas').find().sort({ setor: 1 }).toArray();
+  const areas = await db.collection('areas').find({isActive: true}).sort({ setor: 1 }).toArray();
 
   const combinedLocations: Location[] = [];
 
@@ -356,7 +356,6 @@ export async function finishCleaning(locationId: string) {
     },
   });
 
-  revalidatePath('/');
   revalidatePath('/dashboard');
   return { success: true, message: 'Higienização finalizada com sucesso!' };
 }
@@ -440,7 +439,6 @@ export async function updateAsg(id: string, prevState: any, formData: FormData) 
     const db = await dbConnect();
     await db.collection('asgs').updateOne({ _id: new ObjectId(id) }, { $set: { ...validatedFields.data } });
 
-    revalidatePath('/');
     revalidatePath('/dashboard');
     return { success: true, message: 'Colaborador atualizado com sucesso!' };
 }
@@ -452,7 +450,6 @@ export async function toggleAsgActive(id: string, active: boolean) {
     return { error: 'Não é possível desativar um colaborador em higienização.' };
   }
   await db.collection('asgs').updateOne({ _id: new ObjectId(id) }, { $set: { active } });
-  revalidatePath('/');
   revalidatePath('/dashboard');
   return { success: true, message: `Colaborador ${active ? 'ativado' : 'desativado'} com sucesso!` };
 }
@@ -604,7 +601,6 @@ export async function updateCleaningSettings(prevState: any, formData: FormData)
     { upsert: true }
   );
 
-  revalidatePath('/'); 
   revalidatePath('/dashboard');
   return { success: true, message: "Tempos de limpeza atualizados com sucesso!" };
 }

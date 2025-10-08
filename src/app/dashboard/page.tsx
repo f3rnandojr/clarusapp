@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
@@ -84,7 +85,7 @@ export default function DashboardPage() {
   useEffect(() => {
     loadDashboardData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, []);
 
   const handleDialogClose = (wasSuccessful: boolean) => {
     setIsDialogOpen(false);
