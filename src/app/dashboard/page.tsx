@@ -28,8 +28,9 @@ export default function DashboardPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDataAndHandleQRCode = async () => {
       try {
+        setLoading(true);
         const [
           locations,
           asgs,
@@ -53,16 +54,17 @@ export default function DashboardPage() {
         // --- QR Code Logic ---
         const locationCodeToClean = searchParams.get("startCleaning");
         if (locationCodeToClean) {
-          console.log(`QR Scan detected: Looking for location with code '${locationCodeToClean}'`);
+          console.log(`[Dashboard] QR Scan detectado: Procurando local com código '${locationCodeToClean}'`);
           const foundLocation = await getLocationByCode(locationCodeToClean);
           if (foundLocation) {
-            console.log("Location found, triggering dialog:", foundLocation);
+            console.log("[Dashboard] Local encontrado, acionando modal de limpeza:", foundLocation);
             setCleaningLocation(foundLocation);
             setDialogOpen(true);
           } else {
-            console.warn("Location code from QR scan not found.");
+            console.warn(`[Dashboard] Código do local do QR scan ('${locationCodeToClean}') não encontrado.`);
+            // Optionally, show a toast message to the user
           }
-          // Clean up URL
+          // Limpa a URL para que o modal não reabra em um refresh.
           router.replace('/dashboard', { scroll: false });
         }
         // --- End QR Code Logic ---
@@ -74,7 +76,7 @@ export default function DashboardPage() {
       }
     };
 
-    fetchData();
+    fetchDataAndHandleQRCode();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -109,7 +111,13 @@ export default function DashboardPage() {
         <StartCleaningDialog
           location={cleaningLocation}
           open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          onOpenChange={(isOpen) => {
+            setDialogOpen(isOpen);
+            if (!isOpen) {
+              // Limpa a localização para não reabrir o dialog acidentalmente
+              setCleaningLocation(null);
+            }
+          }}
         >
           {/* This dialog is opened programmatically, no trigger needed here */}
         </StartCleaningDialog>

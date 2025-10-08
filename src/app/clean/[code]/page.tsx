@@ -2,17 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getSession } from "@/lib/session"; 
 import { Loader2 } from "lucide-react";
 
-// This page acts as a router for QR code scans.
+// This page now acts as a simple authenticator and redirector.
 export default function CleanPage() {
   const router = useRouter();
   const params = useParams();
-  const [status, setStatus] = useState("Validando...");
+  const [status, setStatus] = useState("Validando acesso e redirecionando...");
 
   useEffect(() => {
-    const processCode = async () => {
+    const processRedirect = () => {
       const code = Array.isArray(params.code) ? params.code[0] : params.code;
 
       if (!code) {
@@ -21,30 +20,15 @@ export default function CleanPage() {
         return;
       }
       
-      console.log(`[Clean Page] Processing code: ${code}`);
-
-      // We can't call getSession() directly in a client component in this way.
-      // The session check is handled by the middleware. If we are here,
-      // we check if we need to redirect to login.
-      const hasSessionCookie = document.cookie.includes("session=");
-
-      if (hasSessionCookie) {
-        // User is likely logged in. Redirect to dashboard with the code.
-        // The dashboard will handle fetching data and opening the modal.
-        console.log("[Clean Page] User is logged in. Redirecting to dashboard.");
-        setStatus("Redirecionando para o painel...");
-        router.push(`/dashboard?startCleaning=${code}`);
-
-      } else {
-        // User is not logged in. Save the code and redirect to login.
-        console.log("[Clean Page] User not logged in. Saving code and redirecting to login.");
-        setStatus("Redirecionando para o login...");
-        sessionStorage.setItem("pendingCleaningLocation", code);
-        router.push("/login");
-      }
+      console.log(`[Clean Page] Código QR lido: ${code}. Redirecionando para o painel de controle.`);
+      
+      // The middleware handles session checking. If we are here, the user is logged in.
+      // We redirect directly to the dashboard, passing the code.
+      // The dashboard will handle fetching the location data and opening the dialog.
+      router.push(`/dashboard?startCleaning=${code}`);
     };
 
-    processCode();
+    processRedirect();
   }, [params.code, router]);
 
   return (
