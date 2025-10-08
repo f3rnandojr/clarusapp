@@ -129,53 +129,69 @@ export async function getLocationByCode(code: string) {
 export async function startCleaning(prevState: any, formData: FormData) {
   const session = await getSession();
   if (!session?.user) {
-    return { error: "Usuário não autenticado. Por favor, faça login novamente." };
+    return { success: false, error: "Usuário não autenticado. Por favor, faça login novamente." };
   }
 
-  const rawData = {
-    locationId: formData.get('locationId'),
-    type: formData.get('type'),
-  };
+  const locationId = formData.get('locationId');
+  const type = formData.get('type') as CleaningType;
 
-  if (!rawData.locationId || !ObjectId.isValid(rawData.locationId as string)) {
-      return { error: 'ID do local inválido ou não fornecido.' };
+  console.log('🔍 Dados recebidos na action:');
+  console.log('locationId:', locationId);
+  console.log('type:', type);
+
+  // Validações básicas
+  if (!locationId || typeof locationId !== 'string') {
+    return { success: false, error: 'ID do local não fornecido ou inválido' };
   }
 
-  const validatedFields = StartCleaningFormSchema.safeParse(rawData);
+  if (!type || (type !== 'concurrent' && type !== 'terminal')) {
+    return { success: false, error: 'Tipo de higienização não selecionado ou inválido' };
+  }
 
-  if (!validatedFields.success) {
+  // Validação do ObjectId
+  if (!ObjectId.isValid(locationId)) {
+    console.error('❌ Erro: locationId não é um ObjectId válido:', locationId);
+    return { success: false, error: 'ID do local no formato inválido.' };
+  }
+
+  try {
+    const db = await dbConnect();
+    const location = await db.collection('locations').findOne({ _id: new ObjectId(locationId) });
+
+    console.log('📦 Local encontrado no banco:', location);
+    
+    if (!location) {
+      return { success: false, error: 'Local não encontrado no banco de dados.' };
+    }
+    if (location.status === 'in_cleaning') {
+      return { success: false, error: 'Este local já está em higienização.' };
+    }
+
+    const updateResult = await db.collection('locations').updateOne({ _id: new ObjectId(locationId) }, {
+      $set: {
+          status: 'in_cleaning',
+          currentCleaning: {
+              type,
+              userId: new ObjectId(session.user._id),
+              userName: session.user.name,
+              startTime: new Date(),
+          },
+          updatedAt: new Date()
+      }
+    });
+
+    console.log('✅ Local atualizado:', updateResult);
+
+    revalidatePath('/dashboard');
+    return { success: true, message: `Higienização ${type} iniciada com sucesso!` };
+
+  } catch (error) {
+    console.error('❌ Erro crítico ao iniciar limpeza:', error);
     return {
-      error: "Dados inválidos. Por favor, verifique os campos.",
+      success: false,
+      error: 'Erro interno do servidor: ' + (error instanceof Error ? error.message : 'Unknown error')
     };
   }
-  
-  const { locationId, type } = validatedFields.data;
-
-  const db = await dbConnect();
-  const location = await db.collection('locations').findOne({ _id: new ObjectId(locationId) });
-
-  if (!location) {
-    return { error: 'Local não encontrado.' };
-  }
-  if (location.status === 'in_cleaning') {
-    return { error: 'Este local já está em higienização.' };
-  }
-
-  await db.collection('locations').updateOne({ _id: new ObjectId(locationId) }, {
-    $set: {
-        status: 'in_cleaning',
-        currentCleaning: {
-            type,
-            userId: new ObjectId(session.user._id),
-            userName: session.user.name,
-            startTime: new Date(),
-        },
-        updatedAt: new Date()
-    }
-  });
-
-  revalidatePath('/dashboard');
-  return { success: true, message: 'Higienização iniciada com sucesso!' };
 }
 
 export async function finishCleaning(locationId: string) {
@@ -1016,6 +1032,7 @@ export async function testTransformation() {
     
 
     
+
 
 
 
