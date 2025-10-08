@@ -1,25 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { getSession } from './lib/session';
 
-export async function middleware(request: NextRequest) {
-  const session = await getSession();
-  const { pathname } = request.nextUrl;
-
-  // Permitir acesso a rotas de API e arquivos estáticos
-  if (pathname.startsWith('/api/') || pathname.startsWith('/_next/')) {
-    return NextResponse.next();
-  }
-
-  // Se não há sessão e o usuário não está na página de login, redirecione para o login.
-  if (!session && pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
-  // Se há sessão e o usuário está na página de login, redirecione para o dashboard.
-  if (session && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
+export function middleware(request: NextRequest) {
+  console.log('🔓 MIDDLEWARE DESABILITADO - Permitindo acesso livre');
   return NextResponse.next();
 }
 
