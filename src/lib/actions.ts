@@ -319,6 +319,7 @@ export async function getAreas() {
 }
 
 export async function createArea(prevState: any, formData: FormData) {
+    console.log('🔍 Iniciando createArea...');
     try {
         const rawData = {
             setor: formData.get('setor'),
@@ -329,6 +330,7 @@ export async function createArea(prevState: any, formData: FormData) {
         const validatedFields = CreateAreaSchema.safeParse(rawData);
 
         if (!validatedFields.success) {
+            console.log('❌ Validação do formulário falhou:', validatedFields.error.flatten());
             return {
                 error: "Dados inválidos.",
                 fieldErrors: validatedFields.error.flatten().fieldErrors,
@@ -338,10 +340,15 @@ export async function createArea(prevState: any, formData: FormData) {
         }
 
         const { locationId, setor, description } = validatedFields.data;
+        console.log('📝 Dados validados:', { setor, locationId, description });
 
+        console.log('🗄️ Tentando conectar com MongoDB...');
         const db = await dbConnect();
+        console.log('🗄️ Conexão com MongoDB estabelecida.');
+
         const existingArea = await db.collection('areas').findOne({ locationId });
         if (existingArea) {
+            console.log('⚠️ Tentativa de criar área com locationId duplicado:', locationId);
             return { 
                 error: 'O ID da Localização já está em uso.', 
                 fieldErrors: { locationId: ['Este ID já está em uso.'] },
@@ -361,16 +368,20 @@ export async function createArea(prevState: any, formData: FormData) {
             updatedAt: new Date(),
         };
 
+        console.log('➕ Tentando inserir nova área no banco de dados:', newArea);
         await db.collection('areas').insertOne(newArea);
+        console.log('✅ Área criada com sucesso no banco de dados.');
+
         revalidatePath('/dashboard');
         return { success: true, message: 'Área criada com sucesso!', fieldErrors: {}, error: null };
     } catch (error: any) {
-        console.error('💥 Erro em createArea:', error);
+        console.error('💥 Erro fatal em createArea:', error);
+        console.error('📌 Detalhes do erro:', error.message, error.stack);
         return {
             error: 'Erro interno do servidor ao criar área.',
             fieldErrors: {},
             success: false,
-            message: error.message
+            message: error.message // Retorna a mensagem de erro real
         };
     }
 }
