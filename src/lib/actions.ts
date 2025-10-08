@@ -132,42 +132,48 @@ export async function startCleaning(prevState: any, formData: FormData) {
     return { success: false, error: "Usuário não autenticado. Por favor, faça login novamente." };
   }
 
-  const locationId = formData.get('locationId');
+  const locationId = formData.get('locationId') as string;
   const type = formData.get('type') as CleaningType;
 
-  console.log('🔍 Dados recebidos na action:');
+  console.log('🔍 Dados recebidos na action startCleaning:');
   console.log('locationId:', locationId);
   console.log('type:', type);
 
-  // Validações básicas
-  if (!locationId || typeof locationId !== 'string') {
-    return { success: false, error: 'ID do local não fornecido ou inválido' };
+  // Validações básicas de entrada
+  if (!locationId) {
+    return { success: false, error: 'ID do local não fornecido.' };
   }
-
   if (!type || (type !== 'concurrent' && type !== 'terminal')) {
-    return { success: false, error: 'Tipo de higienização não selecionado ou inválido' };
-  }
-
-  // Validação do ObjectId
-  if (!ObjectId.isValid(locationId)) {
-    console.error('❌ Erro: locationId não é um ObjectId válido:', locationId);
-    return { success: false, error: 'ID do local no formato inválido.' };
+    return { success: false, error: 'Tipo de higienização inválido.' };
   }
 
   try {
     const db = await dbConnect();
-    const location = await db.collection('locations').findOne({ _id: new ObjectId(locationId) });
+    let location = null;
 
+    // Tenta encontrar por ObjectId primeiro, que é o caso mais comum
+    if (ObjectId.isValid(locationId)) {
+      console.log('🔎 Tentando buscar por ObjectId:', locationId);
+      location = await db.collection('locations').findOne({ _id: new ObjectId(locationId) });
+    }
+
+    // Se não encontrou, pode ser uma 'área' que usa um ID de string customizado
+    if (!location) {
+        console.log('...Não encontrado por ObjectId, tentando buscar como área por locationId (string)');
+        location = await db.collection('areas').findOne({ locationId: locationId });
+    }
+    
     console.log('📦 Local encontrado no banco:', location);
     
     if (!location) {
       return { success: false, error: 'Local não encontrado no banco de dados.' };
     }
+    // @ts-ignore
     if (location.status === 'in_cleaning') {
       return { success: false, error: 'Este local já está em higienização.' };
     }
 
-    const updateResult = await db.collection('locations').updateOne({ _id: new ObjectId(locationId) }, {
+    const updateResult = await db.collection('locations').updateOne({ _id: location._id }, {
       $set: {
           status: 'in_cleaning',
           currentCleaning: {
@@ -1032,6 +1038,7 @@ export async function testTransformation() {
     
 
     
+
 
 
 
