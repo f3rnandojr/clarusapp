@@ -25,7 +25,7 @@ export default function LoginPage() {
         body: JSON.stringify({ login, password })
       });
 
-      if (response.ok) {
+      if (response.ok) { // A verificação correta é response.ok
         router.push('/dashboard');
       } else {
         const data = await response.json();

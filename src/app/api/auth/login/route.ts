@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         success: true, 
         message: 'Login realizado com sucesso' 
-      });
+      }, { status: 200 }); // Status 200 OK
     }
 
     console.log('❌ API LOGIN - CREDENCIAIS INVÁLIDAS PARA:', login);
