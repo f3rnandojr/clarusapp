@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sparkles, Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface StartCleaningDialogProps {
   location: Location;
@@ -20,42 +21,47 @@ interface StartCleaningDialogProps {
 
 
 export function StartCleaningDialog({ location, isOccupied = false, children, open, onOpenChange }: StartCleaningDialogProps) {
-  const [state, setState] = useState<{success?: boolean, message?: string, error?: string | null} | null>(null);
+  const [result, setResult] = useState<{ success?: boolean; message?: string; error?: string | null } | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-  const formRef = useRef<HTMLFormElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [cleaningType, setCleaningType] = useState<'concurrent' | 'terminal' | ''>(isOccupied ? 'concurrent' : '');
 
-  useEffect(() => {
-    if (state?.success) {
-      toast({
-        title: "Sucesso!",
-        description: state.message,
-      });
-      // A responsabilidade de fechar o dialog agora é do componente pai (onOpenChange)
-      if (onOpenChange) {
-        onOpenChange(false);
-      }
-      formRef.current?.reset();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!cleaningType) {
+      setResult({ error: "Por favor, selecione um tipo de higienização." });
+      return;
     }
-    if (state?.error) {
-      toast({
-        title: "Erro",
-        description: state.error,
-        variant: "destructive",
-      });
-    }
-  }, [state, toast, onOpenChange]);
-  
-  const handleAction = (formData: FormData) => {
-    // Garante que o locationId correto está no FormData
-    if (location?._id) {
-        formData.set('locationId', location._id.toString());
-    }
-      
+    
     startTransition(async () => {
-      const result = await startCleaning(null, formData);
-      setState(result);
+      const formData = new FormData();
+      formData.append('locationId', location._id.toString());
+      formData.append('type', cleaningType);
+
+      console.log('📤 Enviando dados para startCleaning:');
+      console.log('locationId:', location._id.toString());
+      console.log('type:', cleaningType);
+
+      const response = await startCleaning(null, formData);
+      console.log('📥 Resposta da action:', response);
+      
+      setResult(response);
+
+      if (response.success) {
+        toast({
+          title: "Sucesso!",
+          description: response.message,
+        });
+        if (onOpenChange) {
+            onOpenChange(false);
+        }
+      } else if (response.error) {
+         toast({
+            title: "Erro ao Iniciar",
+            description: response.error,
+            variant: "destructive",
+        });
+      }
     });
   };
 
@@ -63,9 +69,9 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
     if (onOpenChange) {
       onOpenChange(isOpen);
     }
-    // Limpa o estado de erro/sucesso ao fechar o modal
     if (!isOpen) {
-      setState(null);
+      setResult(null);
+      setCleaningType(isOccupied ? 'concurrent' : '');
     }
   };
 
@@ -80,37 +86,40 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
             Local: {location.name} - {location.number}
           </DialogDescription>
         </DialogHeader>
-        <form ref={formRef} action={handleAction} className="space-y-4">
-          {/* O input hidden será preenchido dinamicamente pelo handleAction */}
-          <input type="hidden" name="locationId" defaultValue={location._id.toString()} />
+        <form onSubmit={handleSubmit} className="space-y-4">
           
           {!isOccupied && (
             <div className="space-y-2">
               <Label>Tipo de Higienização</Label>
-              <RadioGroup name="type" defaultValue="concurrent" required>
+              <RadioGroup name="type" value={cleaningType} onValueChange={(value) => setCleaningType(value as any)} required>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="concurrent" id="concurrent" />
+                  <RadioGroupItem value="concurrent" id="concurrent" disabled={isPending} />
                   <Label htmlFor="concurrent">Concorrente</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="terminal" id="terminal" />
+                  <RadioGroupItem value="terminal" id="terminal" disabled={isPending} />
                   <Label htmlFor="terminal">Terminal</Label>
                 </div>
               </RadioGroup>
             </div>
           )}
 
-          {isOccupied && <input type="hidden" name="type" value="concurrent" />}
-
           <p className="text-sm text-muted-foreground pt-2">
             Você será registrado como o responsável por esta higienização.
           </p>
+
+          {result?.error && (
+            <Alert variant="destructive">
+              <AlertTitle>Erro</AlertTitle>
+              <AlertDescription>
+                {result.error}
+              </AlertDescription>
+            </Alert>
+          )}
           
           <DialogFooter>
-            <DialogClose asChild>
-                <Button ref={closeButtonRef} type="button" variant="secondary">Cancelar</Button>
-            </DialogClose>
-            <Button type="submit" disabled={isPending}>
+            <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>
+            <Button type="submit" disabled={isPending || !cleaningType}>
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Confirmar Início
             </Button>
