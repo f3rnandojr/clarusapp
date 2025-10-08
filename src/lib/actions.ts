@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -77,30 +78,51 @@ export async function getLocations() {
 }
 
 export async function getLocationByCode(code: string) {
-    const db = await dbConnect();
+    console.log('🔍🔍🔍 DEBUG COMPLETO DA BUSCA 🔍🔍🔍');
+    console.log('🔍 Código procurado:', code);
     
-    // First, try to find in 'areas' by locationId
-    const area = await db.collection('areas').findOne({ locationId: code, isActive: true });
-    
-    let query = {};
-    if (area) {
-        // If an area is found, we need to find the corresponding 'location'
-        // This assumes a naming convention between area.locationId and location properties.
-        // This part might need adjustment based on how they are linked.
-        // For now, let's assume `externalCode` in `locations` matches `locationId` in `areas`.
-        query = { externalCode: code };
-    } else {
-        // If no area is found, maybe the code directly refers to a location's externalCode
-        query = { externalCode: code };
-    }
+    try {
+        const db = await dbConnect();
+        
+        // 1. Tenta encontrar em 'areas'
+        console.log('1. Buscando na coleção "areas"...');
+        const area = await db.collection('areas').findOne({ locationId: code, isActive: true });
 
-    const location = await db.collection('locations').findOne(query);
+        if (area) {
+            console.log('✅ Área encontrada:', area);
+            // Simula uma estrutura de 'Location' para consistência, se necessário
+            const mockLocationFromArea = {
+                _id: area._id.toString(),
+                name: area.setor,
+                number: area.shortCode, // ou outra propriedade apropriada
+                status: 'available', // Áreas geralmente estão 'disponíveis' por padrão
+                currentCleaning: null,
+                externalCode: area.locationId,
+                createdAt: area.createdAt,
+                updatedAt: area.updatedAt,
+            };
+            return convertToPlainObject(mockLocationFromArea);
+        }
+        console.log('... Nenhuma área ativa encontrada com esse código.');
 
-    if (location) {
-        return convertToPlainObject(location);
+        // 2. Se não encontrou, tenta em 'locations'
+        console.log('2. Buscando na coleção "locations"...');
+        const location = await db.collection('locations').findOne({ externalCode: code });
+
+        if (location) {
+            console.log('✅ Leito encontrado:', location);
+            return convertToPlainObject(location);
+        }
+        console.log('... Nenhum leito encontrado com esse código.');
+
+        // 3. Se não encontrou em nenhum lugar
+        console.log('❌ Código não encontrado em nenhuma coleção.');
+        return null;
+
+    } catch (error) {
+        console.error('💥 ERRO FATAL em getLocationByCode:', error);
+        return null;
     }
-    
-    return null;
 }
 
 
@@ -318,6 +340,9 @@ export async function getAreas() {
 }
 
 export async function createArea(prevState: any, formData: FormData) {
+    console.log('🔴🔴🔴 CREATE AREA INICIADO - ESTAMOS AQUI!');
+    console.log('🔴 FormData recebido:', formData);
+    
     try {
         const rawData = {
             setor: formData.get('setor'),
@@ -985,6 +1010,7 @@ export async function testTransformation() {
     
 
     
+
 
 
 
