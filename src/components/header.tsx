@@ -4,7 +4,6 @@ import { OccurrencesDialog } from '@/components/occurrences-dialog';
 import { Button } from '@/components/ui/button';
 import { Settings, ClipboardList, LogOut } from 'lucide-react';
 import { logout } from '@/lib/actions';
-import { BasicleanLogo } from './basiclean-logo';
 
 type HeaderProps = {
   asgs: Asg[];
@@ -18,8 +17,7 @@ export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occ
   return (
     <header className="flex items-center justify-between p-4 border-b bg-card shadow-sm shrink-0">
       <div className="flex items-center gap-3">
-        <BasicleanLogo className="h-8 text-accent" />
-        <h1 className="text-2xl font-bold text-foreground sr-only">Basiclean</h1>
+        <h1 className="text-2xl font-bold text-accent">Basiclean</h1>
       </div>
       <div className='flex items-center gap-2'>
         <OccurrencesDialog occurrences={occurrences}>

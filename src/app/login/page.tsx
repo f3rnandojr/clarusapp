@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { BasicleanLogo } from '@/components/basiclean-logo';
 
 export default function LoginPage() {
   const [login, setLogin] = useState('');
@@ -52,8 +50,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-lg sm:p-8">
         <div className="flex flex-col items-center text-center">
-            <BasicleanLogo className="h-10 text-accent mb-4" />
-            <h1 className="text-3xl font-bold text-foreground sr-only">Basiclean</h1>
+            <h1 className="text-4xl font-bold text-accent mb-4">Basiclean</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Faça login para gerenciar a higienização.
             </p>
