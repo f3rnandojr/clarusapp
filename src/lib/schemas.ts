@@ -28,8 +28,8 @@ export type Asg = z.infer<typeof AsgSchema>;
 
 export const CurrentCleaningSchema = z.object({
     type: CleaningTypeEnum,
-    asgId: z.union([z.string(), z.any()]),
-    asgName: z.string(),
+    userId: z.union([z.string(), z.any()]),
+    userName: z.string(),
     startTime: z.union([z.string(), z.date()]),
   }).nullable();
 
@@ -87,7 +87,6 @@ export const UpdateAsgSchema = AsgSchema.pick({
 
 export const StartCleaningFormSchema = z.object({
   locationId: z.string(),
-  asgId: z.string().min(1, { message: "É necessário selecionar um colaborador." }),
   type: CleaningTypeEnum,
 });
 
@@ -106,7 +105,7 @@ export const CleaningOccurrenceSchema = z.object({
   _id: z.union([z.string(), z.any()]),
   locationName: z.string(),
   cleaningType: CleaningTypeEnum,
-  asgName: z.string(),
+  userName: z.string(), // MUDOU de asgName
   delayInMinutes: z.number(),
   occurredAt: z.union([z.string(), z.date()]),
 });
@@ -114,14 +113,17 @@ export type CleaningOccurrence = z.infer<typeof CleaningOccurrenceSchema>;
 
 export const CleaningRecordSchema = z.object({
     _id: z.union([z.string(), z.any()]),
+    locationId: z.string(),
     locationName: z.string(),
+    locationType: z.enum(['area', 'leito']),
     cleaningType: CleaningTypeEnum,
-    asgName: z.string(),
+    userId: z.union([z.string(), z.any()]),
+    userName: z.string(),
     startTime: z.union([z.string(), z.date()]),
     finishTime: z.union([z.string(), z.date()]),
     expectedDuration: z.number(),
     actualDuration: z.number(),
-    status: z.literal('completed'),
+    status: z.enum(['in_progress', 'completed']),
     delayed: z.boolean(),
     date: z.union([z.string(), z.date()]),
 });

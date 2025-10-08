@@ -1,22 +1,19 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState } from "react-dom";
 import { useFormStatus } from "react-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { startCleaning } from "@/lib/actions";
-import type { Asg, Location } from "@/lib/schemas";
+import type { Location } from "@/lib/schemas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Loader2 } from "lucide-react";
-import { ObjectId } from "mongodb";
 
 interface StartCleaningDialogProps {
   location: Location;
-  availableAsgs: Asg[];
   isOccupied?: boolean;
   children?: React.ReactNode;
   open?: boolean;
@@ -33,12 +30,10 @@ function SubmitButton() {
   );
 }
 
-export function StartCleaningDialog({ location, availableAsgs, isOccupied = false, children, open, onOpenChange }: StartCleaningDialogProps) {
+export function StartCleaningDialog({ location, isOccupied = false, children, open, onOpenChange }: StartCleaningDialogProps) {
   const [state, formAction] = useActionState(startCleaning, null);
   const { toast } = useToast();
   const formRef = useRef<HTMLFormElement>(null);
-  
-  // Use a ref for the close button if you need to imperatively click it.
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -47,7 +42,6 @@ export function StartCleaningDialog({ location, availableAsgs, isOccupied = fals
         title: "Sucesso!",
         description: state.success,
       });
-      // Close dialog via state change passed to onOpenChange
       onOpenChange?.(false);
       formRef.current?.reset();
     }
@@ -91,23 +85,9 @@ export function StartCleaningDialog({ location, availableAsgs, isOccupied = fals
 
           {isOccupied && <input type="hidden" name="type" value="concurrent" />}
 
-          <div className="space-y-2">
-            <Label htmlFor="asgId">Colaborador (ASG)</Label>
-             <Select name="asgId" required>
-                <SelectTrigger>
-                    <SelectValue placeholder="Selecione um colaborador" />
-                </SelectTrigger>
-                <SelectContent>
-                    {availableAsgs.length > 0 ? (
-                        availableAsgs.map(asg => (
-                            <SelectItem key={asg._id.toString()} value={asg._id.toString()}>{asg.name} - {asg.code}</SelectItem>
-                        ))
-                    ) : (
-                        <div className="p-4 text-sm text-muted-foreground">Nenhum colaborador disponível.</div>
-                    )}
-                </SelectContent>
-            </Select>
-          </div>
+          <p className="text-sm text-muted-foreground pt-2">
+            Você será registrado como o responsável por esta higienização.
+          </p>
           
           <DialogFooter>
             <DialogClose asChild>

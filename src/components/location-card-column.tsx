@@ -6,7 +6,6 @@ interface LocationCardColumnProps {
   title: string;
   icon: React.ReactNode;
   locations: Location[];
-  availableAsgs: Asg[];
   cleaningSettings: CleaningSettings;
   count: number;
   status: LocationStatus;
@@ -18,7 +17,7 @@ const statusClasses = {
   occupied: "bg-status-occupied-bg",
 }
 
-export default function LocationCardColumn({ title, icon, locations, availableAsgs, cleaningSettings, count, status }: LocationCardColumnProps) {
+export default function LocationCardColumn({ title, icon, locations, cleaningSettings, count, status }: LocationCardColumnProps) {
     return (
         <div className={cn("flex flex-col gap-2 p-2 rounded-lg h-full", statusClasses[status])}>
             <div className={cn("flex items-center gap-2 p-1 sticky top-0 z-10", statusClasses[status])}>
@@ -29,7 +28,7 @@ export default function LocationCardColumn({ title, icon, locations, availableAs
             <div className="flex flex-col gap-2 overflow-y-auto scroll-container">
                 {locations.length > 0 ? (
                     locations.map(location => (
-                        <LocationCard key={location._id} location={location} availableAsgs={availableAsgs} cleaningSettings={cleaningSettings} />
+                        <LocationCard key={location._id} location={location} cleaningSettings={cleaningSettings} />
                     ))
                 ) : (
                     <div className="text-center text-muted-foreground italic py-6 text-sm">

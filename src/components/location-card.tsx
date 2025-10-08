@@ -1,6 +1,6 @@
 "use client";
 
-import type { Location, Asg, CleaningSettings } from "@/lib/schemas";
+import type { Location, CleaningSettings } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bed, Clock, Sparkles, User, QrCode } from "lucide-react";
@@ -13,11 +13,10 @@ import { QrCodeDialog } from "./qr-code-dialog";
 
 interface LocationCardProps {
   location: Location;
-  availableAsgs: Asg[];
   cleaningSettings: CleaningSettings;
 }
 
-export default function LocationCard({ location, availableAsgs, cleaningSettings }: LocationCardProps) {
+export default function LocationCard({ location, cleaningSettings }: LocationCardProps) {
   const renderCardContent = () => {
     switch (location.status) {
       case "in_cleaning":
@@ -29,7 +28,7 @@ export default function LocationCard({ location, availableAsgs, cleaningSettings
             <div className="text-xs text-muted-foreground space-y-1">
               <div className="flex items-center gap-1.5">
                 <User className="h-3 w-3" />
-                <span>{location.currentCleaning.asgName}</span>
+                <span>{location.currentCleaning.userName}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3" />
@@ -60,7 +59,7 @@ export default function LocationCard({ location, availableAsgs, cleaningSettings
     switch (location.status) {
       case "available":
         return (
-          <StartCleaningDialog location={location} availableAsgs={availableAsgs}>
+          <StartCleaningDialog location={location}>
             <Button size="sm" className="w-full">Iniciar Higienização</Button>
           </StartCleaningDialog>
         );
@@ -72,7 +71,7 @@ export default function LocationCard({ location, availableAsgs, cleaningSettings
         );
       case "occupied":
         return (
-          <StartCleaningDialog location={location} availableAsgs={availableAsgs} isOccupied>
+          <StartCleaningDialog location={location} isOccupied>
             <Button size="sm" variant="outline" className="w-full">Limpeza Concorrente</Button>
           </StartCleaningDialog>
         );

@@ -8,8 +8,6 @@ interface CleaningDashboardProps {
   availableLocations: Location[];
   inCleaningLocations: Location[];
   occupiedLocations: Location[];
-  availableAsgs: Asg[];
-  allAsgs: Asg[];
   cleaningSettings: CleaningSettings;
 }
 
@@ -17,8 +15,6 @@ export default function CleaningDashboard({
   availableLocations,
   inCleaningLocations,
   occupiedLocations,
-  availableAsgs,
-  allAsgs,
   cleaningSettings
 }: CleaningDashboardProps) {
 
@@ -28,7 +24,6 @@ export default function CleaningDashboard({
         title="Disponíveis"
         icon={<Bed className="h-5 w-5 text-status-available-fg" />}
         locations={availableLocations}
-        availableAsgs={availableAsgs}
         cleaningSettings={cleaningSettings}
         count={availableLocations.length}
         status="available"
@@ -37,7 +32,6 @@ export default function CleaningDashboard({
         title="Em Higienização"
         icon={<Sparkles className="h-5 w-5 text-status-cleaning-fg" />}
         locations={inCleaningLocations}
-        availableAsgs={availableAsgs}
         cleaningSettings={cleaningSettings}
         count={inCleaningLocations.length}
         status="in_cleaning"
@@ -46,7 +40,6 @@ export default function CleaningDashboard({
         title="Ocupados"
         icon={<UserCheck className="h-5 w-5 text-status-occupied-fg" />}
         locations={occupiedLocations}
-        availableAsgs={availableAsgs}
         cleaningSettings={cleaningSettings}
         count={occupiedLocations.length}
         status="occupied"

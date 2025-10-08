@@ -30,7 +30,7 @@ export function OccurrencesDialog({ occurrences, children }: OccurrencesDialogPr
                     <TableRow>
                         <TableHead>Local</TableHead>
                         <TableHead>Tipo de Limpeza</TableHead>
-                        <TableHead>Colaborador</TableHead>
+                        <TableHead>Responsável</TableHead>
                         <TableHead>Atraso (min)</TableHead>
                         <TableHead>Data</TableHead>
                     </TableRow>
@@ -44,7 +44,7 @@ export function OccurrencesDialog({ occurrences, children }: OccurrencesDialogPr
                                     {occ.cleaningType === 'concurrent' ? 'Concorrente' : 'Terminal'}
                                 </Badge>
                             </TableCell>
-                            <TableCell>{occ.asgName}</TableCell>
+                            <TableCell>{occ.userName}</TableCell>
                             <TableCell>
                                 <span className="font-bold text-destructive">{occ.delayInMinutes} min</span>
                             </TableCell>

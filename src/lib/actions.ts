@@ -105,9 +105,13 @@ export async function getLocationByCode(code: string) {
 
 
 export async function startCleaning(prevState: any, formData: FormData) {
+  const session = await getSession();
+  if (!session?.user) {
+    return { error: "Usuário não autenticado. Por favor, faça login novamente." };
+  }
+
   const validatedFields = StartCleaningFormSchema.safeParse({
     locationId: formData.get('locationId'),
-    asgId: formData.get('asgId'),
     type: formData.get('type'),
   });
 
@@ -117,38 +121,30 @@ export async function startCleaning(prevState: any, formData: FormData) {
     };
   }
   
-  const { locationId, asgId, type } = validatedFields.data;
+  const { locationId, type } = validatedFields.data;
 
   const db = await dbConnect();
   const location = await db.collection('locations').findOne({ _id: new ObjectId(locationId) });
-  const asg = await db.collection('asgs').findOne({ _id: new ObjectId(asgId) });
 
-
-  if (!location || !asg) {
-    return { error: 'Local ou colaborador não encontrado.' };
+  if (!location) {
+    return { error: 'Local não encontrado.' };
   }
-  if (asg.status === 'busy') {
-    return { error: 'Colaborador já está ocupado.' };
-  }
-   if (location.status === 'in_cleaning') {
+  if (location.status === 'in_cleaning') {
     return { error: 'Este local já está em higienização.' };
   }
-
 
   await db.collection('locations').updateOne({ _id: new ObjectId(locationId) }, {
     $set: {
         status: 'in_cleaning',
         currentCleaning: {
             type,
-            asgId: new ObjectId(asgId),
-            asgName: asg.name,
+            userId: new ObjectId(session.user._id),
+            userName: session.user.name,
             startTime: new Date(),
         },
         updatedAt: new Date()
     }
   });
-
-  await db.collection('asgs').updateOne({ _id: new ObjectId(asgId) }, { $set: { status: 'busy' } });
 
   revalidatePath('/dashboard');
   return { success: true, message: 'Higienização iniciada com sucesso!' };
@@ -162,7 +158,7 @@ export async function finishCleaning(locationId: string) {
     return { error: 'Higienização não encontrada para este local.' };
   }
 
-  const { asgId, type, startTime, asgName } = location.currentCleaning;
+  const { userId, userName, type, startTime } = location.currentCleaning;
   
   const settings = await getCleaningSettings();
   const expectedDuration = settings[type];
@@ -170,22 +166,24 @@ export async function finishCleaning(locationId: string) {
   const actualDuration = Math.round((finishTime.getTime() - new Date(startTime).getTime()) / (1000 * 60));
   const isDelayed = actualDuration > expectedDuration;
 
-
   if (isDelayed) {
     const delayInMinutes = actualDuration - expectedDuration;
     await db.collection('cleaning_occurrences').insertOne({
       locationName: `${location.name} - ${location.number}`,
       cleaningType: type,
-      asgName: asgName,
+      userName: userName, // MUDOU DE asgName PARA userName
       delayInMinutes: delayInMinutes,
       occurredAt: finishTime,
     });
   }
 
   const record: Omit<CleaningRecord, '_id'> = {
+    locationId: location._id.toString(),
     locationName: `${location.name} - ${location.number}`,
+    locationType: 'leito', // Assumindo 'leito' por enquanto
     cleaningType: type,
-    asgName: asgName,
+    userId: new ObjectId(userId),
+    userName: userName,
     startTime: startTime,
     finishTime: finishTime,
     expectedDuration: expectedDuration,
@@ -207,7 +205,8 @@ export async function finishCleaning(locationId: string) {
     },
   });
 
-  await db.collection('asgs').updateOne({ _id: new ObjectId(asgId) }, { $set: { status: 'available' } });
+  // Não precisamos mais atualizar o status do ASG
+  // await db.collection('asgs').updateOne({ _id: new ObjectId(asgId) }, { $set: { status: 'available' } });
 
   revalidatePath('/');
   revalidatePath('/dashboard');
@@ -318,7 +317,7 @@ export async function getAreas() {
     return convertToPlainObject(areas);
 }
 
-export async function createArea(formData: FormData) {
+export async function createArea(prevState: any, formData: FormData) {
     try {
         const rawData = {
             setor: formData.get('setor'),
@@ -986,5 +985,6 @@ export async function testTransformation() {
     
 
     
+
 
 

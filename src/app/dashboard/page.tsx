@@ -91,7 +91,6 @@ export default function DashboardPage() {
   const availableLocations = locations.filter((l) => l.status === "available");
   const inCleaningLocations = locations.filter((l) => l.status === "in_cleaning");
   const occupiedLocations = locations.filter((l) => l.status === "occupied");
-  const availableAsgs = asgs.filter((a) => a.status === "available" && a.active);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -101,8 +100,6 @@ export default function DashboardPage() {
           availableLocations={availableLocations}
           inCleaningLocations={inCleaningLocations}
           occupiedLocations={occupiedLocations}
-          availableAsgs={availableAsgs}
-          allAsgs={asgs}
           cleaningSettings={cleaningSettings}
         />
       </main>
@@ -111,7 +108,6 @@ export default function DashboardPage() {
       {cleaningLocation && (
         <StartCleaningDialog
           location={cleaningLocation}
-          availableAsgs={availableAsgs}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
         >
