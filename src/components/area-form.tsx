@@ -73,7 +73,7 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
       <div className="space-y-2">
         <Label htmlFor="locationId">ID da Localização</Label>
         <Input 
-          id="locationId" 
+          id="locationId" _
           name="locationId" 
           defaultValue={area?.locationId} 
           required 
