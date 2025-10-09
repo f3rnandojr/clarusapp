@@ -1,10 +1,9 @@
 
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, finishCleaning } from "@/lib/actions";
-import CleaningDashboard from "@/components/cleaning-dashboard";
 import Header from "@/components/header";
 import { Loader2 } from "lucide-react";
 import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area } from "@/lib/schemas";
@@ -12,6 +11,18 @@ import { StartCleaningDialog } from "@/components/start-cleaning-dialog";
 import { CleaningSections } from "@/components/cleaning-sections";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SetorExpansivel } from "@/components/setor-expansivel";
+import { Building, Sparkles } from "lucide-react";
+
+type SetorGroup = {
+  nome: string;
+  locais: Location[];
+  total: number;
+  disponiveis: number;
+  emLimpeza: number;
+  ocupados: number;
+};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -32,7 +43,6 @@ export default function DashboardPage() {
   const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFinalizing, startFinalizingTransition] = useTransition();
-
 
   const loadDashboardData = async () => {
     console.log('🔄 Carregando dados do dashboard...');
@@ -91,7 +101,6 @@ export default function DashboardPage() {
     setIsDialogOpen(false);
     setCleaningLocation(null);
     if (wasSuccessful) {
-      // Pequeno delay para garantir que a revalidação do path tenha efeito
       setTimeout(() => {
         loadDashboardData();
       }, 500);
@@ -106,7 +115,7 @@ export default function DashboardPage() {
                 title: "Sucesso!",
                 description: result.success,
             });
-            loadDashboardData(); // Recarrega os dados para atualizar a UI
+            loadDashboardData();
         } else {
             toast({
                 title: "Erro",
@@ -117,6 +126,29 @@ export default function DashboardPage() {
     });
   };
 
+  const setoresAgrupados: SetorGroup[] = useMemo(() => {
+    if (!data?.locations) return [];
+    
+    const grupos: Record<string, Location[]> = data.locations.reduce((acc, local) => {
+      const setor = local.setor || 'Sem Setor';
+      if (!acc[setor]) {
+        acc[setor] = [];
+      }
+      acc[setor].push(local);
+      return acc;
+    }, {} as Record<string, Location[]>);
+
+    return Object.entries(grupos).map(([nome, locais]) => ({
+      nome,
+      locais,
+      total: locais.length,
+      disponiveis: locais.filter(l => l.status === 'available').length,
+      emLimpeza: locais.filter(l => l.status === 'in_cleaning').length,
+      ocupados: locais.filter(l => l.status === 'occupied').length,
+    }));
+  }, [data?.locations]);
+
+
   if (isLoading || !data) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -126,40 +158,41 @@ export default function DashboardPage() {
   }
 
   const { locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas } = data;
-
   const inCleaningLocations = locations.filter((l) => l.status === "in_cleaning");
-  const availableLocations = locations.filter((l) => l.status === "available");
-  const occupiedLocations = locations.filter((l) => l.status === "occupied");
+  
+  const handleLocationClick = (location: Location) => {
+    setCleaningLocation(location);
+    setIsDialogOpen(true);
+  };
 
   return (
     <div className="flex flex-col h-screen bg-background">
       <Header asgs={asgs} users={users} nextAsgCode={nextAsgCode} cleaningSettings={cleaningSettings} occurrences={occurrences} allAreas={areas} />
       
-      <main className="flex-1 p-2 md:p-4 overflow-hidden flex flex-col gap-4">
-        
-        <div className="flex-shrink-0">
-          <CleaningSections 
-              locations={inCleaningLocations} 
-              cleaningSettings={cleaningSettings}
-              onFinalizeCleaning={handleFinalizeCleaning}
-              isFinalizing={isFinalizing}
-          />
-        </div>
+      <main className="flex-1 p-2 md:p-4 overflow-y-auto">
+        <Tabs defaultValue="cleaning" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="cleaning"><Sparkles className="mr-2 h-4 w-4" />Em Higienização ({inCleaningLocations.length})</TabsTrigger>
+                <TabsTrigger value="overview"><Building className="mr-2 h-4 w-4" />Visão Geral por Setor</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="cleaning">
+              <CleaningSections 
+                  locations={inCleaningLocations} 
+                  cleaningSettings={cleaningSettings}
+                  onFinalizeCleaning={handleFinalizeCleaning}
+                  isFinalizing={isFinalizing}
+              />
+            </TabsContent>
 
-        <Separator />
-        
-        <div className="flex-1 overflow-hidden">
-           <CleaningDashboard
-              availableLocations={availableLocations}
-              occupiedLocations={occupiedLocations}
-              cleaningSettings={cleaningSettings}
-              onStartCleaning={(location) => {
-                setCleaningLocation(location);
-                setIsDialogOpen(true);
-              }}
-            />
-        </div>
-
+            <TabsContent value="overview">
+              <div className="space-y-3">
+                {setoresAgrupados.map((setor) => (
+                  <SetorExpansivel key={setor.nome} setor={setor} onLocationClick={handleLocationClick} />
+                ))}
+              </div>
+            </TabsContent>
+        </Tabs>
       </main>
       
       {cleaningLocation && (
@@ -168,14 +201,16 @@ export default function DashboardPage() {
           open={isDialogOpen}
           onOpenChange={(isOpen) => {
             if (!isOpen) {
-              handleDialogClose(false); // Fecha sem recarregar se cancelado
+              handleDialogClose(false);
             } else {
                setIsDialogOpen(true);
             }
           }}
-          onCleaningStarted={() => handleDialogClose(true)} // Fecha e recarrega em caso de sucesso
+          onCleaningStarted={() => handleDialogClose(true)}
         />
       )}
     </div>
   );
 }
+
+    

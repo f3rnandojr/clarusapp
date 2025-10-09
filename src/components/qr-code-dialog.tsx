@@ -139,3 +139,5 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
     </Dialog>
   );
 }
+
+    

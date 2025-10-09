@@ -4,41 +4,59 @@
 import type { Location, CleaningSettings } from "@/lib/schemas";
 import { Bed, UserCheck } from "lucide-react";
 import LocationColumn from "./location-column";
+import { SetorExpansivel } from "./setor-expansivel";
+import { useMemo } from "react";
 
 interface CleaningDashboardProps {
-  availableLocations: Location[];
-  occupiedLocations: Location[];
+  locations: Location[];
   cleaningSettings: CleaningSettings;
   onStartCleaning: (location: Location) => void;
 }
 
+type SetorGroup = {
+  nome: string;
+  locais: Location[];
+  total: number;
+  disponiveis: number;
+  emLimpeza: number;
+  ocupados: number;
+};
+
 export default function CleaningDashboard({
-  availableLocations,
-  occupiedLocations,
+  locations,
   cleaningSettings,
   onStartCleaning,
 }: CleaningDashboardProps) {
 
+  const setoresAgrupados: SetorGroup[] = useMemo(() => {
+    if (!locations) return [];
+    
+    const grupos: Record<string, Location[]> = locations.reduce((acc, local) => {
+      const setor = local.setor || 'Sem Setor';
+      if (!acc[setor]) {
+        acc[setor] = [];
+      }
+      acc[setor].push(local);
+      return acc;
+    }, {} as Record<string, Location[]>);
+
+    return Object.entries(grupos).map(([nome, locais]) => ({
+      nome,
+      locais,
+      total: locais.length,
+      disponiveis: locais.filter(l => l.status === 'available').length,
+      emLimpeza: locais.filter(l => l.status === 'in_cleaning').length,
+      ocupados: locais.filter(l => l.status === 'occupied').length,
+    }));
+  }, [locations]);
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-        <LocationColumn
-          title="Disponíveis"
-          icon={<Bed className="h-5 w-5 text-status-available-fg" />}
-          locations={availableLocations}
-          cleaningSettings={cleaningSettings}
-          count={availableLocations.length}
-          status="available"
-          onCardClick={onStartCleaning}
-        />
-        <LocationColumn
-          title="Ocupados"
-          icon={<UserCheck className="h-5 w-5 text-status-occupied-fg" />}
-          locations={occupiedLocations}
-          cleaningSettings={cleaningSettings}
-          count={occupiedLocations.length}
-          status="occupied"
-          onCardClick={onStartCleaning}
-        />
-      </div>
+     <div className="space-y-3">
+      {setoresAgrupados.map((setor) => (
+        <SetorExpansivel key={setor.nome} setor={setor} onLocationClick={onStartCleaning} />
+      ))}
+    </div>
   );
 }
+
+    

@@ -76,11 +76,17 @@ export async function getLocations(): Promise<Location[]> {
   
   const leitos = await db.collection('locations').find().sort({ name: 1, number: 1 }).toArray();
   const areas = await db.collection('areas').find({isActive: true}).sort({ setor: 1 }).toArray();
+  const mappings = await db.collection('location_mappings').find({ isActive: true }).toArray();
+
+  const mappingsByExternalCode = mappings.reduce((acc, m) => {
+    acc[m.externalCode] = m;
+    return acc;
+  }, {} as Record<string, any>);
 
   const combinedLocations: Location[] = [];
 
-  // Mapeia leitos para o schema Location
   leitos.forEach(leito => {
+    const mapping = mappingsByExternalCode[leito.externalCode];
     combinedLocations.push({
       _id: leito._id,
       name: leito.name,
@@ -88,24 +94,25 @@ export async function getLocations(): Promise<Location[]> {
       status: leito.status,
       currentCleaning: leito.currentCleaning,
       externalCode: leito.externalCode,
-      locationType: 'leito', // Tipo definido
+      locationType: 'leito',
+      setor: mapping ? mapping.setor : 'Sem Setor',
       createdAt: leito.createdAt,
       updatedAt: leito.updatedAt,
     });
   });
 
-  // Mapeia áreas para o schema Location
   areas.forEach(area => {
     combinedLocations.push({
       _id: area._id,
       name: area.setor,
-      number: area.shortCode, // Usando shortCode como "número" para consistência
+      number: area.shortCode,
       // @ts-ignore - status pode não existir em 'areas' ainda
-      status: area.status || 'available', // Se não tiver status, assume 'available'
+      status: area.status || 'available',
       // @ts-ignore
       currentCleaning: area.currentCleaning || null,
       externalCode: area.locationId,
-      locationType: 'area', // Tipo definido
+      locationType: 'area',
+      setor: area.setor, // O setor da área é ele mesmo
       createdAt: area.createdAt,
       updatedAt: area.updatedAt,
     });
@@ -113,6 +120,8 @@ export async function getLocations(): Promise<Location[]> {
 
   // Ordena a lista combinada
   combinedLocations.sort((a, b) => {
+    if (a.setor < b.setor) return -1;
+    if (a.setor > b.setor) return 1;
     if (a.name < b.name) return -1;
     if (a.name > b.name) return 1;
     if (a.number < b.number) return -1;
@@ -142,6 +151,7 @@ export async function getLocationByCode(code: string) {
                 currentCleaning: null,
                 externalCode: mapping.externalCode,
                 locationType: mapping.type,
+                setor: mapping.setor,
                 createdAt: mapping.createdAt,
                 updatedAt: mapping.updatedAt,
             };
@@ -176,6 +186,7 @@ export async function getLocationByCode(code: string) {
                 currentCleaning: area.currentCleaning || null,
                 externalCode: area.locationId,
                 locationType: 'area',
+                setor: area.setor,
                 createdAt: area.createdAt,
                 updatedAt: area.updatedAt,
             };
@@ -1280,3 +1291,5 @@ export async function testTransformation() {
     };
   }
 }
+
+    

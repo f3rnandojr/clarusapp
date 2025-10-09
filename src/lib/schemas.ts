@@ -42,7 +42,8 @@ export const LocationSchema = z.object({
   status: LocationStatusEnum,
   currentCleaning: CurrentCleaningSchema,
   externalCode: z.string().optional(),
-  locationType: z.enum(['leito', 'area']), // NOVO CAMPO
+  locationType: z.enum(['leito', 'area']),
+  setor: z.string(), // NOVO CAMPO
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),
 });
@@ -75,7 +76,13 @@ export const CreateLocationMappingSchema = LocationMappingSchema.pick({
   type: true,
 });
 
-export const UpdateLocationMappingSchema = CreateLocationMappingSchema;
+export const UpdateLocationMappingSchema = CreateLocationMappingSchema.omit({ externalCode: true }).extend({
+    internalName: z.string().min(1, "O nome interno é obrigatório."),
+    internalNumber: z.string().min(1, "O número interno é obrigatório."),
+    setor: z.string().min(1, "O setor é obrigatório."),
+    description: z.string().optional(),
+    type: z.enum(['leito', 'area']),
+});
 
 
 // --- Areas (QR Code) ---
@@ -157,7 +164,7 @@ export const CleaningRecordSchema = z.object({
     actualDuration: z.number(),
     status: z.enum(['in_progress', 'completed']),
     delayed: z.boolean(),
-    date: z.union([z.string(), z.date()]),
+    date: z.union([zstring(), z.date()]),
 });
 export type CleaningRecord = z.infer<typeof CleaningRecordSchema>;
 
@@ -242,3 +249,5 @@ export const IntegrationConfigSchema = z.object({
 });
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
+
+    
