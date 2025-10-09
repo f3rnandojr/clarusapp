@@ -1,3 +1,4 @@
+
 import { MongoClient, Db } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -17,15 +18,23 @@ async function seedDatabase(db: Db) {
     const adminUser = await usersCollection.findOne({ login: 'admin' });
 
     if (!adminUser) {
-        console.log('Admin user not found, creating one...');
+        console.log('Admin user not found, creating one with "admin" profile...');
         await usersCollection.insertOne({
             name: "Administrador",
             login: "admin",
             password: "admin",
+            perfil: "admin", // Ensure admin profile is set on creation
             active: true,
             createdAt: new Date(),
         });
         console.log('Admin user created successfully.');
+    } else if (adminUser.perfil !== 'admin') {
+        console.log('Admin user found with incorrect profile. Correcting to "admin"...');
+        await usersCollection.updateOne(
+            { _id: adminUser._id },
+            { $set: { perfil: 'admin' } }
+        );
+        console.log('Admin user profile corrected.');
     }
 }
 
