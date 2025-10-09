@@ -97,8 +97,8 @@ export async function getLocations(): Promise<Location[]> {
     const mapping = mappingsByExternalCode[leito.externalCode];
     combinedLocations.push({
       _id: leito._id,
-      name: leito.name,
-      number: leito.number,
+      name: mapping ? mapping.internalName : leito.name,
+      number: mapping ? mapping.internalNumber : leito.number,
       status: leito.status,
       currentCleaning: leito.currentCleaning,
       externalCode: leito.externalCode,
@@ -165,11 +165,22 @@ export async function getLocationByCode(code: string) {
             };
 
             // Agora, busca o status atual na collection 'locations'
-            const liveLocation = await db.collection('locations').findOne({ externalCode: mapping.externalCode });
-            if (liveLocation) {
-              locationFromMapping.status = liveLocation.status;
-              locationFromMapping.currentCleaning = liveLocation.currentCleaning;
+            if (mapping.type === 'leito') {
+                const liveLocation = await db.collection('locations').findOne({ externalCode: mapping.externalCode });
+                if (liveLocation) {
+                  locationFromMapping.status = liveLocation.status;
+                  locationFromMapping.currentCleaning = liveLocation.currentCleaning;
+                }
+            } else { // type é 'area'
+                 const liveArea = await db.collection('areas').findOne({ locationId: mapping.locationId });
+                 if (liveArea) {
+                    // @ts-ignore
+                    locationFromMapping.status = liveArea.status || 'available';
+                    // @ts-ignore
+                    locationFromMapping.currentCleaning = liveArea.currentCleaning || null;
+                 }
             }
+
 
             return convertToPlainObject(locationFromMapping);
         }
