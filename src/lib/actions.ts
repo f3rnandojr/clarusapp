@@ -52,6 +52,14 @@ export async function login(prevState: any, formData: FormData) {
     return { error: 'Credenciais inválidas ou usuário inativo.' };
   }
 
+  // CORREÇÃO: Garante que o usuário 'admin' sempre tenha o perfil correto
+  if (user.login === 'admin' && user.perfil !== 'admin') {
+    await db.collection('users').updateOne({ _id: user._id }, { $set: { perfil: 'admin' } });
+    user.perfil = 'admin'; // Atualiza o objeto em memória para a sessão atual
+    console.log("Perfil do administrador corrigido para 'admin' durante o login.");
+  }
+
+
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
   const session = await encrypt({ user: { _id: user._id.toString(), name: user.name, login: user.login, perfil: user.perfil || 'usuario' }, expires });
 
