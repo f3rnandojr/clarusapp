@@ -9,7 +9,6 @@ import { Loader2 } from "lucide-react";
 import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area } from "@/lib/schemas";
 import { StartCleaningDialog } from "@/components/start-cleaning-dialog";
 import { CleaningSections } from "@/components/cleaning-sections";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SetorExpansivel } from "@/components/setor-expansivel";
@@ -145,7 +144,7 @@ export default function DashboardPage() {
       disponiveis: locais.filter(l => l.status === 'available').length,
       emLimpeza: locais.filter(l => l.status === 'in_cleaning').length,
       ocupados: locais.filter(l => l.status === 'occupied').length,
-    }));
+    })).sort((a,b) => a.nome.localeCompare(b.nome));
   }, [data?.locations]);
 
 
@@ -170,7 +169,7 @@ export default function DashboardPage() {
       <Header asgs={asgs} users={users} nextAsgCode={nextAsgCode} cleaningSettings={cleaningSettings} occurrences={occurrences} allAreas={areas} />
       
       <main className="flex-1 p-2 md:p-4 overflow-y-auto">
-        <Tabs defaultValue="cleaning" className="w-full">
+        <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="cleaning"><Sparkles className="mr-2 h-4 w-4" />Em Higienização ({inCleaningLocations.length})</TabsTrigger>
                 <TabsTrigger value="overview"><Building className="mr-2 h-4 w-4" />Visão Geral por Setor</TabsTrigger>
@@ -199,18 +198,10 @@ export default function DashboardPage() {
         <StartCleaningDialog
           location={cleaningLocation}
           open={isDialogOpen}
-          onOpenChange={(isOpen) => {
-            if (!isOpen) {
-              handleDialogClose(false);
-            } else {
-               setIsDialogOpen(true);
-            }
-          }}
+          onOpenChange={setIsDialogOpen}
           onCleaningStarted={() => handleDialogClose(true)}
         />
       )}
     </div>
   );
 }
-
-    

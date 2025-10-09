@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
@@ -13,23 +14,23 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface StartCleaningDialogProps {
   location: Location;
-  isOccupied?: boolean;
-  children?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onCleaningStarted?: () => void;
+  children?: React.ReactNode;
 }
 
-export function StartCleaningDialog({ location, isOccupied = false, children, open, onOpenChange, onCleaningStarted }: StartCleaningDialogProps) {
-  const [result, setResult] = useState<{ success?: boolean; message?: string; error?: string | null } | null>(null);
+export function StartCleaningDialog({ location, open, onOpenChange, onCleaningStarted, children }: StartCleaningDialogProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  
+  const isOccupied = location.status === 'occupied';
   const [cleaningType, setCleaningType] = useState<'concurrent' | 'terminal' | ''>(isOccupied ? 'concurrent' : '');
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!cleaningType) {
-      setResult({ error: "Por favor, selecione um tipo de higienização." });
+      toast({ title: "Atenção", description: "Por favor, selecione um tipo de higienização.", variant: "destructive" });
       return;
     }
     
@@ -40,8 +41,6 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
 
       const response = await startCleaning(null, formData);
       
-      setResult(response);
-
       if (response.success) {
         toast({
           title: "Sucesso!",
@@ -65,78 +64,73 @@ export function StartCleaningDialog({ location, isOccupied = false, children, op
     if (onOpenChange) {
       onOpenChange(isOpen);
     }
-    if (!isOpen) {
-      setResult(null);
-      setCleaningType(isOccupied ? 'concurrent' : '');
-    }
   };
 
   useEffect(() => {
     setCleaningType(isOccupied ? 'concurrent' : '');
-    setResult(null);
   }, [location, isOccupied, open]);
 
+  const dialogContent = (
+    <DialogContent className="sm:max-w-[425px]">
+      <DialogHeader>
+        <DialogTitle>Iniciar Higienização</DialogTitle>
+        <DialogDescription>
+          Local: {location.name} - {location.number}
+        </DialogDescription>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        
+        {!isOccupied ? (
+          <div className="space-y-2">
+            <Label>Tipo de Higienização</Label>
+            <RadioGroup name="type" value={cleaningType} onValueChange={(value) => setCleaningType(value as any)} required>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="concurrent" id="concurrent" disabled={isPending} />
+                <Label htmlFor="concurrent">Concorrente</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="terminal" id="terminal" disabled={isPending} />
+                <Label htmlFor="terminal">Terminal</Label>
+              </div>
+            </RadioGroup>
+          </div>
+        ) : (
+           <Alert>
+            <Sparkles className="h-4 w-4" />
+            <AlertTitle>Limpeza em Local Ocupado</AlertTitle>
+            <AlertDescription>
+              Apenas a limpeza <strong>concorrente</strong> pode ser realizada em locais ocupados.
+            </AlertDescription>
+          </Alert>
+        )}
 
+        <p className="text-sm text-muted-foreground pt-2">
+          Você será registrado como o responsável por esta higienização.
+        </p>
+        
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>
+          <Button type="submit" disabled={isPending || !cleaningType}>
+            {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            Confirmar Início
+          </Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+  );
+
+  if (children) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>{children}</DialogTrigger>
+        {dialogContent}
+      </Dialog>
+    );
+  }
+  
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Iniciar Higienização</DialogTitle>
-          <DialogDescription>
-            Local: {location.name} - {location.number}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {!isOccupied && (
-            <div className="space-y-2">
-              <Label>Tipo de Higienização</Label>
-              <RadioGroup name="type" value={cleaningType} onValueChange={(value) => setCleaningType(value as any)} required>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="concurrent" id="concurrent" disabled={isPending} />
-                  <Label htmlFor="concurrent">Concorrente</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="terminal" id="terminal" disabled={isPending} />
-                  <Label htmlFor="terminal">Terminal</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          )}
-
-          {isOccupied && (
-             <Alert>
-              <Sparkles className="h-4 w-4" />
-              <AlertTitle>Limpeza em Local Ocupado</AlertTitle>
-              <AlertDescription>
-                Apenas a limpeza <strong>concorrente</strong> pode ser realizada em locais ocupados.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <p className="text-sm text-muted-foreground pt-2">
-            Você será registrado como o responsável por esta higienização.
-          </p>
-
-          {result?.error && (
-            <Alert variant="destructive">
-              <AlertTitle>Erro</AlertTitle>
-              <AlertDescription>
-                {result.error}
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>
-            <Button type="submit" disabled={isPending || !cleaningType}>
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-              Confirmar Início
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+        {dialogContent}
     </Dialog>
   );
 }
