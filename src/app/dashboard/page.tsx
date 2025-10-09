@@ -5,10 +5,16 @@ import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaning
 import { getSession } from "@/lib/session";
 import { AdminDashboard } from "@/components/admin-dashboard";
 import { UserDashboard } from "@/components/user-dashboard";
+import type { User } from "@/lib/schemas";
 
 export default async function DashboardPage() {
   const session = await getSession();
-  const userProfile = session?.user?.perfil || 'usuario';
+  const user = session?.user as User | null;
+
+  if (!user) {
+    // Should be handled by middleware, but as a safeguard
+    return null;
+  }
   
   // Carregar todos os dados necessários para qualquer perfil
   const [
@@ -39,10 +45,10 @@ export default async function DashboardPage() {
     areas,
   };
 
-  if (userProfile === 'usuario') {
-    return <UserDashboard locations={locations} />;
+  if (user.perfil === 'usuario') {
+    return <UserDashboard locations={locations} user={user} />;
   }
   
   // Admin e Gestor veem o dashboard completo
-  return <AdminDashboard initialData={dashboardData} />;
+  return <AdminDashboard initialData={dashboardData} user={user} />;
 }

@@ -35,9 +35,10 @@ type DashboardData = {
 
 interface AdminDashboardProps {
   initialData: DashboardData;
+  user: User;
 }
 
-export function AdminDashboard({ initialData }: AdminDashboardProps) {
+export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -170,7 +171,15 @@ export function AdminDashboard({ initialData }: AdminDashboardProps) {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <Header asgs={asgs} users={users} nextAsgCode={nextAsgCode} cleaningSettings={cleaningSettings} occurrences={occurrences} allAreas={areas} />
+      <Header 
+        asgs={asgs} 
+        users={users} 
+        nextAsgCode={nextAsgCode} 
+        cleaningSettings={cleaningSettings} 
+        occurrences={occurrences} 
+        allAreas={areas}
+        user={user}
+      />
       
       <main className="flex-1 p-2 md:p-4 overflow-y-auto">
         <Tabs defaultValue="overview" className="w-full">

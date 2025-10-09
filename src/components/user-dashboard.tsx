@@ -3,12 +3,13 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Location, LocationStatus } from '@/lib/schemas';
+import type { Location, LocationStatus, User } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
-import { QrCode, Hospital, LogOut } from 'lucide-react';
+import { QrCode, Hospital, LogOut, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logout } from '@/lib/actions';
 import { Input } from './ui/input';
+import { Badge } from './ui/badge';
 
 type SetorGroup = {
   nome: string;
@@ -33,7 +34,13 @@ const statusText: Record<LocationStatus, string> = {
     occupied: 'Ocupado'
 }
 
-export function UserDashboard({ locations }: { locations: Location[] }) {
+const profileLabels: Record<string, string> = {
+    admin: 'Admin',
+    gestor: 'Gestor',
+    usuario: 'Usuário',
+};
+
+export function UserDashboard({ locations, user }: { locations: Location[], user: User }) {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -78,12 +85,23 @@ export function UserDashboard({ locations }: { locations: Location[] }) {
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold text-accent">Basiclean</h1>
                 </div>
-                <form action={logout}>
-                    <Button variant="outline" type="submit">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Sair
-                    </Button>
-                </form>
+                 <div className='flex items-center gap-4'>
+                    <div className="text-right">
+                        <div className="font-semibold text-sm flex items-center gap-2">
+                           <UserIcon className="h-4 w-4 text-muted-foreground" />
+                           {user.name}
+                        </div>
+                        <Badge variant="outline" className="text-xs capitalize mt-0.5">
+                           {profileLabels[user.perfil] || 'Usuário'}
+                        </Badge>
+                    </div>
+                    <form action={logout}>
+                        <Button variant="outline" type="submit">
+                            <LogOut className="mr-2 h-4 w-4" />
+                            Sair
+                        </Button>
+                    </form>
+                </div>
             </header>
 
             <main className="flex-1 flex flex-col p-2 md:p-4 overflow-hidden">
