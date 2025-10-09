@@ -48,6 +48,36 @@ export const LocationSchema = z.object({
 });
 export type Location = z.infer<typeof LocationSchema>;
 
+// --- Location Mappings ---
+export const LocationMappingSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  externalCode: z.string().min(1, "O código externo é obrigatório."),
+  internalName: z.string().min(1, "O nome interno é obrigatório."),
+  internalNumber: z.string().min(1, "O número interno é obrigatório."),
+  setor: z.string().min(1, "O setor é obrigatório."),
+  locationId: z.string(), // Gerado automaticamente
+  qrCodeUrl: z.string(), // Gerado automaticamente
+  shortCode: z.string(), // Gerado automaticamente
+  description: z.string().optional(),
+  type: z.enum(['leito', 'area']),
+  isActive: z.boolean(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
+});
+export type LocationMapping = z.infer<typeof LocationMappingSchema>;
+
+export const CreateLocationMappingSchema = LocationMappingSchema.pick({
+  externalCode: true,
+  internalName: true,
+  internalNumber: true,
+  setor: true,
+  description: true,
+  type: true,
+});
+
+export const UpdateLocationMappingSchema = CreateLocationMappingSchema;
+
+
 // --- Areas (QR Code) ---
 export const AreaSchema = z.object({
   _id: z.union([z.string(), z.any()]),

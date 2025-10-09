@@ -1,5 +1,7 @@
+
 import { ExternalLeito } from './external-db-connection';
 import { IntegrationConfig } from './schemas';
+import { dbConnect } from './db';
 
 export interface TransformationResult {
   success: boolean;
@@ -24,13 +26,22 @@ export interface FieldMapping {
 
 export class DataTransformer {
   private config: IntegrationConfig;
+  private db: any;
   
   constructor(config: IntegrationConfig) {
     this.config = config;
   }
 
+  private async connectDb() {
+      if (!this.db) {
+          this.db = await dbConnect();
+      }
+  }
+
   // Transformação principal
-  public transform(externalData: ExternalLeito[]): TransformationResult {
+  public async transform(externalData: ExternalLeito[]): Promise<TransformationResult> {
+    await this.connectDb();
+    
     const result: TransformationResult = {
       success: true,
       data: [],
@@ -45,7 +56,7 @@ export class DataTransformer {
 
     for (const item of externalData) {
       try {
-        const transformed = this.transformItem(item);
+        const transformed = await this.transformItem(item);
         
         if (transformed) {
           result.data.push(transformed);
@@ -67,35 +78,45 @@ export class DataTransformer {
     return result;
   }
 
-  private transformItem(item: ExternalLeito): any {
-    // Validar dados obrigatórios
-    if (!item[this.config.fieldMappings.codeField]) {
+  private async transformItem(item: ExternalLeito): Promise<any> {
+    const externalCode = item[this.config.fieldMappings.codeField];
+    if (!externalCode) {
       throw new Error(`Campo código (${this.config.fieldMappings.codeField}) não encontrado`);
     }
 
-    if (!item[this.config.fieldMappings.statusField]) {
+    const externalStatus = item[this.config.fieldMappings.statusField];
+    if (!externalStatus) {
       throw new Error(`Campo status (${this.config.fieldMappings.statusField}) não encontrado`);
     }
 
-    // Mapear status
-    const status = this.mapStatus(item[this.config.fieldMappings.statusField]);
+    const status = this.mapStatus(externalStatus);
+    if (status === null) {
+      return null; // Pula item com status não mapeado
+    }
     
-    // Extrair nome e número
-    const { name, number } = this.extractNameAndNumber(item);
+    const mapping = await this.db.collection('location_mappings').findOne({ externalCode });
+
+    let name, number;
+
+    if (mapping) {
+        name = mapping.internalName;
+        number = mapping.internalNumber;
+    } else {
+        const fallback = this.defaultCodeTransformation(externalCode);
+        name = fallback.name;
+        number = fallback.number;
+    }
     
-    // Validar dados transformados
-    if (!name || !number || !status) {
-      // Se o status for null, é um status não mapeado, então pulamos em vez de dar erro
-      if (status === null) return null;
-      throw new Error('Dados transformados inválidos');
+    if (!name || !number) {
+      throw new Error('Dados transformados inválidos (nome ou número ausente)');
     }
 
     return {
       name,
       number,
       status,
-      externalCode: item[this.config.fieldMappings.codeField],
-      externalStatus: item[this.config.fieldMappings.statusField],
+      externalCode,
+      externalStatus,
       lastExternalUpdate: new Date()
     };
   }
@@ -103,7 +124,6 @@ export class DataTransformer {
   private mapStatus(externalStatus: string): 'available' | 'occupied' | 'in_cleaning' | null {
     const { statusMappings } = this.config;
     
-    // Normalizar o valor externo para comparação (remover espaços, etc.)
     const normalizedStatus = (externalStatus || '').trim();
 
     if (normalizedStatus === statusMappings.available) {
@@ -117,50 +137,8 @@ export class DataTransformer {
     console.warn(`Status não mapeado: "${normalizedStatus}"`);
     return null;
   }
-
-  private extractNameAndNumber(item: ExternalLeito): { name: string; number: string } {
-    const codeValue = item[this.config.fieldMappings.codeField];
-    
-    // Se houver campos específicos para nome e número, usar eles
-    if (this.config.fieldMappings.nameField && this.config.fieldMappings.numberField) {
-      return {
-        name: item[this.config.fieldMappings.nameField] || 'Leito',
-        number: item[this.config.fieldMappings.numberField] || codeValue
-      };
-    }
-    
-    // Usar transformação padrão baseada em padrões
-    return this.transformCodeValue(codeValue);
-  }
-
-  private transformCodeValue(codeValue: string): { name: string; number: string } {
-    const { transformation } = this.config;
-    
-    // Tentar usar padrões regex personalizados
-    if (transformation.namePattern && transformation.numberPattern) {
-      try {
-        const nameMatch = codeValue.match(new RegExp(transformation.namePattern));
-        const numberMatch = codeValue.match(new RegExp(transformation.numberPattern));
-        
-        if (nameMatch && numberMatch) {
-          return {
-            name: nameMatch[1] || 'Leito',
-            number: numberMatch[1] || codeValue
-          };
-        }
-      } catch (error) {
-        console.warn('Erro ao aplicar padrões regex personalizados:', error);
-      }
-    }
-    
-    // Fallback para lógica padrão
-    return this.defaultCodeTransformation(codeValue);
-  }
-
+  
   private defaultCodeTransformation(codeValue: string): { name: string; number: string } {
-    // Nova lógica aprimorada para lidar com padrões complexos
-
-    // Padrão: LT-18B, L-13A (com hífen e letra no final)
     const formatComplexWithHyphen = codeValue.match(/^([A-Za-z]+)-([0-9]+[A-Za-z]?)$/);
     if (formatComplexWithHyphen) {
       return {
@@ -169,7 +147,6 @@ export class DataTransformer {
       };
     }
     
-    // Padrão: BOX1T (sem hífen e letra no final)
     const formatComplexNoHyphen = codeValue.match(/^([A-Za-z]+)([0-9]+[A-Za-z]?)$/);
      if (formatComplexNoHyphen) {
       return {
@@ -178,8 +155,6 @@ export class DataTransformer {
       };
     }
 
-    // Fallback para lógica antiga (mais simples)
-    // Formato: "QTO101", "APTO202", "LEITO305"
     const format1 = codeValue.match(/^([A-Za-z]+)([0-9]+)$/);
     if (format1) {
       return {
@@ -188,7 +163,6 @@ export class DataTransformer {
       };
     }
     
-    // Formato: "QUARTO-101", "APTO-202"
     const format2 = codeValue.match(/^([A-Za-z]+)-([0-9]+)$/);
     if (format2) {
       return {
@@ -197,7 +171,6 @@ export class DataTransformer {
       };
     }
     
-    // Formato: "101-QTO", "202-APTO"
     const format3 = codeValue.match(/^([0-9]+)-([A-Za-z]+)$/);
     if (format3) {
       return {
@@ -206,7 +179,6 @@ export class DataTransformer {
       };
     }
     
-    // Fallback final: separar por onde encontrar números
     const name = codeValue.replace(/[0-9]/g, '').trim() || 'Leito';
     const number = codeValue.replace(/[^0-9]/g, '').trim() || codeValue;
     
@@ -215,19 +187,10 @@ export class DataTransformer {
 
   private mapCommonNames(abbreviation: string): string {
     const nameMap: { [key: string]: string } = {
-      'QTO': 'Quarto',
-      'APTO': 'Apartamento', 
-      'LEITO': 'Leito',
-      'QUARTO': 'Quarto',
-      'APT': 'Apartamento',
-      'SL': 'Sala',
-      'SALA': 'Sala',
-      'CX': 'Caixa',
-      'BOX': 'Box',
-      'UTI': 'UTI',
-      'SPA': 'SPA',
-      'LBX': 'Laboratório',
-      'LT': 'Leito'
+      'QTO': 'Quarto', 'APTO': 'Apartamento', 'LEITO': 'Leito',
+      'QUARTO': 'Quarto', 'APT': 'Apartamento', 'SL': 'Sala',
+      'SALA': 'Sala', 'CX': 'Caixa', 'BOX': 'Box', 'UTI': 'UTI',
+      'SPA': 'SPA', 'LBX': 'Laboratório', 'LT': 'Leito'
     };
     
     return nameMap[abbreviation.toUpperCase()] || abbreviation;
@@ -257,12 +220,12 @@ export function validateTransformationConfig(config: IntegrationConfig): string[
   return errors;
 }
 
-export function generateSampleTransformation(config: IntegrationConfig) {
+export async function generateSampleTransformation(config: IntegrationConfig) {
   const sampleData = [
     { [config.fieldMappings.codeField]: "QTO101", [config.fieldMappings.statusField]: config.statusMappings.available },
     { [config.fieldMappings.codeField]: "APTO202", [config.fieldMappings.statusField]: config.statusMappings.occupied },
   ];
   
   const transformer = new DataTransformer(config);
-  return transformer.transform(sampleData);
+  return await transformer.transform(sampleData);
 }

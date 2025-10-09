@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema } from './schemas';
 import type { CleaningType } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -129,11 +129,40 @@ export async function getLocationByCode(code: string) {
     
     try {
         const db = await dbConnect();
+        
+        // Prioridade 1: Buscar em `location_mappings` pelo locationId
+        const mapping = await db.collection('location_mappings').findOne({ locationId: code, isActive: true });
+        if (mapping) {
+            console.log('✅ Mapeamento encontrado:', mapping);
+             const locationFromMapping = {
+                _id: mapping._id, // Usar o _id do próprio mapeamento
+                name: mapping.internalName,
+                number: mapping.internalNumber,
+                status: 'available', // O status real virá da collection 'locations'
+                currentCleaning: null,
+                externalCode: mapping.externalCode,
+                locationType: mapping.type,
+                createdAt: mapping.createdAt,
+                updatedAt: mapping.updatedAt,
+            };
+
+            // Agora, busca o status atual na collection 'locations'
+            const liveLocation = await db.collection('locations').findOne({ externalCode: mapping.externalCode });
+            if (liveLocation) {
+              locationFromMapping.status = liveLocation.status;
+              locationFromMapping.currentCleaning = liveLocation.currentCleaning;
+            }
+
+            return convertToPlainObject(locationFromMapping);
+        }
+        console.log('... Nenhum mapeamento encontrado.');
+
+
         const areasCollection = db.collection('areas');
         const locationsCollection = db.collection('locations');
 
-        // 1. Tenta encontrar em 'areas'
-        console.log('1. Buscando na coleção "areas"...');
+        // 2. Tenta encontrar em 'areas'
+        console.log('2. Buscando na coleção "areas"...');
         const area = await areasCollection.findOne({ locationId: code, isActive: true });
 
         if (area) {
@@ -154,8 +183,8 @@ export async function getLocationByCode(code: string) {
         }
         console.log('... Nenhuma área ativa encontrada com esse código.');
 
-        // 2. Se não encontrou, tenta em 'locations'
-        console.log('2. Buscando na coleção "locations"...');
+        // 3. Se não encontrou, tenta em 'locations'
+        console.log('3. Buscando na coleção "locations"...');
         const location = await locationsCollection.findOne({ externalCode: code });
 
         if (location) {
@@ -168,7 +197,7 @@ export async function getLocationByCode(code: string) {
         }
         console.log('... Nenhum leito encontrado com esse código.');
 
-        // 3. Se não encontrou em nenhum lugar
+        // 4. Se não encontrou em nenhum lugar
         console.log('❌ Código não encontrado em nenhuma coleção.');
         return null;
 
@@ -359,6 +388,100 @@ export async function finishCleaning(locationId: string) {
   revalidatePath('/dashboard');
   return { success: true, message: 'Higienização finalizada com sucesso!' };
 }
+
+// --- Location Mapping Actions ---
+export async function getLocationMappings() {
+    const db = await dbConnect();
+    const mappings = await db.collection('location_mappings').find().sort({ setor: 1, internalName: 1 }).toArray();
+    return convertToPlainObject(mappings);
+}
+
+function generateCodes(data: { internalName: string, internalNumber: string }) {
+    const locationId = `${data.internalName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${data.internalNumber.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+    
+    const namePart = data.internalName.substring(0, 2).toUpperCase();
+    const numberPart = data.internalNumber.toUpperCase();
+    const shortCode = `${namePart}${numberPart}`;
+
+    return {
+        locationId,
+        qrCodeUrl: `/clean/${locationId}`,
+        shortCode,
+    };
+}
+
+
+export async function createLocationMapping(formData: FormData) {
+    const rawData = Object.fromEntries(formData.entries());
+    const validatedFields = CreateLocationMappingSchema.safeParse(rawData);
+
+    if (!validatedFields.success) {
+        return {
+            error: "Dados inválidos.",
+            fieldErrors: validatedFields.error.flatten().fieldErrors,
+        };
+    }
+
+    const { externalCode, internalName, internalNumber } = validatedFields.data;
+
+    const db = await dbConnect();
+    const existing = await db.collection('location_mappings').findOne({ externalCode });
+    if (existing) {
+        return {
+            error: "Código externo já mapeado.",
+            fieldErrors: { externalCode: ["Este código externo já está em uso."] },
+        };
+    }
+    
+    const codes = generateCodes({ internalName, internalNumber });
+
+    const newMapping = {
+        ...validatedFields.data,
+        ...codes,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+    };
+
+    await db.collection('location_mappings').insertOne(newMapping);
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Mapeamento criado com sucesso!' };
+}
+
+export async function updateLocationMapping(id: string, formData: FormData) {
+    const rawData = Object.fromEntries(formData.entries());
+    const validatedFields = UpdateLocationMappingSchema.safeParse(rawData);
+    
+    if (!validatedFields.success) {
+        return {
+            error: "Dados inválidos.",
+            fieldErrors: validatedFields.error.flatten().fieldErrors,
+        };
+    }
+
+    const { internalName, internalNumber } = validatedFields.data;
+    const codes = generateCodes({ internalName, internalNumber });
+
+    const dataToUpdate = {
+        ...validatedFields.data,
+        ...codes,
+        updatedAt: new Date(),
+    };
+
+    const db = await dbConnect();
+    await db.collection('location_mappings').updateOne({ _id: new ObjectId(id) }, { $set: dataToUpdate });
+
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Mapeamento atualizado com sucesso!' };
+}
+
+export async function toggleLocationMappingActive(id: string, isActive: boolean) {
+    const db = await dbConnect();
+    await db.collection('location_mappings').updateOne({ _id: new ObjectId(id) }, { $set: { isActive, updatedAt: new Date() } });
+    revalidatePath('/dashboard');
+    return { success: true, message: `Mapeamento ${isActive ? 'ativado' : 'desativado'} com sucesso!` };
+}
+
 
 // --- ASG Actions ---
 
@@ -943,7 +1066,7 @@ export async function runManualSync() {
 
     syncLogger.info(`Transformando ${externalData.length} registros`, { syncId });
     const transformer = new DataTransformer(config);
-    const transformationResult = transformer.transform(externalData);
+    const transformationResult = await transformer.transform(externalData);
     
     syncLogger.info('Resultado da transformação', { syncId, stats: transformationResult.stats });
     if (transformationResult.errors.length > 0) {
@@ -958,14 +1081,15 @@ export async function runManualSync() {
     for (const leito of transformationResult.data) {
       try {
         const existingLeito = await locationsCollection.findOne({
-          $or: [
-            { name: leito.name, number: leito.number },
-            { externalCode: leito.externalCode }
-          ],
-          status: { $ne: 'in_cleaning' }
+          externalCode: leito.externalCode,
         });
 
         if (existingLeito) {
+           if (existingLeito.status === 'in_cleaning') {
+             skippedCount++;
+             continue;
+           }
+
           const hasChanges = 
             existingLeito.status !== leito.status ||
             existingLeito.name !== leito.name ||
@@ -974,7 +1098,13 @@ export async function runManualSync() {
           if (hasChanges) {
             await locationsCollection.updateOne(
               { _id: existingLeito._id },
-              { $set: { status: leito.status, updatedAt: new Date() } }
+              { $set: { 
+                  status: leito.status, 
+                  name: leito.name, 
+                  number: leito.number, 
+                  updatedAt: new Date() 
+                } 
+              }
             );
             updatedCount++;
           } else {
@@ -982,7 +1112,11 @@ export async function runManualSync() {
           }
         } else {
           await locationsCollection.insertOne({
-            ...leito,
+            name: leito.name,
+            number: leito.number,
+            status: leito.status,
+            externalCode: leito.externalCode,
+            locationType: 'leito',
             currentCleaning: null,
             createdAt: new Date(),
             updatedAt: new Date()
@@ -1124,7 +1258,7 @@ export async function getSyncStatus() {
 export async function testTransformation() {
   try {
     const config = await getIntegrationConfig();
-    const result = generateSampleTransformation(config);
+    const result = await generateSampleTransformation(config);
     
     return {
       success: true,

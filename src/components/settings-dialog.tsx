@@ -9,9 +9,10 @@ import { CleaningTimesDialog } from "./cleaning-times-dialog";
 import { ReportsDialog } from "./reports-dialog";
 import { IntegrationsDialog } from "./integrations-dialog";
 import { UserManagementDialog } from "./user-management-dialog";
-import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText, QrCode } from "lucide-react";
+import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText, QrCode, Map } from "lucide-react";
 import { LogsDialog } from "./logs-dialog";
 import { AreaManagementDialog } from "./area-management-dialog";
+import { MappingManagementDialog } from "./mapping-management-dialog";
 
 interface SettingsDialogProps {
   allAsgs: Asg[];
@@ -37,6 +38,12 @@ export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, clean
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 gap-2 pt-4">
+          <MappingManagementDialog>
+             <Button variant="outline" className="w-full justify-start">
+               <Map className="mr-2 h-4 w-4" />
+               Mapeamento de Locais
+             </Button>
+          </MappingManagementDialog>
           <UserManagementDialog allUsers={allUsers}>
             <Button variant="outline" className="w-full justify-start">
               <Users className="mr-2 h-4 w-4" />
