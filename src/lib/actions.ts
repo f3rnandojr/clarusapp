@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest } from './schemas';
 import type { CleaningType, UserProfile } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -1327,3 +1327,63 @@ export async function testTransformation() {
     };
   }
 }
+
+
+// --- Scheduled Requests ---
+
+export async function getPendingRequests(): Promise<ScheduledRequest[]> {
+    const db = await dbConnect();
+    const requests = await db.collection('scheduled_requests')
+        .find({ status: 'agendada' })
+        .sort({ requestedAt: 1 })
+        .toArray();
+    return convertToPlainObject(requests);
+}
+
+export async function acceptRequest(requestId: string) {
+    const session = await getSession();
+    if (!session?.user) {
+        return { success: false, error: "Usuário não autenticado." };
+    }
+    const { user } = session;
+
+    const db = await dbConnect();
+    const request = await db.collection('scheduled_requests').findOne({ 
+        _id: new ObjectId(requestId),
+        status: 'agendada' 
+    });
+
+    if (!request) {
+        return { success: false, error: 'Solicitação não encontrada ou já atendida.' };
+    }
+
+    const timeToAssign = Math.round((new Date().getTime() - new Date(request.requestedAt).getTime()) / 60000); // em minutos
+
+    await db.collection('scheduled_requests').updateOne(
+        { _id: new ObjectId(requestId) },
+        {
+            $set: {
+                status: 'em_andamento',
+                assignedTo: { userId: user._id, userName: user.name },
+                assignedAt: new Date(),
+                startedAt: new Date(), // A limpeza começa imediatamente ao aceitar
+                timeToAssign: timeToAssign,
+                updatedAt: new Date()
+            }
+        }
+    );
+    
+    // Atualiza o status do local principal
+    const location = await getLocationById(request.locationId);
+    if(location) {
+       await executeDirectCleaning(location, request.cleaningType, user);
+    } else {
+        console.error(`Falha ao aceitar: Local com ID ${request.locationId} não encontrado para atualizar status.`);
+    }
+
+
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Solicitação aceita! Higienização iniciada.' };
+}
+
+    

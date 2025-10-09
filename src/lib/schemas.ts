@@ -150,7 +150,7 @@ export const ScheduledRequestSchema = z.object({
   requestedAt: z.union([z.string(), z.date()]),
   assignedAt: z.union([z.string(), z.date()]).nullable(),
   startedAt: z.union([z.string(), z.date()]).nullable(),
-  completedAt: z.union([z.string(), z_date()]).nullable(),
+  completedAt: z.union([z.string(), z.date()]).nullable(),
   assignedTo: z.object({
     userId: z.string().nullable(),
     userName: z.string().nullable(),
@@ -293,3 +293,5 @@ export const IntegrationConfigSchema = z.object({
 });
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
+
+    

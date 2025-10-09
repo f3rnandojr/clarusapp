@@ -1,7 +1,7 @@
 
 "use server";
 
-import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas } from "@/lib/actions";
+import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getPendingRequests } from "@/lib/actions";
 import { getSession } from "@/lib/session";
 import { AdminDashboard } from "@/components/admin-dashboard";
 import { UserDashboard } from "@/components/user-dashboard";
@@ -25,6 +25,7 @@ export default async function DashboardPage() {
     cleaningSettings,
     occurrences,
     areas,
+    pendingRequests,
   ] = await Promise.all([
     getLocations(),
     getAsgs(),
@@ -33,6 +34,7 @@ export default async function DashboardPage() {
     getCleaningSettings(),
     getCleaningOccurrences(),
     getAreas(),
+    getPendingRequests(), // Busca as novas solicitações
   ]);
   
   const dashboardData = {
@@ -46,9 +48,11 @@ export default async function DashboardPage() {
   };
 
   if (user.perfil === 'usuario') {
-    return <UserDashboard locations={locations} user={user} />;
+    return <UserDashboard locations={locations} user={user} pendingRequests={pendingRequests} />;
   }
   
   // Admin e Gestor veem o dashboard completo
   return <AdminDashboard initialData={dashboardData} user={user} />;
 }
+
+    
