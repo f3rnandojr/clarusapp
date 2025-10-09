@@ -1,6 +1,7 @@
+
 "use client";
 
-import type { Location, CleaningSettings } from "@/lib/schemas";
+import type { Location, CleaningSettings, LocationStatus } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2 } from "lucide-react";
@@ -10,6 +11,7 @@ import { StartCleaningDialog } from "./start-cleaning-dialog";
 import { FinishCleaningDialog } from "./finish-cleaning-dialog";
 import { ProgressBar } from "./progress-bar";
 import { QrCodeDialog } from "./qr-code-dialog";
+import { cn } from "@/lib/utils";
 
 interface LocationCardProps {
   location: Location;
@@ -18,6 +20,12 @@ interface LocationCardProps {
   onFinalizeClick?: (locationId: string) => void;
   isFinalizing?: boolean;
 }
+
+const statusIndicatorClasses: Record<LocationStatus, string> = {
+  available: "bg-green-500",
+  in_cleaning: "bg-yellow-500",
+  occupied: "bg-orange-500",
+};
 
 export default function LocationCard({ location, cleaningSettings, onStartClick, onFinalizeClick, isFinalizing }: LocationCardProps) {
   const renderCardContent = () => {
@@ -117,6 +125,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
       <CardHeader className="p-2.5 pb-1">
         <CardTitle className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
+            <div className={cn("w-3 h-3 rounded-full", statusIndicatorClasses[location.status])}></div>
             <Icon className="h-4 w-4 text-muted-foreground" />
             <span className="font-semibold">{location.name} - {location.number}</span>
           </div>
