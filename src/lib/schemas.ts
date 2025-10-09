@@ -164,7 +164,7 @@ export const CleaningRecordSchema = z.object({
     actualDuration: z.number(),
     status: z.enum(['in_progress', 'completed']),
     delayed: z.boolean(),
-    date: z.union([zstring(), z.date()]),
+    date: z.union([z.string(), z.date()]),
 });
 export type CleaningRecord = z.infer<typeof CleaningRecordSchema>;
 
@@ -176,11 +176,15 @@ export const ReportFiltersSchema = z.object({
 
 export type ReportFilters = z.infer<typeof ReportFiltersSchema>;
 
+const UserProfileEnum = z.enum(['admin', 'gestor', 'usuario']);
+export type UserProfile = z.infer<typeof UserProfileEnum>;
+
 export const UserSchema = z.object({
   _id: z.union([z.string(), z.any()]),
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres."),
   login: z.string().min(3, "Login deve ter pelo menos 3 caracteres."),
   password: z.string().min(4, "Senha deve ter pelo menos 4 caracteres."),
+  perfil: UserProfileEnum.default('usuario'),
   active: z.boolean(),
   createdAt: z.union([z.string(), z.date()]),
 });
@@ -190,12 +194,14 @@ export const CreateUserSchema = UserSchema.pick({
     name: true,
     login: true,
     password: true,
+    perfil: true,
 });
 
 export const UpdateUserSchema = UserSchema.pick({
     name: true,
     login: true,
     active: true,
+    perfil: true,
 }).extend({
     password: z.string().optional(),
 });
@@ -249,5 +255,3 @@ export const IntegrationConfigSchema = z.object({
 });
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
-
-    

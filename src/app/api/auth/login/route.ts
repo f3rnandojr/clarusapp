@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { encrypt, SESSION_COOKIE_NAME } from '@/lib/session';
@@ -20,7 +21,8 @@ export async function POST(request: Request) {
         user: { 
             _id: user._id.toString(), 
             name: user.name, 
-            login: user.login 
+            login: user.login,
+            perfil: user.perfil || 'usuario'
         }, 
         expires 
       };

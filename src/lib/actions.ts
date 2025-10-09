@@ -53,7 +53,7 @@ export async function login(prevState: any, formData: FormData) {
   }
 
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
-  const session = await encrypt({ user: { _id: user._id.toString(), name: user.name, login: user.login }, expires });
+  const session = await encrypt({ user: { _id: user._id.toString(), name: user.name, login: user.login, perfil: user.perfil || 'usuario' }, expires });
 
   cookies().set(SESSION_COOKIE_NAME, session, { expires, httpOnly: true });
 
@@ -862,6 +862,7 @@ export async function updateUser(id: string, prevState: any, formData: FormData)
         name: formData.get('name'),
         login: formData.get('login'),
         active: formData.get('active') === 'on',
+        perfil: formData.get('perfil'),
         password: password || undefined,
     });
 
@@ -1291,5 +1292,3 @@ export async function testTransformation() {
     };
   }
 }
-
-    

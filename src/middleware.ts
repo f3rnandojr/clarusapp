@@ -1,3 +1,4 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSession } from './lib/session';
 
@@ -8,35 +9,37 @@ export async function middleware(request: NextRequest) {
   const session = await getSession();
   const path = request.nextUrl.pathname;
   
-  const isProtectedRoute = protectedRoutes.some((prefix) => path.startsWith(prefix));
-  
-  // Novo: Lógica para QR Code no início do middleware
+  // Rota especial para iniciar o scanner no dispositivo
+  if (path === '/clean') {
+    // Para um dispositivo móvel, idealmente isso abriria uma câmera.
+    // Como não podemos forçar isso, simplesmente redirecionamos para
+    // uma URL que o middleware pode interceptar.
+    // Neste caso, vamos apenas permitir a passagem para ser tratada no cliente
+    // ou redirecionar para o dashboard. Por simplicidade, redirecionamos.
+    return NextResponse.redirect(new URL('/dashboard?scan=true', request.url));
+  }
+
   const cleanPathMatch = path.match(/^\/clean\/(.+)$/);
   if (cleanPathMatch) {
     const locationCode = cleanPathMatch[1];
     
-    if (session) {
-      // Usuário está logado, redireciona para o dashboard com o parâmetro
-      console.log(`[Middleware] Usuário logado escaneou QR para ${locationCode}. Redirecionando para dashboard.`);
-      const dashboardUrl = new URL('/dashboard', request.url);
-      dashboardUrl.searchParams.set('startCleaning', locationCode);
-      return NextResponse.redirect(dashboardUrl);
-    } else {
-      // Usuário não está logado, redireciona para o login
-      console.log(`[Middleware] Usuário não logado escaneou QR para ${locationCode}. Redirecionando para login.`);
-      const loginUrl = new URL('/login', request.url);
-      // O fluxo de login levará ao dashboard, que lidará com o parâmetro se ele for passado.
-      // O ideal é o dashboard sempre checar os parâmetros.
-      return NextResponse.redirect(loginUrl);
-    }
+    // Independente de estar logado ou não, o destino é o dashboard com o parâmetro.
+    // O dashboard em si é uma rota protegida, então se não estiver logado,
+    // o próximo passo do middleware cuidará do redirecionamento para o login.
+    const dashboardUrl = new URL('/dashboard', request.url);
+    dashboardUrl.searchParams.set('startCleaning', locationCode);
+    return NextResponse.redirect(dashboardUrl);
   }
 
-  // Lógica para outras rotas protegidas
+  const isProtectedRoute = protectedRoutes.some((prefix) => path.startsWith(prefix));
+  
+  // Se tentando acessar rota protegida sem sessão, redireciona para login
   if (!session && isProtectedRoute) {
     console.log(`[Middleware] Acesso não autorizado à rota protegida ${path}. Redirecionando para login.`);
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
+  // Se logado e tentando acessar /login, redireciona para o dashboard
   if (session && path.startsWith('/login')) {
     console.log('[Middleware] Usuário logado tentando acessar /login. Redirecionando para /dashboard.');
     return NextResponse.redirect(new URL('/dashboard', request.url));

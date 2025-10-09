@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Location, CleaningSettings, LocationStatus } from "@/lib/schemas";
+import type { Location, CleaningSettings, LocationStatus, UserProfile } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2 } from "lucide-react";
@@ -19,6 +19,7 @@ interface LocationCardProps {
   onStartClick?: (location: Location) => void;
   onFinalizeClick?: (locationId: string) => void;
   isFinalizing?: boolean;
+  userProfile?: UserProfile;
 }
 
 const statusIndicatorClasses: Record<LocationStatus, string> = {
@@ -27,7 +28,10 @@ const statusIndicatorClasses: Record<LocationStatus, string> = {
   occupied: "bg-orange-500",
 };
 
-export default function LocationCard({ location, cleaningSettings, onStartClick, onFinalizeClick, isFinalizing }: LocationCardProps) {
+export default function LocationCard({ location, cleaningSettings, onStartClick, onFinalizeClick, isFinalizing, userProfile = 'admin' }: LocationCardProps) {
+  
+  const showActions = userProfile === 'admin' || userProfile === 'gestor';
+
   const renderCardContent = () => {
     switch (location.status) {
       case "in_cleaning":
@@ -73,9 +77,12 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
   }
 
   const renderCardFooter = () => {
+    if (!showActions) {
+      return null;
+    }
+    
     switch (location.status) {
       case "available":
-        // Este é um card de local disponível, precisa do Dialog wrapper
         if (onStartClick) {
             return <Button size="sm" className="w-full" onClick={handleStartClick}>Iniciar Higienização</Button>;
         }
@@ -85,7 +92,6 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
           </StartCleaningDialog>
         );
       case "in_cleaning":
-        // Card de local em limpeza, usa a função passada por prop
         if (onFinalizeClick) {
           return (
              <Button size="sm" variant="destructive" className="w-full" onClick={() => onFinalizeClick(location._id.toString())} disabled={isFinalizing}>
@@ -94,7 +100,6 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
              </Button>
           )
         }
-        // Fallback se a prop não for passada (embora devesse ser)
         return (
           <FinishCleaningDialog location={location}>
             <Button size="sm" variant="destructive" className="w-full">Finalizar</Button>
@@ -109,7 +114,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
             );
         }
         return (
-          <StartCleaningDialog location={location} isOccupied>
+          <StartCleaningDialog location={location}>
             <Button size="sm" variant="outline" className="w-full">Limpeza Concorrente</Button>
           </StartCleaningDialog>
         );
@@ -148,7 +153,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-2.5 pt-1 pb-1.5 flex-grow">
+      <CardContent className={cn("p-2.5 pt-1 flex-grow", showActions ? "pb-1.5" : "pb-2.5")}>
         {renderCardContent()}
       </CardContent>
        <CardFooter className="p-2.5 pt-0">

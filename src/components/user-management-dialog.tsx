@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -17,6 +18,12 @@ interface UserManagementDialogProps {
   allUsers: User[];
   children: React.ReactNode;
 }
+
+const profileLabels: Record<string, string> = {
+    admin: 'Administrador',
+    gestor: 'Gestor',
+    usuario: 'Usuário',
+};
 
 export function UserManagementDialog({ allUsers: initialUsers, children }: UserManagementDialogProps) {
   const [open, setOpen] = useState(false);
@@ -80,7 +87,7 @@ export function UserManagementDialog({ allUsers: initialUsers, children }: UserM
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Gerenciamento de Usuários</DialogTitle>
         </DialogHeader>
@@ -98,6 +105,7 @@ export function UserManagementDialog({ allUsers: initialUsers, children }: UserM
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Login</TableHead>
+                    <TableHead>Perfil</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -107,6 +115,9 @@ export function UserManagementDialog({ allUsers: initialUsers, children }: UserM
                     <TableRow key={user._id.toString()}>
                       <TableCell className="font-medium">{user.name}</TableCell>
                       <TableCell>{user.login}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{profileLabels[user.perfil] || 'Usuário'}</Badge>
+                      </TableCell>
                       <TableCell>
                          <Badge variant={user.active ? 'default' : 'outline'}>
                           {user.active ? 'Ativo' : 'Inativo'}
