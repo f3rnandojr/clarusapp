@@ -645,12 +645,22 @@ export async function generateReport(prevState: any, formData: FormData) {
     }).toArray() as CleaningRecord[];
 
     const total = cleaningRecords.length;
-    const concurrent = cleaningRecords.filter(r => r.cleaningType === 'concurrent').length;
-    const terminal = cleaningRecords.filter(r => r.cleaningType === 'terminal').length;
+    const concurrentRecords = cleaningRecords.filter(r => r.cleaningType === 'concurrent');
+    const terminalRecords = cleaningRecords.filter(r => r.cleaningType === 'terminal');
+    
+    const concurrent = concurrentRecords.length;
+    const terminal = terminalRecords.length;
+
+    const totalConcurrentDuration = concurrentRecords.reduce((sum, r) => sum + r.actualDuration, 0);
+    const totalTerminalDuration = terminalRecords.reduce((sum, r) => sum + r.actualDuration, 0);
+
+    const avgConcurrentTime = concurrent > 0 ? Math.round(totalConcurrentDuration / concurrent) : 0;
+    const avgTerminalTime = terminal > 0 ? Math.round(totalTerminalDuration / terminal) : 0;
+
     const delayed = cleaningRecords.filter(r => r.delayed).length;
     const onTime = total - delayed;
-    const delayedConcurrent = cleaningRecords.filter(r => r.delayed && r.cleaningType === 'concurrent').length;
-    const delayedTerminal = cleaningRecords.filter(r => r.delayed && r.cleaningType === 'terminal').length;
+    const delayedConcurrent = concurrentRecords.filter(r => r.delayed).length;
+    const delayedTerminal = terminalRecords.filter(r => r.delayed).length;
 
 
     return {
@@ -659,6 +669,8 @@ export async function generateReport(prevState: any, formData: FormData) {
             total,
             concurrent,
             terminal,
+            avgConcurrentTime,
+            avgTerminalTime,
             onTime,
             onTimePercent: total > 0 ? (onTime / total) * 100 : 0,
             delayed,

@@ -125,8 +125,8 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                         </div>
                         <div className="rounded-lg border p-4 space-y-2">
                             <h4 className="font-semibold">Detalhamento por Tipo</h4>
-                            <p>Limpeza Concorrente: <span className="font-bold">{state.report.concurrent}</span></p>
-                            <p>Limpeza Terminal: <span className="font-bold">{state.report.terminal}</span></p>
+                            <p>Limpeza Concorrente: <span className="font-bold">{state.report.concurrent}</span> (Média: <span className="font-bold">{state.report.avgConcurrentTime} min</span>)</p>
+                            <p>Limpeza Terminal: <span className="font-bold">{state.report.terminal}</span> (Média: <span className="font-bold">{state.report.avgTerminalTime} min</span>)</p>
                         </div>
                         <div className="rounded-lg border p-4 space-y-2 bg-card">
                             <h4 className="font-semibold">Desempenho</h4>
