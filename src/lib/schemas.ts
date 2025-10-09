@@ -129,6 +129,44 @@ export const StartCleaningFormSchema = z.object({
   type: CleaningTypeEnum,
 });
 
+// --- Scheduled Requests (New) ---
+export const ScheduledRequestStatusEnum = z.enum(["agendada", "em_andamento", "concluida", "cancelada"]);
+export type ScheduledRequestStatus = z.infer<typeof ScheduledRequestStatusEnum>;
+
+export const PriorityEnum = z.enum(["baixa", "normal", "alta", "urgente"]);
+export type Priority = z.infer<typeof PriorityEnum>;
+
+export const ScheduledRequestSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  locationId: z.string(),
+  locationName: z.string(),
+  locationType: z.string(),
+  cleaningType: CleaningTypeEnum,
+  requestedBy: z.object({
+    userId: z.string(),
+    userName: z.string(),
+    userProfile: z.string(),
+  }),
+  requestedAt: z.union([z.string(), z.date()]),
+  assignedAt: z.union([z.string(), z.date()]).nullable(),
+  startedAt: z.union([z.string(), z.date()]).nullable(),
+  completedAt: z.union([z.string(), z_date()]).nullable(),
+  assignedTo: z.object({
+    userId: z.string().nullable(),
+    userName: z.string().nullable(),
+  }),
+  expectedDuration: z.number(),
+  status: ScheduledRequestStatusEnum,
+  priority: PriorityEnum.default("normal"),
+  timeToAssign: z.number().nullable(),
+  timeToComplete: z.number().nullable(),
+  assignedDuration: z.number().nullable(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
+});
+export type ScheduledRequest = z.infer<typeof ScheduledRequestSchema>;
+
+
 export const CleaningSettingsSchema = z.object({
   concurrent: z.number().min(1, 'Deve ser maior que 0'),
   terminal: z.number().min(1, 'Deve ser maior que 0'),

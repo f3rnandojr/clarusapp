@@ -81,14 +81,16 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
       return null;
     }
     
+    const buttonText = "Solicitar Higienização";
+
     switch (location.status) {
       case "available":
         if (onStartClick) {
-            return <Button size="sm" className="w-full" onClick={handleStartClick}>Iniciar Higienização</Button>;
+            return <Button size="sm" className="w-full" onClick={handleStartClick}>{buttonText}</Button>;
         }
         return (
           <StartCleaningDialog location={location}>
-            <Button size="sm" className="w-full">Iniciar Higienização</Button>
+            <Button size="sm" className="w-full">{buttonText}</Button>
           </StartCleaningDialog>
         );
       case "in_cleaning":

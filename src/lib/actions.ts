@@ -4,7 +4,7 @@
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
 import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema } from './schemas';
-import type { CleaningType } from './schemas';
+import type { CleaningType, UserProfile } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -244,102 +244,118 @@ export async function startCleaning(prevState: any, formData: FormData) {
     return { success: false, error: "Usuário não autenticado. Por favor, faça login novamente." };
   }
 
+  const { user } = session;
+  const userProfile = user.perfil as UserProfile;
+
   const locationId = formData.get('locationId') as string;
   const type = formData.get('type') as CleaningType;
 
-  console.log('=== DEBUG START CLEANING ===');
-  console.log('locationId recebido:', locationId);
-  console.log('Tipo de Higienização:', type);
+  console.log('=== DEBUG START CLEANING / SCHEDULE ===');
+  console.log('LocationId:', locationId, 'Type:', type, 'User Profile:', userProfile);
 
-  // Validações básicas de entrada
-  if (!locationId) {
-    return { success: false, error: 'ID do local não fornecido.' };
+  if (!locationId || !type) {
+    return { success: false, error: 'Dados da solicitação inválidos.' };
   }
-  if (!type || (type !== 'concurrent' && type !== 'terminal')) {
-    return { success: false, error: 'Tipo de higienização inválido.' };
+  
+  const db = await dbConnect();
+  const location = await getLocationById(locationId);
+
+  if (!location) {
+    return { success: false, error: 'Local não encontrado.' };
   }
 
-  try {
-    const db = await dbConnect();
-    const locationsCollection = db.collection('locations');
-    const areasCollection = db.collection('areas');
-
-    let location: any = null;
-    let collectionToUpdate: any = null;
-
-    // 1. Tenta buscar por ObjectId válido nas coleções
-    if (ObjectId.isValid(locationId)) {
-        console.log('🔍 Tentando buscar por ObjectId...');
-        const objectId = new ObjectId(locationId);
+  // Perfis 'admin' e 'gestor' criam uma solicitação agendada
+  if (userProfile === 'admin' || userProfile === 'gestor') {
+    try {
+        const cleaningSettings = await getCleaningSettings();
+        const expectedDuration = cleaningSettings[type];
         
-        location = await locationsCollection.findOne({ _id: objectId });
-        if (location) {
-            collectionToUpdate = locationsCollection;
-        } else {
-            location = await areasCollection.findOne({ _id: objectId });
-            if (location) {
-                collectionToUpdate = areasCollection;
-            }
-        }
-        console.log('📦 Resultado da busca por ObjectId:', location ? 'ENCONTRADO' : 'NÃO ENCONTRADO');
+        const newRequest = {
+            locationId: location._id.toString(),
+            locationName: `${location.name} - ${location.number}`,
+            locationType: location.setor,
+            cleaningType: type,
+            requestedBy: {
+                userId: user._id,
+                userName: user.name,
+                userProfile: user.perfil,
+            },
+            requestedAt: new Date(),
+            assignedAt: null,
+            startedAt: null,
+            completedAt: null,
+            assignedTo: {
+                userId: null,
+                userName: null,
+            },
+            expectedDuration,
+            status: 'agendada',
+            priority: 'normal',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        };
+
+        await db.collection('scheduled_requests').insertOne(newRequest);
+        revalidatePath('/dashboard');
+        return { success: true, message: `Solicitação de higienização ${type} enviada com sucesso!` };
+
+    } catch (error) {
+        console.error('❌ Erro ao criar solicitação de higienização:', error);
+        return { success: false, error: 'Erro interno ao criar solicitação.' };
     }
+  }
 
-    // 2. Se não encontrou, tenta buscar por campos de código (string)
-    if (!location) {
-        console.log('🔍 Tentando buscar por códigos de string...');
-        location = await locationsCollection.findOne({ externalCode: locationId });
-        if (location) {
-            collectionToUpdate = locationsCollection;
-        } else {
-            location = await areasCollection.findOne({ locationId: locationId });
-            if (location) {
-                collectionToUpdate = areasCollection;
-            }
-        }
-        console.log('📦 Resultado da busca por string:', location ? 'ENCONTRADO' : 'NÃO ENCONTRADO');
-    }
+  // Fluxo antigo mantido para outros perfis (ou como fallback)
+  return executeDirectCleaning(location, type, user);
+}
 
-    if (!location) {
-      console.log(`❌ Local não encontrado com ID/código: ${locationId}`);
-      return { success: false, error: 'Local não encontrado no banco de dados.' };
-    }
+// Função auxiliar para obter local por ID
+async function getLocationById(locationId: string) {
+  const db = await dbConnect();
+  let location: any = null;
+  if (ObjectId.isValid(locationId)) {
+    const objectId = new ObjectId(locationId);
+    location = await db.collection('locations').findOne({ _id: objectId }) || await db.collection('areas').findOne({ _id: objectId });
+  }
+  if (!location) {
+     location = await db.collection('locations').findOne({ externalCode: locationId }) || await db.collection('areas').findOne({ locationId: locationId });
+  }
+  return location;
+}
 
-    console.log('✅ Local encontrado:', location);
 
+// Função para execução direta da limpeza (mantida para usuários ou fallback)
+async function executeDirectCleaning(location: any, type: CleaningType, user: any) {
+    const db = await dbConnect();
+    const collectionName = location.locationType === 'leito' ? 'locations' : 'areas';
+    const collection = db.collection(collectionName);
+    
     if (location.status === 'in_cleaning') {
       return { success: false, error: 'Este local já está em higienização.' };
     }
-
-    const updateResult = await collectionToUpdate.updateOne({ _id: location._id }, {
+    
+    const updateResult = await collection.updateOne({ _id: location._id }, {
       $set: {
           status: 'in_cleaning',
           currentCleaning: {
               type,
-              userId: new ObjectId(session.user._id),
-              userName: session.user.name,
+              userId: new ObjectId(user._id),
+              userName: user.name,
               startTime: new Date(),
           },
           updatedAt: new Date()
       }
     });
 
-    console.log('🔄 Resultado da atualização:', updateResult);
     if(updateResult.matchedCount === 0) {
-        return { success: false, error: 'Falha ao atualizar o status do local. Nenhum documento correspondente encontrado.' };
+        return { success: false, error: 'Falha ao atualizar o status do local.' };
     }
-
 
     revalidatePath('/dashboard');
     return { success: true, message: `Higienização ${type} iniciada com sucesso!` };
-
-  } catch (error) {
-    console.error('❌ Erro crítico ao iniciar limpeza:', error);
-    return {
-      success: false,
-      error: 'Erro interno do servidor: ' + (error instanceof Error ? error.message : 'Unknown error')
-    };
-  }
 }
+
+
 
 export async function finishCleaning(locationId: string) {
   const db = await dbConnect();

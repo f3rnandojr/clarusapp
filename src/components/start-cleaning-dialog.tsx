@@ -52,7 +52,7 @@ export function StartCleaningDialog({ location, open, onOpenChange, onCleaningSt
         }
       } else if (response.error) {
          toast({
-            title: "Erro ao Iniciar",
+            title: "Erro ao Solicitar",
             description: response.error,
             variant: "destructive",
         });
@@ -73,7 +73,7 @@ export function StartCleaningDialog({ location, open, onOpenChange, onCleaningSt
   const dialogContent = (
     <DialogContent className="sm:max-w-[425px]">
       <DialogHeader>
-        <DialogTitle>Iniciar Higienização</DialogTitle>
+        <DialogTitle>Solicitar Higienização</DialogTitle>
         <DialogDescription>
           Local: {location.name} - {location.number}
         </DialogDescription>
@@ -105,14 +105,14 @@ export function StartCleaningDialog({ location, open, onOpenChange, onCleaningSt
         )}
 
         <p className="text-sm text-muted-foreground pt-2">
-          Você será registrado como o responsável por esta higienização.
+          Você será registrado como o solicitante desta higienização. A tarefa ficará pendente para a equipe de limpeza.
         </p>
         
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>
           <Button type="submit" disabled={isPending || !cleaningType}>
             {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            Confirmar Início
+            Confirmar Solicitação
           </Button>
         </DialogFooter>
       </form>
