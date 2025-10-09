@@ -1,6 +1,4 @@
 
-'use server';
-
 import { z } from "zod";
 
 // --- AUTH ---
@@ -295,3 +293,5 @@ export const IntegrationConfigSchema = z.object({
 });
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
+
+    
