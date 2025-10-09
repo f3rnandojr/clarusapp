@@ -85,7 +85,9 @@ export function UserDashboard({ locations, user, pendingRequests: initialPending
     }, [filteredLocations]);
 
     const handleScanClick = () => {
-        router.push('/clean');
+        // Esta funcionalidade dependeria de uma biblioteca de scanner QR
+        // Por agora, vamos apenas simular ou redirecionar
+        toast({ title: "Scanner Ativado", description: "Aponte para um QR code para iniciar a limpeza."});
     };
     
     const handleAcceptRequest = async (requestId: string) => {
@@ -233,5 +235,3 @@ export function UserDashboard({ locations, user, pendingRequests: initialPending
         </div>
     );
 }
-
-    

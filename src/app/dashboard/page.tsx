@@ -54,5 +54,3 @@ export default async function DashboardPage() {
   // Admin e Gestor veem o dashboard completo
   return <AdminDashboard initialData={dashboardData} user={user} />;
 }
-
-    

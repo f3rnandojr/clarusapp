@@ -1,4 +1,6 @@
 
+'use server';
+
 import { z } from "zod";
 
 // --- AUTH ---
@@ -280,7 +282,7 @@ export const IntegrationConfigSchema = z.object({
     customTransform: z.boolean().default(false), // Usar transformação customizada
   }),
   
-  lastSync: z.date().optional(),
+  lastSync: z.union([z.string(), z.date()]).optional(),
   lastSyncStats: z.object({
     total: z.number().default(0),
     updated: z.number().default(0),
@@ -293,5 +295,3 @@ export const IntegrationConfigSchema = z.object({
 });
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
-
-    

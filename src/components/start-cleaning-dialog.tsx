@@ -105,7 +105,7 @@ export function StartCleaningDialog({ location, open, onOpenChange, onCleaningSt
         )}
 
         <p className="text-sm text-muted-foreground pt-2">
-          Você será registrado como o solicitante desta higienização. A tarefa ficará pendente para a equipe de limpeza.
+          Uma solicitação de higienização será enviada para a equipe de limpeza.
         </p>
         
         <DialogFooter>

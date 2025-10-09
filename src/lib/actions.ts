@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema } from './schemas';
 import type { CleaningType, UserProfile } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -293,9 +293,18 @@ export async function startCleaning(prevState: any, formData: FormData) {
             priority: 'normal',
             createdAt: new Date(),
             updatedAt: new Date(),
+            timeToAssign: null,
+            timeToComplete: null,
+            assignedDuration: null,
         };
 
-        await db.collection('scheduled_requests').insertOne(newRequest);
+        const validatedRequest = ScheduledRequestSchema.safeParse(newRequest);
+        if(!validatedRequest.success) {
+            console.error("Dados de solicitação inválidos:", validatedRequest.error);
+            return { success: false, error: 'Erro ao validar dados da solicitação.' };
+        }
+
+        await db.collection('scheduled_requests').insertOne(validatedRequest.data);
         revalidatePath('/dashboard');
         return { success: true, message: `Solicitação de higienização ${type} enviada com sucesso!` };
 
@@ -1385,5 +1394,3 @@ export async function acceptRequest(requestId: string) {
     revalidatePath('/dashboard');
     return { success: true, message: 'Solicitação aceita! Higienização iniciada.' };
 }
-
-    
