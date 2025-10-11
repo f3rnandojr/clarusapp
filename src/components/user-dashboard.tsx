@@ -199,23 +199,21 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
 
             <main className="flex-1 flex flex-col p-2 md:p-4 overflow-hidden">
                 
+                 {/* SEÇÃO EM HIGIENIZAÇÃO - ADICIONAR ESTE BLOCO */}
                 {myCleaningJobs.length > 0 && (
-                    <>
-                        <div className="flex-shrink-0 px-2 pb-2">
-                             <CleaningSections
-                                locations={myCleaningJobs}
-                                cleaningSettings={cleaningSettings}
-                                onFinalizeCleaning={handleFinalizeCleaning}
-                                isFinalizing={isFinalizing}
-                                userProfile={user.perfil}
-                                currentUserId={user._id}
-                            />
-                        </div>
-                        <Separator className="my-2" />
-                    </>
+                <div className="mb-6">
+                    <h2 className="font-bold text-lg px-4 mb-3">Em Higienização</h2>
+                    <CleaningSections
+                    locations={myCleaningJobs}
+                    cleaningSettings={cleaningSettings}
+                    onFinalizeCleaning={handleFinalizeCleaning}
+                    isFinalizing={isFinalizing}
+                    userProfile={user.perfil}
+                    currentUserId={user._id}
+                    />
+                </div>
                 )}
-
-
+                
                 <div className="px-4 pb-4 flex-shrink-0">
                     <Button size="lg" className="w-full text-lg" onClick={handleScanClick}>
                         <QrCode className="mr-3 h-6 w-6" />
@@ -308,3 +306,5 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         </div>
     );
 }
+
+    
