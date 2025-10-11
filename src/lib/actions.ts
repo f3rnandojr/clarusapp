@@ -333,6 +333,9 @@ export async function finishCleaning(locationId: string) {
 
   if (!activeCleaning) {
     console.error(`[finishCleaning] Nenhuma higienização ativa encontrada para locationId: ${locationId}`);
+    // DEBUG: Listar todas as active_cleanings para ver o que existe
+    const allActive = await db.collection('active_cleanings').find().toArray();
+    console.log('[finishCleaning] Todas as active_cleanings no banco:', allActive);
     return { error: 'Higienização ativa não encontrada para este local.' };
   }
   
