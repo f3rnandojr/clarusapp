@@ -59,7 +59,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const [searchTerm, setSearchTerm] = useState('');
     const [allLocations, setAllLocations] = useState<Location[]>(initialLocations);
     const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
-    const [myCleaningJobs, setMyCleaningJobs] = useState(initialMyActiveCleanings);
+    const [activeCleanings, setActiveCleanings] = useState<ActiveCleaning[]>(initialMyActiveCleanings);
     const [cleaningSettings, setCleaningSettings] = useState<CleaningSettings | null>(null);
 
     const [isLoading, setIsLoading] = useState(false);
@@ -78,7 +78,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             ]);
             setAllLocations(refreshedLocations);
             setPendingRequests(refreshedRequests);
-            setMyCleaningJobs(refreshedActiveCleanings.filter(ac => ac.userId === user._id));
+            setActiveCleanings(refreshedActiveCleanings);
             setCleaningSettings(settings);
         } catch (error) {
             toast({ title: 'Erro', description: 'Não foi possível atualizar os dados.', variant: 'destructive' });
@@ -94,7 +94,13 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         }
         fetchInitialSettings();
     }, []);
-
+    
+    const myCleaningJobs = useMemo(() => {
+      return allLocations.filter(loc => 
+        loc.status === 'in_cleaning' && 
+        loc.currentCleaning?.userId === user._id
+      );
+    }, [allLocations, user._id]);
 
     const filteredLocations = useMemo(() => {
         if (!searchTerm) {
@@ -139,7 +145,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         });
     };
 
-    const handleFinalizeCleaning = (locationId: string) => {
+    const handleFinalizeCleaning = async (locationId: string) => {
         startFinalizingTransition(async () => {
             const result = await finishCleaning(locationId);
             if (result.success) {
@@ -157,12 +163,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             }
         });
     };
-    
-    const myCleaningLocations = useMemo(() => {
-        const myJobsIds = new Set(myCleaningJobs.map(job => job.locationId));
-        return allLocations.filter(loc => myJobsIds.has(loc._id.toString()));
-    }, [allLocations, myCleaningJobs]);
-
 
     return (
         <div className="flex flex-col h-screen bg-background">
@@ -211,19 +211,23 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                     </Button>
                 </div>
 
-                {cleaningSettings && myCleaningLocations.length > 0 && (
-                    <div className="px-2 mb-4 flex-shrink-0">
-                        <h2 className="font-bold text-lg px-2 mb-2">Minhas Higienizações em Andamento</h2>
-                        <CleaningSections
-                            locations={myCleaningLocations}
-                            cleaningSettings={cleaningSettings}
-                            onFinalizeCleaning={handleFinalizeCleaning}
-                            isFinalizing={isFinalizing}
-                            userProfile={user.perfil}
-                            currentUserId={user._id}
-                        />
-                         <Separator className="my-4" />
+                {myCleaningJobs.length > 0 && cleaningSettings && (
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 px-4 mb-3">
+                      <UserIcon className="h-5 w-5 text-blue-500" />
+                      <h2 className="font-bold text-lg text-blue-700">Minhas Tarefas em Andamento</h2>
+                      <Badge variant="secondary" className="ml-2">{myCleaningJobs.length}</Badge>
                     </div>
+                    <CleaningSections
+                      locations={myCleaningJobs}
+                      cleaningSettings={cleaningSettings}
+                      onFinalizeCleaning={handleFinalizeCleaning}
+                      isFinalizing={isFinalizing}
+                      userProfile={user.perfil}
+                      currentUserId={user._id}
+                    />
+                    <Separator className="my-4" />
+                  </div>
                 )}
 
 
