@@ -8,7 +8,6 @@ import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2 } from "lucide-re
 import { StatusBadge } from "./status-badge";
 import { ElapsedTime } from "./elapsed-time";
 import { StartCleaningDialog } from "./start-cleaning-dialog";
-import { FinishCleaningDialog } from "./finish-cleaning-dialog";
 import { ProgressBar } from "./progress-bar";
 import { QrCodeDialog } from "./qr-code-dialog";
 import { cn } from "@/lib/utils";
@@ -77,18 +76,12 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
 
   const renderCardFooter = () => {
     if (location.status === 'in_cleaning' && onFinalizeClick) {
-      const isCurrentUserCleaning = location.currentCleaning?.userId === currentUserId;
-      
-      // Admin/Gestor sempre podem finalizar. Usuário só pode finalizar a sua própria.
-      if (userProfile === 'admin' || userProfile === 'gestor' || (userProfile === 'usuario' && isCurrentUserCleaning)) {
-        return (
-          <Button size="sm" variant="destructive" className="w-full" onClick={() => onFinalizeClick(location._id.toString())} disabled={isFinalizing}>
-            {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-            Finalizar
-          </Button>
-        );
-      }
-      return null; // O usuário não pode finalizar a limpeza de outro.
+      return (
+        <Button size="sm" variant="destructive" className="w-full" onClick={() => onFinalizeClick(location._id.toString())} disabled={isFinalizing}>
+          {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+          Finalizar
+        </Button>
+      );
     }
     
     // Ações para outros status (disponível, ocupado) só são visíveis para admin/gestor
