@@ -77,10 +77,20 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
   }
 
   const renderCardFooter = () => {
-    if (!showActions) {
-      return null;
+    // Para o perfil 'usuario', a única ação possível no card é finalizar sua própria limpeza
+    if (userProfile === 'usuario') {
+        if (location.status === 'in_cleaning' && onFinalizeClick) {
+             return (
+                 <Button size="sm" variant="destructive" className="w-full" onClick={() => onFinalizeClick(location._id.toString())} disabled={isFinalizing}>
+                    {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                    Finalizar
+                 </Button>
+            );
+        }
+        return null; // Nenhum botão para outros status para 'usuario'
     }
-    
+
+    // Lógica para admin/gestor
     const buttonText = "Solicitar Higienização";
 
     switch (location.status) {
@@ -89,7 +99,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
             return <Button size="sm" className="w-full" onClick={handleStartClick}>{buttonText}</Button>;
         }
         return (
-          <StartCleaningDialog location={location}>
+          <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
             <Button size="sm" className="w-full">{buttonText}</Button>
           </StartCleaningDialog>
         );
@@ -102,6 +112,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
              </Button>
           )
         }
+        // Este fallback pode ser removido se onFinalizeClick for sempre passado
         return (
           <FinishCleaningDialog location={location}>
             <Button size="sm" variant="destructive" className="w-full">Finalizar</Button>
@@ -116,7 +127,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
             );
         }
         return (
-          <StartCleaningDialog location={location}>
+          <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
             <Button size="sm" variant="outline" className="w-full">Limpeza Concorrente</Button>
           </StartCleaningDialog>
         );
@@ -140,9 +151,9 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
              {location.externalCode && (
               <QrCodeDialog
                 item={{
-                  type: location.locationType,
+                  type: location.locationType as 'leito' | 'area',
                   displayName: `${location.name} - ${location.number}`,
-                  code: location.externalCode,
+                  code: location.locationType === 'area' ? location.externalCode : location.number, // Ajuste para usar o código correto
                   shortCode: location.locationType === 'area' ? location.number : location.externalCode,
                 }}
               >
@@ -155,7 +166,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent className={cn("p-2.5 pt-1 flex-grow", showActions ? "pb-1.5" : "pb-2.5")}>
+      <CardContent className="p-2.5 pt-1 flex-grow pb-1.5">
         {renderCardContent()}
       </CardContent>
        <CardFooter className="p-2.5 pt-0">
@@ -164,3 +175,5 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
     </Card>
   );
 }
+
+    

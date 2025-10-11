@@ -1,19 +1,21 @@
 
 "use client";
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Location, LocationStatus, User, ScheduledRequest } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
-import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle } from 'lucide-react';
+import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { logout, acceptRequest } from '@/lib/actions';
+import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { CleaningSections } from './cleaning-sections';
+import { Separator } from './ui/separator';
 
 type SetorGroup = {
   nome: string;
@@ -50,23 +52,41 @@ interface UserDashboardProps {
     pendingRequests: ScheduledRequest[];
 }
 
-export function UserDashboard({ locations, user, pendingRequests: initialPendingRequests }: UserDashboardProps) {
+export function UserDashboard({ locations: initialLocations, user, pendingRequests: initialPendingRequests }: UserDashboardProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
+    const [allLocations, setAllLocations] = useState<Location[]>(initialLocations);
     const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
+    
     const [isAccepting, startAcceptingTransition] = useTransition();
+    const [isFinalizing, startFinalizingTransition] = useTransition();
+
+    const refreshData = async () => {
+        const [refreshedLocations, refreshedRequests] = await Promise.all([
+            getLocations(),
+            getPendingRequests()
+        ]);
+        setAllLocations(refreshedLocations);
+        setPendingRequests(refreshedRequests);
+    };
+
+    const myCleaningJobs = useMemo(() => {
+        return allLocations.filter(loc => 
+            loc.status === 'in_cleaning' && loc.currentCleaning?.userId === user._id
+        );
+    }, [allLocations, user._id]);
 
     const filteredLocations = useMemo(() => {
         if (!searchTerm) {
-            return locations;
+            return allLocations;
         }
-        return locations.filter(loc => 
+        return allLocations.filter(loc => 
             loc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             loc.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
             loc.setor.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [locations, searchTerm]);
+    }, [allLocations, searchTerm]);
 
     const setoresAgrupados: SetorGroup[] = useMemo(() => {
         const grupos: Record<string, Location[]> = filteredLocations.reduce((acc, local) => {
@@ -85,8 +105,6 @@ export function UserDashboard({ locations, user, pendingRequests: initialPending
     }, [filteredLocations]);
 
     const handleScanClick = () => {
-        // Esta funcionalidade dependeria de uma biblioteca de scanner QR
-        // Por agora, vamos apenas simular ou redirecionar
         toast({ title: "Scanner Ativado", description: "Aponte para um QR code para iniciar a limpeza."});
     };
     
@@ -95,17 +113,35 @@ export function UserDashboard({ locations, user, pendingRequests: initialPending
             const result = await acceptRequest(requestId);
             if (result.success) {
                 toast({ title: 'Sucesso!', description: result.message });
-                // Atualiza a lista de pendentes removendo a que foi aceita
-                setPendingRequests(prev => prev.filter(req => req._id.toString() !== requestId));
+                await refreshData();
             } else {
                 toast({ title: 'Erro', description: result.error, variant: 'destructive' });
             }
         });
     };
 
+    const handleFinalizeCleaning = (locationId: string) => {
+        startFinalizingTransition(async () => {
+            const result = await finishCleaning(locationId);
+            if (result.success) {
+                toast({
+                    title: "Sucesso!",
+                    description: result.success,
+                });
+                await refreshData();
+            } else {
+                toast({
+                    title: "Erro",
+                    description: result.error,
+                    variant: "destructive",
+                });
+            }
+        });
+    };
+
     return (
         <div className="flex flex-col h-screen bg-background">
-            <header className="flex items-center justify-between p-4 border-b bg-card shadow-sm shrink-0">
+             <header className="flex items-center justify-between p-4 border-b bg-card shadow-sm shrink-0">
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold text-accent">Basiclean</h1>
                 </div>
@@ -142,6 +178,22 @@ export function UserDashboard({ locations, user, pendingRequests: initialPending
             </header>
 
             <main className="flex-1 flex flex-col p-2 md:p-4 overflow-hidden">
+                
+                {myCleaningJobs.length > 0 && (
+                    <>
+                        <div className="flex-shrink-0 px-2 pb-2">
+                             <CleaningSections
+                                locations={myCleaningJobs}
+                                cleaningSettings={{ concurrent: 30, terminal: 60 }}
+                                onFinalizeCleaning={handleFinalizeCleaning}
+                                isFinalizing={isFinalizing}
+                                userProfile='usuario'
+                            />
+                        </div>
+                        <Separator className="my-2" />
+                    </>
+                )}
+
 
                 <div className="px-4 pb-4 flex-shrink-0">
                     <Button size="lg" className="w-full text-lg" onClick={handleScanClick}>
@@ -235,3 +287,5 @@ export function UserDashboard({ locations, user, pendingRequests: initialPending
         </div>
     );
 }
+
+    

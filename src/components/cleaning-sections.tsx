@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Location, CleaningSettings } from '@/lib/schemas';
+import type { Location, CleaningSettings, UserProfile } from '@/lib/schemas';
 import LocationCard from './location-card';
 import { Sparkles, Bed, Building, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,9 +12,10 @@ interface CleaningSectionsProps {
   cleaningSettings: CleaningSettings;
   onFinalizeCleaning: (locationId: string) => void;
   isFinalizing: boolean;
+  userProfile?: UserProfile;
 }
 
-export function CleaningSections({ locations, cleaningSettings, onFinalizeCleaning, isFinalizing }: CleaningSectionsProps) {
+export function CleaningSections({ locations, cleaningSettings, onFinalizeCleaning, isFinalizing, userProfile = 'admin' }: CleaningSectionsProps) {
   const bedsCleaning = locations.filter(loc => loc.locationType === 'leito');
   const areasCleaning = locations.filter(loc => loc.locationType === 'area');
 
@@ -37,8 +38,9 @@ export function CleaningSections({ locations, cleaningSettings, onFinalizeCleani
               key={location._id.toString()} 
               location={location} 
               cleaningSettings={cleaningSettings}
-              onFinalizeClick={() => onFinalizeCleaning(location._id.toString())}
+              onFinalizeClick={onFinalizeCleaning}
               isFinalizing={isFinalizing}
+              userProfile={userProfile}
           />
         ))}
     </div>
@@ -79,3 +81,5 @@ export function CleaningSections({ locations, cleaningSettings, onFinalizeCleani
     </Tabs>
   );
 }
+
+    
