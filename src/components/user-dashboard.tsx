@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Separator } from './ui/separator';
+import { CleaningSections } from './cleaning-sections';
 
 type SetorGroup = {
   nome: string;
@@ -59,6 +60,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const [allLocations, setAllLocations] = useState<Location[]>(initialLocations);
     const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
     const [myCleaningJobs, setMyCleaningJobs] = useState(initialMyActiveCleanings);
+    const [cleaningSettings, setCleaningSettings] = useState<CleaningSettings | null>(null);
 
     const [isLoading, setIsLoading] = useState(false);
     
@@ -68,20 +70,31 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const refreshData = async () => {
         setIsLoading(true);
         try {
-            const [refreshedLocations, refreshedRequests, refreshedActiveCleanings] = await Promise.all([
+            const [refreshedLocations, refreshedRequests, refreshedActiveCleanings, settings] = await Promise.all([
                 getLocations(),
                 getPendingRequests(),
-                getActiveCleanings()
+                getActiveCleanings(),
+                getCleaningSettings(),
             ]);
             setAllLocations(refreshedLocations);
             setPendingRequests(refreshedRequests);
             setMyCleaningJobs(refreshedActiveCleanings.filter(ac => ac.userId === user._id));
+            setCleaningSettings(settings);
         } catch (error) {
             toast({ title: 'Erro', description: 'Não foi possível atualizar os dados.', variant: 'destructive' });
         } finally {
             setIsLoading(false);
         }
     };
+    
+    useEffect(() => {
+        const fetchInitialSettings = async () => {
+             const settings = await getCleaningSettings();
+             setCleaningSettings(settings);
+        }
+        fetchInitialSettings();
+    }, []);
+
 
     const filteredLocations = useMemo(() => {
         if (!searchTerm) {
@@ -144,6 +157,12 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             }
         });
     };
+    
+    const myCleaningLocations = useMemo(() => {
+        const myJobsIds = new Set(myCleaningJobs.map(job => job.locationId));
+        return allLocations.filter(loc => myJobsIds.has(loc._id.toString()));
+    }, [allLocations, myCleaningJobs]);
+
 
     return (
         <div className="flex flex-col h-screen bg-background">
@@ -192,6 +211,22 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                     </Button>
                 </div>
 
+                {cleaningSettings && myCleaningLocations.length > 0 && (
+                    <div className="px-2 mb-4 flex-shrink-0">
+                        <h2 className="font-bold text-lg px-2 mb-2">Minhas Higienizações em Andamento</h2>
+                        <CleaningSections
+                            locations={myCleaningLocations}
+                            cleaningSettings={cleaningSettings}
+                            onFinalizeCleaning={handleFinalizeCleaning}
+                            isFinalizing={isFinalizing}
+                            userProfile={user.perfil}
+                            currentUserId={user._id}
+                        />
+                         <Separator className="my-4" />
+                    </div>
+                )}
+
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
                     <div className='flex flex-col gap-2'>
                         <h2 className='font-bold text-lg px-4'>Solicitações Pendentes</h2>
@@ -238,37 +273,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                             />
                         </div>
                         <div className="flex-1 overflow-y-auto space-y-3 pb-4 px-2">
-                          {/* MOSTRAR MINHAS HIGIENIZAÇÕES PRIMEIRO */}
-                          {myCleaningJobs.length > 0 && (
-                            <div className="mb-4">
-                              <h3 className="font-semibold text-sm mb-2 text-yellow-600">Minhas Higienizações</h3>
-                              <div className="grid grid-cols-1 gap-2">
-                                {myCleaningJobs.map(local => (
-                                  <div key={local._id.toString()} className="border rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-3">
-                                    <div className="flex justify-between items-center">
-                                      <div>
-                                        <span className="font-medium">{local.locationName}</span>
-                                        { local.startTime &&
-                                            <p className="text-xs text-muted-foreground">
-                                                Em andamento há {formatDistanceToNowStrict(new Date(local.startTime), { locale: ptBR, addSuffix: false })}
-                                            </p>
-                                        }
-                                      </div>
-                                      <Button 
-                                        size="sm" 
-                                        onClick={() => handleFinalizeCleaning(local.locationId)}
-                                        disabled={isFinalizing}
-                                      >
-                                        {isFinalizing ? <Loader2 className="h-4 w-4 animate-spin"/> : "Finalizar"}
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* LISTA NORMAL DE SETORES */}
+                          
                           {setoresAgrupados.map((setor) => (
                               <div key={setor.nome} className="border rounded-lg bg-card shadow-sm">
                                   <div className="flex justify-between items-center p-3 md:p-4 cursor-default">
