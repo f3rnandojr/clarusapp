@@ -401,7 +401,6 @@ export async function finishCleaning(locationId: string) {
   const isDelayed = actualDuration > expectedDuration;
 
   if (isDelayed) {
-    const delayInMinutes = actualDuration - expectedDuration;
     await db.collection('cleaning_occurrences').insertOne({
       locationName: `${location.name} - ${location.number}`,
       cleaningType: type,
@@ -444,7 +443,7 @@ export async function finishCleaning(locationId: string) {
   return { success: true, message: 'Higienização finalizada com sucesso!' };
 }
 
-// --- Location Mapping Actions ---
+// --- Location Mappings Actions ---
 export async function getLocationMappings() {
     const db = await dbConnect();
     const mappings = await db.collection('location_mappings').find().sort({ setor: 1, internalName: 1 }).toArray();

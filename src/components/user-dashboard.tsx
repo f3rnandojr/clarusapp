@@ -3,11 +3,11 @@
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Location, LocationStatus, User, ScheduledRequest } from '@/lib/schemas';
+import type { Location, LocationStatus, User, ScheduledRequest, CleaningSettings } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
 import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests } from '@/lib/actions';
+import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getCleaningSettings } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
@@ -58,18 +58,34 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const [searchTerm, setSearchTerm] = useState('');
     const [allLocations, setAllLocations] = useState<Location[]>(initialLocations);
     const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
+    const [cleaningSettings, setCleaningSettings] = useState<CleaningSettings | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     
     const [isAccepting, startAcceptingTransition] = useTransition();
     const [isFinalizing, startFinalizingTransition] = useTransition();
 
     const refreshData = async () => {
-        const [refreshedLocations, refreshedRequests] = await Promise.all([
-            getLocations(),
-            getPendingRequests()
-        ]);
-        setAllLocations(refreshedLocations);
-        setPendingRequests(refreshedRequests);
+        setIsLoading(true);
+        try {
+            const [refreshedLocations, refreshedRequests, settings] = await Promise.all([
+                getLocations(),
+                getPendingRequests(),
+                getCleaningSettings()
+            ]);
+            setAllLocations(refreshedLocations);
+            setPendingRequests(refreshedRequests);
+            setCleaningSettings(settings);
+        } catch (error) {
+            toast({ title: 'Erro', description: 'Não foi possível atualizar os dados.', variant: 'destructive' });
+        } finally {
+            setIsLoading(false);
+        }
     };
+
+    useEffect(() => {
+        refreshData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const myCleaningJobs = useMemo(() => {
         return allLocations.filter(loc => 
@@ -84,7 +100,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         return allLocations.filter(loc => 
             loc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             loc.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            loc.setor.toLowerCase().includes(searchTerm.toLowerCase())
+            (loc.setor && loc.setor.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [allLocations, searchTerm]);
 
@@ -139,6 +155,10 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         });
     };
 
+    if (isLoading || !cleaningSettings) {
+        return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+    }
+
     return (
         <div className="flex flex-col h-screen bg-background">
              <header className="flex items-center justify-between p-4 border-b bg-card shadow-sm shrink-0">
@@ -184,7 +204,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                         <div className="flex-shrink-0 px-2 pb-2">
                              <CleaningSections
                                 locations={myCleaningJobs}
-                                cleaningSettings={{ concurrent: 30, terminal: 60 }} // Pode precisar buscar as reais
+                                cleaningSettings={cleaningSettings}
                                 onFinalizeCleaning={handleFinalizeCleaning}
                                 isFinalizing={isFinalizing}
                                 userProfile={user.perfil}
