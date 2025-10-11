@@ -21,9 +21,10 @@ interface SetorExpansivelProps {
   setor: SetorGroup;
   onLocationClick: (location: Location) => void;
   userProfile?: UserProfile;
+  currentUserId?: string;
 }
 
-export function SetorExpansivel({ setor, onLocationClick, userProfile = 'admin' }: SetorExpansivelProps) {
+export function SetorExpansivel({ setor, onLocationClick, userProfile = 'admin', currentUserId }: SetorExpansivelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
@@ -63,6 +64,7 @@ export function SetorExpansivel({ setor, onLocationClick, userProfile = 'admin' 
               cleaningSettings={{}} 
               onStartClick={onLocationClick}
               userProfile={userProfile}
+              currentUserId={currentUserId}
             />
           ))}
         </div>
