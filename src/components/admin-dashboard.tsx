@@ -194,13 +194,15 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
                   cleaningSettings={cleaningSettings}
                   onFinalizeCleaning={handleFinalizeCleaning}
                   isFinalizing={isFinalizing}
+                  userProfile={user.perfil}
+                  currentUserId={user._id}
               />
             </TabsContent>
 
             <TabsContent value="overview">
               <div className="space-y-3">
                 {setoresAgrupados.map((setor) => (
-                  <SetorExpansivel key={setor.nome} setor={setor} onLocationClick={handleLocationClick} />
+                  <SetorExpansivel key={setor.nome} setor={setor} onLocationClick={handleLocationClick} userProfile={user.perfil} />
                 ))}
               </div>
             </TabsContent>

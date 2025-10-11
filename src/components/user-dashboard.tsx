@@ -73,9 +73,9 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
 
     const myCleaningJobs = useMemo(() => {
         return allLocations.filter(loc => 
-            loc.status === 'in_cleaning' && loc.currentCleaning?.userId === user._id
+            loc.status === 'in_cleaning'
         );
-    }, [allLocations, user._id]);
+    }, [allLocations]);
 
     const filteredLocations = useMemo(() => {
         if (!searchTerm) {
@@ -184,10 +184,11 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                         <div className="flex-shrink-0 px-2 pb-2">
                              <CleaningSections
                                 locations={myCleaningJobs}
-                                cleaningSettings={{ concurrent: 30, terminal: 60 }}
+                                cleaningSettings={{ concurrent: 30, terminal: 60 }} // Pode precisar buscar as reais
                                 onFinalizeCleaning={handleFinalizeCleaning}
                                 isFinalizing={isFinalizing}
-                                userProfile='usuario'
+                                userProfile={user.perfil}
+                                currentUserId={user._id}
                             />
                         </div>
                         <Separator className="my-2" />
@@ -287,5 +288,3 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         </div>
     );
 }
-
-    

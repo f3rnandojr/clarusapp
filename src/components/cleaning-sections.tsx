@@ -13,9 +13,10 @@ interface CleaningSectionsProps {
   onFinalizeCleaning: (locationId: string) => void;
   isFinalizing: boolean;
   userProfile?: UserProfile;
+  currentUserId?: string;
 }
 
-export function CleaningSections({ locations, cleaningSettings, onFinalizeCleaning, isFinalizing, userProfile = 'admin' }: CleaningSectionsProps) {
+export function CleaningSections({ locations, cleaningSettings, onFinalizeCleaning, isFinalizing, userProfile = 'admin', currentUserId }: CleaningSectionsProps) {
   const bedsCleaning = locations.filter(loc => loc.locationType === 'leito');
   const areasCleaning = locations.filter(loc => loc.locationType === 'area');
 
@@ -41,6 +42,7 @@ export function CleaningSections({ locations, cleaningSettings, onFinalizeCleani
               onFinalizeClick={onFinalizeCleaning}
               isFinalizing={isFinalizing}
               userProfile={userProfile}
+              currentUserId={currentUserId}
           />
         ))}
     </div>
@@ -81,5 +83,3 @@ export function CleaningSections({ locations, cleaningSettings, onFinalizeCleani
     </Tabs>
   );
 }
-
-    

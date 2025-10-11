@@ -20,6 +20,7 @@ interface LocationCardProps {
   onFinalizeClick?: (locationId: string) => void;
   isFinalizing?: boolean;
   userProfile?: UserProfile;
+  currentUserId?: string;
 }
 
 const statusIndicatorClasses: Record<LocationStatus, string> = {
@@ -28,10 +29,8 @@ const statusIndicatorClasses: Record<LocationStatus, string> = {
   occupied: "bg-orange-500",
 };
 
-export default function LocationCard({ location, cleaningSettings, onStartClick, onFinalizeClick, isFinalizing, userProfile = 'admin' }: LocationCardProps) {
+export default function LocationCard({ location, cleaningSettings, onStartClick, onFinalizeClick, isFinalizing, userProfile = 'admin', currentUserId }: LocationCardProps) {
   
-  const showActions = userProfile === 'admin' || userProfile === 'gestor';
-
   const renderCardContent = () => {
     switch (location.status) {
       case "in_cleaning":
@@ -77,63 +76,54 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
   }
 
   const renderCardFooter = () => {
-    // Para o perfil 'usuario', a única ação possível no card é finalizar sua própria limpeza
-    if (userProfile === 'usuario') {
-        if (location.status === 'in_cleaning' && onFinalizeClick) {
-             return (
-                 <Button size="sm" variant="destructive" className="w-full" onClick={() => onFinalizeClick(location._id.toString())} disabled={isFinalizing}>
-                    {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                    Finalizar
-                 </Button>
-            );
-        }
-        return null; // Nenhum botão para outros status para 'usuario'
-    }
-
-    // Lógica para admin/gestor
-    const buttonText = "Solicitar Higienização";
-
-    switch (location.status) {
-      case "available":
-        if (onStartClick) {
-            return <Button size="sm" className="w-full" onClick={handleStartClick}>{buttonText}</Button>;
-        }
+    if (location.status === 'in_cleaning' && onFinalizeClick) {
+      const isCurrentUserCleaning = location.currentCleaning?.userId === currentUserId;
+      
+      // Admin/Gestor sempre podem finalizar. Usuário só pode finalizar a sua própria.
+      if (userProfile === 'admin' || userProfile === 'gestor' || (userProfile === 'usuario' && isCurrentUserCleaning)) {
         return (
-          <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
-            <Button size="sm" className="w-full">{buttonText}</Button>
-          </StartCleaningDialog>
+          <Button size="sm" variant="destructive" className="w-full" onClick={() => onFinalizeClick(location._id.toString())} disabled={isFinalizing}>
+            {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+            Finalizar
+          </Button>
         );
-      case "in_cleaning":
-        if (onFinalizeClick) {
+      }
+      return null; // O usuário não pode finalizar a limpeza de outro.
+    }
+    
+    // Ações para outros status (disponível, ocupado) só são visíveis para admin/gestor
+    if (userProfile === 'admin' || userProfile === 'gestor') {
+      const buttonText = "Solicitar Higienização";
+
+      switch (location.status) {
+        case "available":
+          if (onStartClick) {
+              return <Button size="sm" className="w-full" onClick={handleStartClick}>{buttonText}</Button>;
+          }
           return (
-             <Button size="sm" variant="destructive" className="w-full" onClick={() => onFinalizeClick(location._id.toString())} disabled={isFinalizing}>
-               {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-               Finalizar
-             </Button>
-          )
-        }
-        // Este fallback pode ser removido se onFinalizeClick for sempre passado
-        return (
-          <FinishCleaningDialog location={location}>
-            <Button size="sm" variant="destructive" className="w-full">Finalizar</Button>
-          </FinishCleaningDialog>
-        );
-      case "occupied":
-         if (onStartClick) {
-            return (
-                <Button size="sm" variant="outline" className="w-full" onClick={handleStartClick}>
-                    Limpeza Concorrente
-                </Button>
-            );
-        }
-        return (
-          <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
-            <Button size="sm" variant="outline" className="w-full">Limpeza Concorrente</Button>
-          </StartCleaningDialog>
-        );
-      default:
-        return null;
+            <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
+              <Button size="sm" className="w-full">{buttonText}</Button>
+            </StartCleaningDialog>
+          );
+        case "occupied":
+          if (onStartClick) {
+              return (
+                  <Button size="sm" variant="outline" className="w-full" onClick={handleStartClick}>
+                      Limpeza Concorrente
+                  </Button>
+              );
+          }
+          return (
+            <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
+              <Button size="sm" variant="outline" className="w-full">Limpeza Concorrente</Button>
+            </StartCleaningDialog>
+          );
+        default:
+          return null;
+      }
     }
+    
+    return null;
   };
 
   const Icon = location.locationType === 'leito' ? Bed : Building;
@@ -175,5 +165,3 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
     </Card>
   );
 }
-
-    
