@@ -14,8 +14,6 @@ import { Badge } from './ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CleaningSections } from './cleaning-sections';
-import { Separator } from './ui/separator';
 
 type SetorGroup = {
   nome: string;
@@ -89,9 +87,9 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
 
     const myCleaningJobs = useMemo(() => {
         return allLocations.filter(loc => 
-            loc.status === 'in_cleaning'
+            loc.status === 'in_cleaning' && loc.currentCleaning?.userId === user._id
         );
-    }, [allLocations]);
+    }, [allLocations, user._id]);
 
     const filteredLocations = useMemo(() => {
         if (!searchTerm) {
@@ -199,21 +197,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
 
             <main className="flex-1 flex flex-col p-2 md:p-4 overflow-hidden">
                 
-                 {/* SEÇÃO EM HIGIENIZAÇÃO - ADICIONAR ESTE BLOCO */}
-                {myCleaningJobs.length > 0 && (
-                <div className="mb-6">
-                    <h2 className="font-bold text-lg px-4 mb-3">Em Higienização</h2>
-                    <CleaningSections
-                    locations={myCleaningJobs}
-                    cleaningSettings={cleaningSettings}
-                    onFinalizeCleaning={handleFinalizeCleaning}
-                    isFinalizing={isFinalizing}
-                    userProfile={user.perfil}
-                    currentUserId={user._id}
-                    />
-                </div>
-                )}
-                
                 <div className="px-4 pb-4 flex-shrink-0">
                     <Button size="lg" className="w-full text-lg" onClick={handleScanClick}>
                         <QrCode className="mr-3 h-6 w-6" />
@@ -267,38 +250,69 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                             />
                         </div>
                         <div className="flex-1 overflow-y-auto space-y-3 pb-4 px-2">
-                            {setoresAgrupados.map((setor) => (
-                                <div key={setor.nome} className="border rounded-lg bg-card shadow-sm">
-                                    <div className="flex justify-between items-center p-3 md:p-4 cursor-default">
-                                        <div className="flex items-center gap-3 md:gap-4">
-                                            <Hospital className="h-6 w-6 text-primary" />
-                                            <div>
-                                                <h3 className="font-semibold text-card-foreground">{setor.nome}</h3>
-                                            </div>
-                                        </div>
+                          {/* MOSTRAR MINHAS HIGIENIZAÇÕES PRIMEIRO */}
+                          {myCleaningJobs.length > 0 && (
+                            <div className="mb-4">
+                              <h3 className="font-semibold text-sm mb-2 text-yellow-600">Minhas Higienizações</h3>
+                              <div className="grid grid-cols-1 gap-2">
+                                {myCleaningJobs.map(local => (
+                                  <div key={local._id.toString()} className="border rounded-lg bg-yellow-50 p-3">
+                                    <div className="flex justify-between items-center">
+                                      <div>
+                                        <span className="font-medium">{local.name} - {local.number}</span>
+                                        { local.currentCleaning?.startTime &&
+                                            <p className="text-xs text-muted-foreground">
+                                                Em andamento há {formatDistanceToNowStrict(new Date(local.currentCleaning.startTime), { locale: ptBR, addSuffix: false })}
+                                            </p>
+                                        }
+                                      </div>
+                                      <Button 
+                                        size="sm" 
+                                        onClick={() => handleFinalizeCleaning(local._id.toString())}
+                                        disabled={isFinalizing}
+                                      >
+                                        {isFinalizing ? <Loader2 className="h-4 w-4 animate-spin"/> : "Finalizar"}
+                                      </Button>
                                     </div>
-                                    <div className="border-t bg-muted/30">
-                                        {setor.locais.map((local) => (
-                                            <div
-                                            key={local._id.toString()}
-                                            className="flex items-center gap-4 p-3 border-b last:border-b-0"
-                                            >
-                                            <div className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', statusIndicatorClasses[local.status])} />
-                                            
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-center">
-                                                <span className="font-medium text-sm text-foreground">{local.name} - {local.number}</span>
-                                                <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', statusTextClasses[local.status])}>
-                                                    {statusText[local.status]}
-                                                </span>
-                                                </div>
-                                            </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* LISTA NORMAL DE SETORES */}
+                          {setoresAgrupados.map((setor) => (
+                              <div key={setor.nome} className="border rounded-lg bg-card shadow-sm">
+                                  <div className="flex justify-between items-center p-3 md:p-4 cursor-default">
+                                      <div className="flex items-center gap-3 md:gap-4">
+                                          <Hospital className="h-6 w-6 text-primary" />
+                                          <div>
+                                              <h3 className="font-semibold text-card-foreground">{setor.nome}</h3>
+                                          </div>
+                                      </div>
+                                  </div>
+                                  <div className="border-t bg-muted/30">
+                                      {setor.locais.map((local) => (
+                                          <div
+                                          key={local._id.toString()}
+                                          className="flex items-center gap-4 p-3 border-b last:border-b-0"
+                                          >
+                                          <div className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', statusIndicatorClasses[local.status])} />
+                                          
+                                          <div className="flex-1">
+                                              <div className="flex justify-between items-center">
+                                              <span className="font-medium text-sm text-foreground">{local.name} - {local.number}</span>
+                                              <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', statusTextClasses[local.status])}>
+                                                  {statusText[local.status]}
+                                              </span>
+                                              </div>
+                                          </div>
+                                          </div>
+                                      ))}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
                     </div>
                 </div>
 
@@ -306,5 +320,3 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         </div>
     );
 }
-
-    
