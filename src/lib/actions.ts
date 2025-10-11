@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning } from './schemas';
 import type { CleaningType, UserProfile } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
@@ -76,31 +76,53 @@ export async function logout() {
   redirect('/login');
 }
 
+// --- Location and Active Cleaning Actions ---
 
-// --- Location Actions ---
+export async function getActiveCleanings() {
+    const db = await dbConnect();
+    const activeCleanings = await db.collection('active_cleanings').find().toArray();
+    return convertToPlainObject(activeCleanings);
+}
 
 export async function getLocations(): Promise<Location[]> {
   const db = await dbConnect();
-  
-  const leitos = await db.collection('locations').find().sort({ name: 1, number: 1 }).toArray();
-  const areas = await db.collection('areas').find({isActive: true}).sort({ setor: 1 }).toArray();
-  const mappings = await db.collection('location_mappings').find({ isActive: true }).toArray();
+
+  const [leitos, areas, mappings, activeCleanings] = await Promise.all([
+      db.collection('locations').find().sort({ name: 1, number: 1 }).toArray(),
+      db.collection('areas').find({isActive: true}).sort({ setor: 1 }).toArray(),
+      db.collection('location_mappings').find({ isActive: true }).toArray(),
+      db.collection('active_cleanings').find().toArray()
+  ]);
 
   const mappingsByExternalCode = mappings.reduce((acc, m) => {
     acc[m.externalCode] = m;
     return acc;
   }, {} as Record<string, any>);
 
+  const activeCleaningsByLocationId = activeCleanings.reduce((acc, ac) => {
+    acc[ac.locationId] = ac;
+    return acc;
+  }, {} as Record<string, ActiveCleaning>);
+
   const combinedLocations: Location[] = [];
 
+  // Process Leitos
   leitos.forEach(leito => {
     const mapping = mappingsByExternalCode[leito.externalCode];
+    const activeCleaning = activeCleaningsByLocationId[leito._id.toString()];
+    const status = activeCleaning ? 'in_cleaning' : leito.status;
+
     combinedLocations.push({
       _id: leito._id,
       name: mapping ? mapping.internalName : leito.name,
       number: mapping ? mapping.internalNumber : leito.number,
-      status: leito.status,
-      currentCleaning: leito.currentCleaning,
+      status: status,
+      currentCleaning: activeCleaning ? {
+          type: activeCleaning.cleaningType,
+          userId: activeCleaning.userId,
+          userName: activeCleaning.userName,
+          startTime: activeCleaning.startTime
+      } : null,
       externalCode: leito.externalCode,
       locationType: 'leito',
       setor: mapping ? mapping.setor : 'Sem Setor',
@@ -109,18 +131,25 @@ export async function getLocations(): Promise<Location[]> {
     });
   });
 
+  // Process Areas
   areas.forEach(area => {
+    const activeCleaning = activeCleaningsByLocationId[area._id.toString()];
+    const status = activeCleaning ? 'in_cleaning' : (area.status || 'available');
+    
     combinedLocations.push({
       _id: area._id,
       name: area.setor,
       number: area.shortCode,
-      // @ts-ignore - status pode não existir em 'areas' ainda
-      status: area.status || 'available',
-      // @ts-ignore
-      currentCleaning: area.currentCleaning || null,
+      status: status,
+      currentCleaning: activeCleaning ? {
+          type: activeCleaning.cleaningType,
+          userId: activeCleaning.userId,
+          userName: activeCleaning.userName,
+          startTime: activeCleaning.startTime
+      } : null,
       externalCode: area.locationId,
       locationType: 'area',
-      setor: area.setor, // O setor da área é ele mesmo
+      setor: area.setor,
       createdAt: area.createdAt,
       updatedAt: area.updatedAt,
     });
@@ -132,8 +161,10 @@ export async function getLocations(): Promise<Location[]> {
     if (a.setor > b.setor) return 1;
     if (a.name < b.name) return -1;
     if (a.name > b.name) return 1;
-    if (a.number < b.number) return -1;
-    if (a.number > b.number) return 1;
+    const numA = parseInt(a.number, 10) || a.number;
+    const numB = parseInt(b.number, 10) || b.number;
+    if (numA < numB) return -1;
+    if (numA > numB) return 1;
     return 0;
   });
 
@@ -141,102 +172,76 @@ export async function getLocations(): Promise<Location[]> {
 }
 
 export async function getLocationByCode(code: string) {
-    console.log('🔍🔍🔍 DEBUG COMPLETO DA BUSCA 🔍🔍🔍');
-    console.log('🔍 Código procurado:', code);
+    const db = await dbConnect();
     
-    try {
-        const db = await dbConnect();
-        
-        // Prioridade 1: Buscar em `location_mappings` pelo locationId
-        const mapping = await db.collection('location_mappings').findOne({ locationId: code, isActive: true });
-        if (mapping) {
-            console.log('✅ Mapeamento encontrado:', mapping);
-             const locationFromMapping = {
-                _id: mapping._id, // Usar o _id do próprio mapeamento
-                name: mapping.internalName,
-                number: mapping.internalNumber,
-                status: 'available', // O status real virá da collection 'locations'
-                currentCleaning: null,
-                externalCode: mapping.externalCode,
-                locationType: mapping.type,
-                setor: mapping.setor,
-                createdAt: mapping.createdAt,
-                updatedAt: mapping.updatedAt,
+    // Find in mappings
+    let mapping = await db.collection('location_mappings').findOne({ locationId: code, isActive: true });
+    if (mapping) {
+        let locationData = {
+            _id: mapping._id.toString(),
+            name: mapping.internalName,
+            number: mapping.internalNumber,
+            status: 'available' as LocationStatus,
+            currentCleaning: null,
+            externalCode: mapping.externalCode,
+            locationType: mapping.type as 'leito' | 'area',
+            setor: mapping.setor,
+            createdAt: mapping.createdAt,
+            updatedAt: mapping.updatedAt,
+        };
+
+        const activeCleaning = await db.collection('active_cleanings').findOne({ locationId: locationData._id });
+
+        if (activeCleaning) {
+            locationData.status = 'in_cleaning';
+            // @ts-ignore
+            locationData.currentCleaning = {
+                type: activeCleaning.cleaningType,
+                userId: activeCleaning.userId,
+                userName: activeCleaning.userName,
+                startTime: activeCleaning.startTime
             };
-
-            // Agora, busca o status atual na collection 'locations'
-            if (mapping.type === 'leito') {
-                const liveLocation = await db.collection('locations').findOne({ externalCode: mapping.externalCode });
-                if (liveLocation) {
-                  locationFromMapping.status = liveLocation.status;
-                  locationFromMapping.currentCleaning = liveLocation.currentCleaning;
-                }
-            } else { // type é 'area'
-                 const liveArea = await db.collection('areas').findOne({ locationId: mapping.locationId });
-                 if (liveArea) {
-                    // @ts-ignore
-                    locationFromMapping.status = liveArea.status || 'available';
-                    // @ts-ignore
-                    locationFromMapping.currentCleaning = liveArea.currentCleaning || null;
-                 }
-            }
-
-
-            return convertToPlainObject(locationFromMapping);
+        } else {
+             // If no active cleaning, get status from original collection
+             let originalItem;
+             if(locationData.locationType === 'leito') {
+                 originalItem = await db.collection('locations').findOne({_id: new ObjectId(locationData._id)})
+             } else {
+                 originalItem = await db.collection('areas').findOne({_id: new ObjectId(locationData._id)})
+             }
+             if(originalItem) locationData.status = originalItem.status;
         }
-        console.log('... Nenhum mapeamento encontrado.');
+        return convertToPlainObject(locationData);
+    }
+    
+    // Fallback to areas and locations if no mapping
+    let item: any = await db.collection('areas').findOne({ locationId: code, isActive: true }) || await db.collection('locations').findOne({ externalCode: code });
+    if (!item) return null;
 
+    const isArea = !!item.setor; // Simple check
+    const locationId = isArea ? item._id.toString() : item._id.toString();
+    const activeCleaning = await db.collection('active_cleanings').findOne({ locationId: locationId });
+    
+    const status = activeCleaning ? 'in_cleaning' : item.status;
+    const currentCleaning = activeCleaning ? {
+        type: activeCleaning.cleaningType,
+        userId: activeCleaning.userId,
+        userName: activeCleaning.userName,
+        startTime: activeCleaning.startTime
+    } : null;
 
-        const areasCollection = db.collection('areas');
-        const locationsCollection = db.collection('locations');
-
-        // 2. Tenta encontrar em 'areas'
-        console.log('2. Buscando na coleção "areas"...');
-        const area = await areasCollection.findOne({ locationId: code, isActive: true });
-
-        if (area) {
-            console.log('✅ Área encontrada:', area);
-            // Transforma o objeto 'area' para se parecer com 'Location'
-            const locationFromArea = {
-                _id: area._id,
-                name: area.setor,
-                number: area.shortCode,
-                status: area.status || 'available',
-                currentCleaning: area.currentCleaning || null,
-                externalCode: area.locationId,
-                locationType: 'area',
-                setor: area.setor,
-                createdAt: area.createdAt,
-                updatedAt: area.updatedAt,
-            };
-            return convertToPlainObject(locationFromArea);
-        }
-        console.log('... Nenhuma área ativa encontrada com esse código.');
-
-        // 3. Se não encontrou, tenta em 'locations'
-        console.log('3. Buscando na coleção "locations"...');
-        const location = await locationsCollection.findOne({ externalCode: code });
-
-        if (location) {
-            console.log('✅ Leito encontrado:', location);
-             const locationFromLeito = {
-                ...location,
-                locationType: 'leito',
-            };
-            return convertToPlainObject(locationFromLeito);
-        }
-        console.log('... Nenhum leito encontrado com esse código.');
-
-        // 4. Se não encontrou em nenhum lugar
-        console.log('❌ Código não encontrado em nenhuma coleção.');
-        return null;
-
-    } catch (error) {
-        console.error('💥 ERRO FATAL em getLocationByCode:', error);
-        return null;
+    if (isArea) {
+        return convertToPlainObject({
+            _id: item._id, name: item.setor, number: item.shortCode, status, currentCleaning,
+            externalCode: item.locationId, locationType: 'area', setor: item.setor,
+            createdAt: item.createdAt, updatedAt: item.updatedAt,
+        });
+    } else {
+        return convertToPlainObject({
+            ...item, status, currentCleaning, locationType: 'leito',
+        });
     }
 }
-
 
 export async function startCleaning(prevState: any, formData: FormData) {
   const session = await getSession();
@@ -245,13 +250,8 @@ export async function startCleaning(prevState: any, formData: FormData) {
   }
 
   const { user } = session;
-  const userProfile = user.perfil as UserProfile;
-
   const locationId = formData.get('locationId') as string;
   const type = formData.get('type') as CleaningType;
-
-  console.log('=== DEBUG START CLEANING / SCHEDULE ===');
-  console.log('LocationId:', locationId, 'Type:', type, 'User Profile:', userProfile);
 
   if (!locationId || !type) {
     return { success: false, error: 'Dados da solicitação inválidos.' };
@@ -264,162 +264,70 @@ export async function startCleaning(prevState: any, formData: FormData) {
     return { success: false, error: 'Local não encontrado.' };
   }
 
-  // Perfis 'admin' e 'gestor' criam uma solicitação agendada
-  if (userProfile === 'admin' || userProfile === 'gestor') {
-    try {
-        const cleaningSettings = await getCleaningSettings();
-        const expectedDuration = cleaningSettings[type];
-        
-        const newRequest = {
-            locationId: location._id.toString(),
-            locationName: `${location.name} - ${location.number}`,
-            locationType: location.setor,
-            cleaningType: type,
-            requestedBy: {
-                userId: user._id,
-                userName: user.name,
-                userProfile: user.perfil,
-            },
-            requestedAt: new Date(),
-            assignedAt: null,
-            startedAt: null,
-            completedAt: null,
-            assignedTo: {
-                userId: null,
-                userName: null,
-            },
-            expectedDuration,
-            status: 'agendada',
-            priority: 'normal',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            timeToAssign: null,
-            timeToComplete: null,
-            assignedDuration: null,
-        };
-
-        const validatedRequest = ScheduledRequestSchema.safeParse(newRequest);
-        if(!validatedRequest.success) {
-            console.error("Dados de solicitação inválidos:", validatedRequest.error);
-            return { success: false, error: 'Erro ao validar dados da solicitação.' };
-        }
-
-        await db.collection('scheduled_requests').insertOne(validatedRequest.data);
-        revalidatePath('/dashboard');
-        return { success: true, message: `Solicitação de higienização ${type} enviada com sucesso!` };
-
-    } catch (error) {
-        console.error('❌ Erro ao criar solicitação de higienização:', error);
-        return { success: false, error: 'Erro interno ao criar solicitação.' };
-    }
-  }
-
-  // Fluxo antigo mantido para outros perfis (ou como fallback)
-  return executeDirectCleaning(location, type, user);
-}
-
-// Função auxiliar para obter local por ID
-async function getLocationById(locationId: string) {
-  const db = await dbConnect();
-  let location: any = null;
-  if (ObjectId.isValid(locationId)) {
-    const objectId = new ObjectId(locationId);
-    location = await db.collection('locations').findOne({ _id: objectId }) || await db.collection('areas').findOne({ _id: objectId });
-  }
-  if (!location) {
-     location = await db.collection('locations').findOne({ externalCode: locationId }) || await db.collection('areas').findOne({ locationId: locationId });
-  }
-  return location;
-}
-
-
-// Função para execução direta da limpeza (mantida para usuários ou fallback)
-async function executeDirectCleaning(location: any, type: CleaningType, user: any) {
-    const db = await dbConnect();
-    const collectionName = location.locationType === 'leito' ? 'locations' : 'areas';
-    const collection = db.collection(collectionName);
-    
-    if (location.status === 'in_cleaning') {
+  // Check if cleaning is already active for this location
+  const existingCleaning = await db.collection('active_cleanings').findOne({ locationId: location._id.toString() });
+  if (existingCleaning) {
       return { success: false, error: 'Este local já está em higienização.' };
-    }
-    
-    const updateResult = await collection.updateOne({ _id: location._id }, {
-      $set: {
-          status: 'in_cleaning',
-          currentCleaning: {
-              type,
-              userId: new ObjectId(user._id),
-              userName: user.name,
-              startTime: new Date(),
-          },
-          updatedAt: new Date()
-      }
-    });
+  }
 
-    if(updateResult.matchedCount === 0) {
-        return { success: false, error: 'Falha ao atualizar o status do local.' };
-    }
+  const cleaningSettings = await getCleaningSettings();
+  const expectedDuration = cleaningSettings[type];
+  
+  const newActiveCleaning: Omit<ActiveCleaning, '_id'> = {
+      locationId: location._id.toString(),
+      locationName: `${location.name} - ${location.number}`,
+      locationType: location.locationType,
+      cleaningType: type,
+      userId: new ObjectId(user._id),
+      userName: user.name,
+      startTime: new Date(),
+      status: 'in_progress',
+      expectedDuration: expectedDuration
+  };
 
-    revalidatePath('/dashboard');
-    return { success: true, message: `Higienização ${type} iniciada com sucesso!` };
+  await db.collection('active_cleanings').insertOne(newActiveCleaning);
+
+  // Update location status in its original collection
+  const collectionName = location.locationType === 'leito' ? 'locations' : 'areas';
+  await db.collection(collectionName).updateOne({_id: new ObjectId(location._id)}, {$set: { status: 'in_cleaning', updatedAt: new Date() }});
+
+  revalidatePath('/dashboard');
+  return { success: true, message: `Higienização ${type} iniciada com sucesso!` };
 }
-
-
 
 export async function finishCleaning(locationId: string) {
   const db = await dbConnect();
   
-  let location: Location | null = null;
-  let collectionToUpdateName: 'locations' | 'areas' | null = null;
+  const activeCleaning = await db.collection('active_cleanings').findOne({ locationId: locationId });
 
-  const objectId = new ObjectId(locationId);
-
-  // @ts-ignore
-  location = await db.collection('locations').findOne({ _id: objectId });
-  if (location) {
-    collectionToUpdateName = 'locations';
-  } else {
-    // @ts-ignore
-    location = await db.collection('areas').findOne({ _id: objectId });
-    if(location) {
-      collectionToUpdateName = 'areas';
-    }
-  }
-
-  if (!location || !location.currentCleaning || !collectionToUpdateName) {
-    return { error: 'Higienização não encontrada para este local.' };
+  if (!activeCleaning) {
+    return { error: 'Higienização ativa não encontrada para este local.' };
   }
   
-  const collectionToUpdate = db.collection(collectionToUpdateName);
-
-  const { userId, userName, type, startTime } = location.currentCleaning;
-  
-  const settings = await getCleaningSettings();
-  const expectedDuration = settings[type];
   const finishTime = new Date();
-  const actualDuration = Math.round((finishTime.getTime() - new Date(startTime).getTime()) / (1000 * 60));
-  const isDelayed = actualDuration > expectedDuration;
+  const actualDuration = Math.round((finishTime.getTime() - new Date(activeCleaning.startTime).getTime()) / (1000 * 60));
+  const isDelayed = actualDuration > activeCleaning.expectedDuration;
 
   if (isDelayed) {
     await db.collection('cleaning_occurrences').insertOne({
-      locationName: `${location.name} - ${location.number}`,
-      cleaningType: type,
-      userName: userName,
-      delayInMinutes: delayInMinutes,
+      locationName: activeCleaning.locationName,
+      cleaningType: activeCleaning.cleaningType,
+      userName: activeCleaning.userName,
+      delayInMinutes: actualDuration - activeCleaning.expectedDuration,
       occurredAt: finishTime,
     });
   }
 
   const record: Omit<CleaningRecord, '_id'> = {
-    locationId: location._id.toString(),
-    locationName: `${location.name} - ${location.number}`,
-    locationType: location.locationType,
-    cleaningType: type,
-    userId: new ObjectId(userId),
-    userName: userName,
-    startTime: startTime,
+    locationId: activeCleaning.locationId,
+    locationName: activeCleaning.locationName,
+    locationType: activeCleaning.locationType as 'leito' | 'area',
+    cleaningType: activeCleaning.cleaningType as CleaningType,
+    userId: new ObjectId(activeCleaning.userId),
+    userName: activeCleaning.userName,
+    startTime: activeCleaning.startTime,
     finishTime: finishTime,
-    expectedDuration: expectedDuration,
+    expectedDuration: activeCleaning.expectedDuration,
     actualDuration: actualDuration,
     status: 'completed',
     delayed: isDelayed,
@@ -427,17 +335,15 @@ export async function finishCleaning(locationId: string) {
   };
   await db.collection('cleaning_records').insertOne(record);
 
+  // Remove from active cleanings
+  await db.collection('active_cleanings').deleteOne({ _id: activeCleaning._id });
 
-  // ✅ CORREÇÃO: O status final deve ser sempre 'available'
-  const newStatus = 'available';
-
-  await collectionToUpdate.updateOne({ _id: objectId }, {
-    $set: {
-        status: newStatus,
-        currentCleaning: null,
-        updatedAt: new Date()
-    },
-  });
+  // Update location status
+  const collectionName = activeCleaning.locationType === 'leito' ? 'locations' : 'areas';
+  await db.collection(collectionName).updateOne(
+      { _id: new ObjectId(locationId) }, 
+      { $set: { status: 'available', currentCleaning: null, updatedAt: new Date() }}
+  );
 
   revalidatePath('/dashboard');
   return { success: true, message: 'Higienização finalizada com sucesso!' };
@@ -1364,9 +1270,25 @@ export async function acceptRequest(requestId: string) {
     if (!request) {
         return { success: false, error: 'Solicitação não encontrada ou já atendida.' };
     }
+    
+    const location = await getLocationById(request.locationId);
+    if (!location) {
+        return { success: false, error: 'Local da solicitação não encontrado.' };
+    }
 
-    const timeToAssign = Math.round((new Date().getTime() - new Date(request.requestedAt).getTime()) / 60000); // em minutos
+    // Start cleaning using the new flow
+    const formData = new FormData();
+    formData.append('locationId', request.locationId);
+    formData.append('type', request.cleaningType);
 
+    const startCleaningResult = await startCleaning(null, formData);
+
+    if (!startCleaningResult.success) {
+        return { success: false, error: startCleaningResult.error || "Falha ao iniciar a higienização." };
+    }
+    
+    // Update the scheduled request
+    const timeToAssign = Math.round((new Date().getTime() - new Date(request.requestedAt).getTime()) / 60000); // in minutes
     await db.collection('scheduled_requests').updateOne(
         { _id: new ObjectId(requestId) },
         {
@@ -1374,21 +1296,12 @@ export async function acceptRequest(requestId: string) {
                 status: 'em_andamento',
                 assignedTo: { userId: user._id, userName: user.name },
                 assignedAt: new Date(),
-                startedAt: new Date(), // A limpeza começa imediatamente ao aceitar
+                startedAt: new Date(),
                 timeToAssign: timeToAssign,
                 updatedAt: new Date()
             }
         }
     );
-    
-    // Atualiza o status do local principal
-    const location = await getLocationById(request.locationId);
-    if(location) {
-       await executeDirectCleaning(location, request.cleaningType, user);
-    } else {
-        console.error(`Falha ao aceitar: Local com ID ${request.locationId} não encontrado para atualizar status.`);
-    }
-
 
     revalidatePath('/dashboard');
     return { success: true, message: 'Solicitação aceita! Higienização iniciada.' };

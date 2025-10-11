@@ -3,17 +3,18 @@
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Location, LocationStatus, User, ScheduledRequest, CleaningSettings } from '@/lib/schemas';
+import type { Location, LocationStatus, User, ScheduledRequest, CleaningSettings, ActiveCleaning } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
 import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getCleaningSettings } from '@/lib/actions';
+import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getCleaningSettings, getActiveCleanings } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Separator } from './ui/separator';
 
 type SetorGroup = {
   nome: string;
@@ -48,16 +49,18 @@ interface UserDashboardProps {
     locations: Location[];
     user: User;
     pendingRequests: ScheduledRequest[];
+    myActiveCleanings: ActiveCleaning[];
 }
 
-export function UserDashboard({ locations: initialLocations, user, pendingRequests: initialPendingRequests }: UserDashboardProps) {
+export function UserDashboard({ locations: initialLocations, user, pendingRequests: initialPendingRequests, myActiveCleanings: initialMyActiveCleanings }: UserDashboardProps) {
     const router = useRouter();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [allLocations, setAllLocations] = useState<Location[]>(initialLocations);
     const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
-    const [cleaningSettings, setCleaningSettings] = useState<CleaningSettings | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [myCleaningJobs, setMyCleaningJobs] = useState(initialMyActiveCleanings);
+
+    const [isLoading, setIsLoading] = useState(false);
     
     const [isAccepting, startAcceptingTransition] = useTransition();
     const [isFinalizing, startFinalizingTransition] = useTransition();
@@ -65,31 +68,20 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const refreshData = async () => {
         setIsLoading(true);
         try {
-            const [refreshedLocations, refreshedRequests, settings] = await Promise.all([
+            const [refreshedLocations, refreshedRequests, refreshedActiveCleanings] = await Promise.all([
                 getLocations(),
                 getPendingRequests(),
-                getCleaningSettings()
+                getActiveCleanings()
             ]);
             setAllLocations(refreshedLocations);
             setPendingRequests(refreshedRequests);
-            setCleaningSettings(settings);
+            setMyCleaningJobs(refreshedActiveCleanings.filter(ac => ac.userId === user._id));
         } catch (error) {
             toast({ title: 'Erro', description: 'Não foi possível atualizar os dados.', variant: 'destructive' });
         } finally {
             setIsLoading(false);
         }
     };
-
-    useEffect(() => {
-        refreshData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const myCleaningJobs = useMemo(() => {
-        return allLocations.filter(loc => 
-            loc.status === 'in_cleaning' && loc.currentCleaning?.userId === user._id
-        );
-    }, [allLocations, user._id]);
 
     const filteredLocations = useMemo(() => {
         if (!searchTerm) {
@@ -153,10 +145,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         });
     };
 
-    if (isLoading || !cleaningSettings) {
-        return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
-    }
-
     return (
         <div className="flex flex-col h-screen bg-background">
              <header className="flex items-center justify-between p-4 border-b bg-card shadow-sm shrink-0">
@@ -203,7 +191,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                         Escanear QR Code para Iniciar Higienização
                     </Button>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
                     <div className='flex flex-col gap-2'>
                         <h2 className='font-bold text-lg px-4'>Solicitações Pendentes</h2>
@@ -256,19 +244,19 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                               <h3 className="font-semibold text-sm mb-2 text-yellow-600">Minhas Higienizações</h3>
                               <div className="grid grid-cols-1 gap-2">
                                 {myCleaningJobs.map(local => (
-                                  <div key={local._id.toString()} className="border rounded-lg bg-yellow-50 p-3">
+                                  <div key={local._id.toString()} className="border rounded-lg bg-yellow-50 dark:bg-yellow-900/20 p-3">
                                     <div className="flex justify-between items-center">
                                       <div>
-                                        <span className="font-medium">{local.name} - {local.number}</span>
-                                        { local.currentCleaning?.startTime &&
+                                        <span className="font-medium">{local.locationName}</span>
+                                        { local.startTime &&
                                             <p className="text-xs text-muted-foreground">
-                                                Em andamento há {formatDistanceToNowStrict(new Date(local.currentCleaning.startTime), { locale: ptBR, addSuffix: false })}
+                                                Em andamento há {formatDistanceToNowStrict(new Date(local.startTime), { locale: ptBR, addSuffix: false })}
                                             </p>
                                         }
                                       </div>
                                       <Button 
                                         size="sm" 
-                                        onClick={() => handleFinalizeCleaning(local._id.toString())}
+                                        onClick={() => handleFinalizeCleaning(local.locationId)}
                                         disabled={isFinalizing}
                                       >
                                         {isFinalizing ? <Loader2 className="h-4 w-4 animate-spin"/> : "Finalizar"}

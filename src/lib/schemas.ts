@@ -166,6 +166,21 @@ export const ScheduledRequestSchema = z.object({
 });
 export type ScheduledRequest = z.infer<typeof ScheduledRequestSchema>;
 
+// --- Active Cleaning ---
+export const ActiveCleaningSchema = z.object({
+    _id: z.union([z.string(), z.any()]),
+    locationId: z.string(),
+    locationName: z.string(),
+    locationType: z.enum(['leito', 'area']),
+    cleaningType: CleaningTypeEnum,
+    userId: z.union([z.string(), z.any()]),
+    userName: z.string(),
+    startTime: z.union([z.string(), z.date()]),
+    status: z.literal('in_progress'),
+    expectedDuration: z.number()
+});
+export type ActiveCleaning = z.infer<typeof ActiveCleaningSchema>;
+
 
 export const CleaningSettingsSchema = z.object({
   concurrent: z.number().min(1, 'Deve ser maior que 0'),
@@ -293,5 +308,3 @@ export const IntegrationConfigSchema = z.object({
 });
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
-
-    

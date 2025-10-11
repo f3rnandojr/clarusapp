@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, finishCleaning } from "@/lib/actions";
+import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, finishCleaning, getActiveCleanings } from "@/lib/actions";
 import Header from "@/components/header";
 import { Loader2 } from "lucide-react";
 import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area } from "@/lib/schemas";
