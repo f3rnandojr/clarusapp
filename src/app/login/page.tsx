@@ -34,9 +34,8 @@ export default function LoginPage() {
 
       if (response.ok) {
         console.log('🔐 5. Login OK - Redirecionando para o dashboard...');
-        // O fluxo de QR code agora é tratado inteiramente pelo dashboard.
-        // A página de login simplesmente redireciona para lá após o sucesso.
-        router.push('/dashboard');
+        // Força um full-page reload para garantir que o middleware e a sessão sejam processados corretamente.
+        window.location.href = '/dashboard';
       } else {
         console.log('🔐 5. Login FALHOU');
         toast({
