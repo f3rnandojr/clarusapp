@@ -1,11 +1,12 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { login as loginAction } from '@/lib/actions';
 
 export default function LoginPage() {
   const [login, setLogin] = useState('');
@@ -14,45 +15,41 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     
-    console.log('🔐 1. Iniciando login...');
+    console.log('🔐 1. Iniciando login com Server Action...');
+    
+    const formData = new FormData();
+    formData.append('login', login);
+    formData.append('password', password);
+
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ login, password })
-      });
+      // A Server Action 'login' irá lidar com a lógica, cookies e redirecionamento.
+      // Se houver um erro, ela o retornará. Se for bem-sucedida, o Next.js
+      // seguirá o `redirect` dentro da ação.
+      const result = await loginAction(null, formData);
 
-      console.log('🔐 2. Response status:', response.status);
-      console.log('🔐 3. Response ok:', response.ok);
-      
-      const data = await response.json();
-      console.log('🔐 4. Response data:', data);
-
-      if (response.ok) {
-        console.log('🔐 5. Login OK - Redirecionando para o dashboard...');
-        // Forçar redirecionamento imediato
-        window.location.replace('/dashboard');
-      } else {
-        console.log('🔐 5. Login FALHOU');
+      if (result?.error) {
+        console.log('🔐 5. Login FALHOU', result.error);
         toast({
           title: "Falha no Login",
-          description: data.error || "Credenciais inválidas. Verifique seus dados.",
+          description: result.error,
           variant: "destructive"
         });
+        setLoading(false);
       }
+      // Se o login for bem-sucedido, a ação `login` redirecionará internamente.
+      // O código aqui só será executado em caso de erro.
     } catch (error) {
-      console.error('💥 Erro de Conexão:', error);
-      toast({
-          title: "Erro de Conexão",
-          description: "Não foi possível conectar ao servidor. Tente novamente mais tarde.",
+       console.error('💥 Erro Inesperado:', error);
+       toast({
+          title: "Erro Inesperado",
+          description: "Ocorreu um erro durante o login. Tente novamente.",
           variant: "destructive"
         });
-    } finally {
-      setLoading(false);
+       setLoading(false);
     }
   };
 
@@ -79,6 +76,7 @@ export default function LoginPage() {
               onChange={(e) => setLogin(e.target.value)}
               placeholder="seu.usuario"
               required
+              disabled={loading}
             />
           </div>
           <div className="space-y-2">
@@ -90,6 +88,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
+              disabled={loading}
             />
           </div>
           <Button type="submit" disabled={loading} className="w-full">
