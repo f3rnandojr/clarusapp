@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
@@ -103,16 +104,19 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
       );
     }, [allLocations, user._id]);
 
-    // DEBUG FINAL
-    console.log('🔍 [DEBUG] myCleaningJobs:', {
-        total: myCleaningJobs.length,
-        jobs: myCleaningJobs.map(job => ({
-            id: job._id,
-            name: job.name,
-            status: job.status,
-            userId: job.currentCleaning?.userId,
-            currentUser: user._id
-        }))
+    // DEBUG COMPLETO - ADICIONE ESTE CÓDIGO
+    console.log('🔍 [DEBUG COMPLETO]', {
+      user: { id: user._id, name: user.name },
+      allLocations: allLocations.map(loc => ({
+        id: loc._id,
+        name: loc.name,
+        status: loc.status,
+        cleaningUserId: loc.currentCleaning?.userId,
+        cleaningUserName: loc.currentCleaning?.userName,
+        isInCleaning: loc.status === 'in_cleaning',
+        isMyCleaning: loc.currentCleaning?.userId === user._id
+      })),
+      myCleaningJobs: myCleaningJobs.map(job => job._id)
     });
 
     const filteredLocations = useMemo(() => {
@@ -237,6 +241,29 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                     <h2 className="font-bold text-lg px-4 mb-3 text-green-600">✅ Minhas Higienizações</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 px-4">
                       {myCleaningJobs.map(local => (
+                        <LocationCard 
+                          key={local._id.toString()} 
+                          location={local} 
+                          cleaningSettings={cleaningSettings}
+                          onFinalizeClick={handleFinalizeCleaning}
+                          isFinalizing={isFinalizing}
+                          userProfile={user.perfil}
+                          currentUserId={user._id}
+                        />
+                      ))}
+                    </div>
+                    <Separator className="my-4" />
+                  </div>
+                )}
+
+                {/* SOLUÇÃO TEMPORÁRIA - NO user-dashboard.tsx */}
+                {allLocations.filter(loc => loc.status === 'in_cleaning').length > 0 && cleaningSettings && (
+                  <div className="mb-6">
+                    <h2 className="font-bold text-lg px-4 mb-3 text-yellow-600">🚨 TODAS Higienizações (Debug)</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 px-4">
+                      {allLocations
+                        .filter(loc => loc.status === 'in_cleaning')
+                        .map(local => (
                         <LocationCard 
                           key={local._id.toString()} 
                           location={local} 
