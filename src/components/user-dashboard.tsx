@@ -199,15 +199,13 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             return;
         }
         try {
+            console.log('🚀 [DEBUG] Iniciando por link:', {
+              link: testLink,
+              locationCode: testLink.substring(testLink.lastIndexOf('/') + 1),
+              user: user._id
+            });
             const url = new URL(testLink);
-            const pathParts = url.pathname.split('/');
-            const locationCode = pathParts[pathParts.length - 1];
-            
-            if (locationCode) {
-                 router.push(`/dashboard?startCleaning=${locationCode}`);
-            } else {
-                 throw new Error("Código do local não encontrado no link.");
-            }
+            router.push(url.pathname); // Deixa o middleware cuidar do resto
         } catch (error) {
              toast({
                 title: "Erro ao processar link",
@@ -215,6 +213,13 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                 variant: "destructive",
             });
         }
+    };
+    
+    const handleLinkInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const linkValue = e.target.value;
+        setTestLink(linkValue);
+        console.log('📥 [DEBUG] Link colado:', linkValue);
+        console.log('🔍 [DEBUG] Link válido?', linkValue.includes('/clean/'));
     };
 
 
@@ -278,7 +283,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                                 type="url" 
                                 placeholder="https://seu-dominio/clean/codigo-do-local" 
                                 value={testLink}
-                                onChange={(e) => setTestLink(e.target.value)}
+                                onChange={handleLinkInputChange}
                             />
                             <Button onClick={handleStartWithLink}>
                                 <Link className="mr-2 h-4 w-4"/>

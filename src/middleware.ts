@@ -22,12 +22,14 @@ export async function middleware(request: NextRequest) {
   const cleanPathMatch = path.match(/^\/clean\/(.+)$/);
   if (cleanPathMatch) {
     const locationCode = cleanPathMatch[1];
+    console.log(`[Middleware] Capturou /clean/ com código: ${locationCode}`);
     
     // Independente de estar logado ou não, o destino é o dashboard com o parâmetro.
     // O dashboard em si é uma rota protegida, então se não estiver logado,
     // o próximo passo do middleware cuidará do redirecionamento para o login.
     const dashboardUrl = new URL('/dashboard', request.url);
     dashboardUrl.searchParams.set('startCleaning', locationCode);
+    console.log(`[Middleware] Redirecionando para: ${dashboardUrl.toString()}`);
     return NextResponse.redirect(dashboardUrl);
   }
 
