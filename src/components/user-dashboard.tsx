@@ -2,12 +2,12 @@
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { Location, LocationStatus, User, ScheduledRequest, CleaningSettings, ActiveCleaning } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
 import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles, Link } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getCleaningSettings, getActiveCleanings } from '@/lib/actions';
+import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getCleaningSettings, getActiveCleanings, getLocationByCode } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
@@ -17,6 +17,7 @@ import { ptBR } from 'date-fns/locale';
 import { Separator } from './ui/separator';
 import { CleaningSections } from './cleaning-sections';
 import LocationCard from './location-card';
+import { StartCleaningDialog } from './start-cleaning-dialog';
 
 type SetorGroup = {
   nome: string;
@@ -56,6 +57,7 @@ interface UserDashboardProps {
 
 export function UserDashboard({ locations: initialLocations, user, pendingRequests: initialPendingRequests, myActiveCleanings: initialMyActiveCleanings }: UserDashboardProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [allLocations, setAllLocations] = useState<Location[]>(initialLocations);
@@ -68,6 +70,9 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     
     const [isAccepting, startAcceptingTransition] = useTransition();
     const [isFinalizing, startFinalizingTransition] = useTransition();
+
+    const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const refreshData = async () => {
         setIsLoading(true);
@@ -97,6 +102,28 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         fetchInitialSettings();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        const handleStartCleaningByCode = async (code: string) => {
+            const location = await getLocationByCode(code);
+            if (location) {
+                console.log('🚀 [AUTO-START] Local encontrado, abrindo modal para:', code);
+                setCleaningLocation(location);
+                setIsDialogOpen(true);
+            } else {
+                console.warn('❌ [AUTO-START] Local não encontrado para o código:', code);
+                toast({ title: "Local não encontrado", description: `O código de local "${code}" não foi encontrado.`, variant: "destructive" });
+            }
+        };
+
+        const startCleaningParam = searchParams.get('startCleaning');
+        if (startCleaningParam) {
+            console.log('🚀 [AUTO-START] Parâmetro "startCleaning" detectado:', startCleaningParam);
+            handleStartCleaningByCode(startCleaningParam);
+            router.replace('/dashboard', { scroll: false });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
     
     const myCleaningJobs = useMemo(() => {
       return allLocations.filter(loc => 
@@ -105,26 +132,10 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
       );
     }, [allLocations, user._id]);
 
-    // DEBUG COMPLETO - ADICIONE ESTE CÓDIGO
-    console.log('🔍 [DEBUG COMPLETO]', {
-      user: { id: user._id, name: user.name },
-      allLocations: allLocations.map(loc => ({
-        id: loc._id,
-        name: loc.name,
-        status: loc.status,
-        cleaningUserId: loc.currentCleaning?.userId,
-        cleaningUserName: loc.currentCleaning?.userName,
-        isInCleaning: loc.status === 'in_cleaning',
-        isMyCleaning: loc.currentCleaning?.userId === user._id
-      })),
-      myCleaningJobs: myCleaningJobs.map(job => job._id)
-    });
-
     const filteredLocations = useMemo(() => {
         if (!searchTerm) {
             return allLocations;
         }
-        // Excluir as tarefas do próprio usuário da busca geral, pois já são mostradas em destaque
         const myJobIds = new Set(myCleaningJobs.map(job => job._id.toString()));
         return allLocations.filter(loc => {
             const isMyJob = myJobIds.has(loc._id.toString());
@@ -153,8 +164,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     }, [filteredLocations]);
 
     const handleScanClick = () => {
-        // Esta funcionalidade dependeria da implementação de um leitor de QR no dispositivo.
-        // Por agora, o redirecionamento do middleware simula o scan.
         toast({ title: "Simulação de Scanner", description: "Use um QR Code para ser redirecionado para a limpeza."});
     };
     
@@ -200,7 +209,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         return;
       }
       
-      // ✅ COMPORTAMENTO IDÊNTICO ao "Testar Link"
       window.open(testLink, '_blank');
     };
     
@@ -210,6 +218,11 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         console.log('📥 [DEBUG COLA] Link inserido:', linkValue);
     };
 
+    const handleDialogClose = () => {
+        setIsDialogOpen(false);
+        setCleaningLocation(null);
+        refreshData();
+    };
 
     return (
         <div className="flex flex-col h-screen bg-background">
@@ -281,7 +294,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                     </CardContent>
                 </Card>
 
-                {/* ✅ SOLUÇÃO DEFINITIVA - MINHAS HIGIENIZAÇÕES */}
                 {myCleaningJobs.length > 0 && cleaningSettings && (
                   <div className="mb-6">
                     <h2 className="font-bold text-lg px-4 mb-3 text-green-600">✅ Minhas Higienizações</h2>
@@ -302,13 +314,12 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                   </div>
                 )}
 
-                {/* SOLUÇÃO TEMPORÁRIA - NO user-dashboard.tsx */}
-                {allLocations.filter(loc => loc.status === 'in_cleaning').length > 0 && cleaningSettings && (
+                {allLocations.filter(loc => loc.status === 'in_cleaning' && !myCleaningJobs.some(job => job._id.toString() === loc._id.toString())).length > 0 && cleaningSettings && (
                   <div className="mb-6">
-                    <h2 className="font-bold text-lg px-4 mb-3 text-yellow-600">🚨 Todas as Higienizações</h2>
+                    <h2 className="font-bold text-lg px-4 mb-3 text-yellow-600">🚨 Outras Higienizações em Andamento</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 px-4">
                       {allLocations
-                        .filter(loc => loc.status === 'in_cleaning')
+                        .filter(loc => loc.status === 'in_cleaning' && !myCleaningJobs.some(job => job._id.toString() === loc._id.toString()))
                         .map(local => (
                         <LocationCard 
                           key={local._id.toString()} 
@@ -409,6 +420,15 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                 </div>
 
             </main>
+            
+            {cleaningLocation && (
+                <StartCleaningDialog
+                    location={cleaningLocation}
+                    open={isDialogOpen}
+                    onOpenChange={setIsDialogOpen}
+                    onCleaningStarted={handleDialogClose}
+                />
+            )}
         </div>
     );
 }

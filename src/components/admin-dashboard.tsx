@@ -82,23 +82,24 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
   };
 
   useEffect(() => {
-    const processUrlParams = async () => {
-        const locationCodeToClean = searchParams.get("startCleaning");
-        if (locationCodeToClean) {
-            console.log(`🔍 [DEBUG PROCESSAMENTO] Código extraído: '${locationCodeToClean}'`);
-            const foundLocation = await getLocationByCode(locationCodeToClean);
-            if (foundLocation) {
-              console.log("📍 [DEBUG PROCESSAMENTO] Local encontrado:", foundLocation);
-              setCleaningLocation(foundLocation);
-              setIsDialogOpen(true);
-            } else {
-              console.warn(`❌ [DEBUG PROCESSAMENTO] Local NÃO encontrado para código: '${locationCodeToClean}'`);
-              toast({ title: "Erro", description: `Local com código "${locationCodeToClean}" não encontrado.`, variant: "destructive" });
-            }
-            router.replace('/dashboard', { scroll: false });
+    const handleStartCleaningByCode = async (code: string) => {
+        const location = await getLocationByCode(code);
+        if (location) {
+            console.log('📍 [DEBUG PROCESSAMENTO] Local encontrado:', location);
+            setCleaningLocation(location);
+            setIsDialogOpen(true);
+        } else {
+            console.warn(`❌ [DEBUG PROCESSAMENTO] Local NÃO encontrado para código: '${code}'`);
+            toast({ title: "Erro", description: `Local com código "${code}" não encontrado.`, variant: "destructive" });
         }
     };
-    processUrlParams();
+    
+    const startCleaningParam = searchParams.get('startCleaning');
+    if (startCleaningParam) {
+        console.log('🚀 [AUTO-START] Iniciando higienização automática para:', startCleaningParam);
+        handleStartCleaningByCode(startCleaningParam);
+        router.replace('/dashboard', { scroll: false });
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
