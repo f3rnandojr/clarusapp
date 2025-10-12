@@ -190,6 +190,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     };
     
     const handleStartWithLink = () => {
+        console.log('🚀 [DEBUG INÍCIO] Tentando iniciar com link:', testLink);
         if (!testLink || !testLink.includes('/clean/')) {
             toast({
                 title: "Link Inválido",
@@ -199,11 +200,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             return;
         }
         try {
-            console.log('🚀 [DEBUG] Iniciando por link:', {
-              link: testLink,
-              locationCode: testLink.substring(testLink.lastIndexOf('/') + 1),
-              user: user._id
-            });
             const url = new URL(testLink);
             router.push(url.pathname); // Deixa o middleware cuidar do resto
         } catch (error) {
@@ -218,8 +214,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const handleLinkInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const linkValue = e.target.value;
         setTestLink(linkValue);
-        console.log('📥 [DEBUG] Link colado:', linkValue);
-        console.log('🔍 [DEBUG] Link válido?', linkValue.includes('/clean/'));
+        console.log('📥 [DEBUG COLA] Link inserido:', linkValue);
     };
 
 

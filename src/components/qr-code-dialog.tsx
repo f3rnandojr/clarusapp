@@ -94,7 +94,7 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
   const handleCopyLink = () => {
     if (!fullUrl) return;
     navigator.clipboard.writeText(fullUrl).then(() => {
-        console.log('📋 [DEBUG] Link copiado:', fullUrl);
+        console.log('📋 [DEBUG COPIA] Link copiado:', fullUrl);
         toast({
             title: "Link Copiado!",
             description: "A URL de higienização foi copiada.",

@@ -85,14 +85,14 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
     const processUrlParams = async () => {
         const locationCodeToClean = searchParams.get("startCleaning");
         if (locationCodeToClean) {
-            console.log(`🔍 [DEBUG] Buscando local pelo código: '${locationCodeToClean}'`);
+            console.log(`🔍 [DEBUG PROCESSAMENTO] Código extraído: '${locationCodeToClean}'`);
             const foundLocation = await getLocationByCode(locationCodeToClean);
             if (foundLocation) {
-              console.log("✅ [DEBUG] Local encontrado:", foundLocation);
+              console.log("📍 [DEBUG PROCESSAMENTO] Local encontrado:", foundLocation);
               setCleaningLocation(foundLocation);
               setIsDialogOpen(true);
             } else {
-              console.warn(`❌ [DEBUG] Local NÃO encontrado para código: '${locationCodeToClean}'`);
+              console.warn(`❌ [DEBUG PROCESSAMENTO] Local NÃO encontrado para código: '${locationCodeToClean}'`);
               toast({ title: "Erro", description: `Local com código "${locationCodeToClean}" não encontrado.`, variant: "destructive" });
             }
             router.replace('/dashboard', { scroll: false });
