@@ -259,7 +259,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                 {/* SOLUÇÃO TEMPORÁRIA - NO user-dashboard.tsx */}
                 {allLocations.filter(loc => loc.status === 'in_cleaning').length > 0 && cleaningSettings && (
                   <div className="mb-6">
-                    <h2 className="font-bold text-lg px-4 mb-3 text-yellow-600">🚨 TODAS Higienizações (Debug)</h2>
+                    <h2 className="font-bold text-lg px-4 mb-3 text-yellow-600">🚨 Todas as Higienizações</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 px-4">
                       {allLocations
                         .filter(loc => loc.status === 'in_cleaning')
