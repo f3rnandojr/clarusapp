@@ -190,25 +190,17 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     };
     
     const handleStartWithLink = () => {
-        console.log('🚀 [DEBUG INÍCIO] Tentando iniciar com link:', testLink);
-        if (!testLink || !testLink.includes('/clean/')) {
-            toast({
-                title: "Link Inválido",
-                description: "Por favor, cole um link de higienização válido.",
-                variant: "destructive",
-            });
-            return;
-        }
-        try {
-            const url = new URL(testLink);
-            router.push(url.pathname); // Deixa o middleware cuidar do resto
-        } catch (error) {
-             toast({
-                title: "Erro ao processar link",
-                description: "O link fornecido não parece ser uma URL válida.",
-                variant: "destructive",
-            });
-        }
+      console.log('🚀 [DEBUG INÍCIO] Tentando iniciar com link:', testLink);
+      if (!testLink || !testLink.includes('/clean/')) {
+        toast({
+          title: "Link Inválido",
+          description: "Por favor, cole um link de higienização válido.",
+          variant: "destructive",
+        });
+        return;
+      }
+      // ✅ SOLUÇÃO: Usar window.location.href em vez de router.push()
+      window.location.href = testLink;
     };
     
     const handleLinkInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -419,5 +411,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         </div>
     );
 }
+
+    
 
     
