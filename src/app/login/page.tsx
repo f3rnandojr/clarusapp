@@ -30,9 +30,10 @@ export default function LoginPage() {
       // Se houver um erro, ela o retornará. Se for bem-sucedida, o Next.js
       // seguirá o `redirect` dentro da ação.
       const result = await loginAction(null, formData);
+      console.log('🔐 [DEBUG LOGIN RESULT]', result);
 
       if (result?.error) {
-        console.log('🔐 5. Login FALHOU', result.error);
+        console.log('❌ Erro no login:', result.error);
         toast({
           title: "Falha no Login",
           description: result.error,
@@ -41,7 +42,8 @@ export default function LoginPage() {
         setLoading(false);
       }
       // Se o login for bem-sucedido, a ação `login` redirecionará internamente.
-      // O código aqui só será executado em caso de erro.
+      // O código aqui só será executado em caso de erro, então não precisamos de um `else`.
+      // O `setLoading(false)` só é necessário no caminho do erro, pois no sucesso, a página será recarregada.
     } catch (error) {
        console.error('💥 Erro Inesperado:', error);
        toast({
