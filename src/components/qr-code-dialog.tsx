@@ -86,6 +86,7 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
   };
   
   const handleTestLink = () => {
+    console.log('🧪 [DEBUG] Testando link:', fullUrl);
     if (fullUrl) {
       window.open(fullUrl, '_blank');
     }
