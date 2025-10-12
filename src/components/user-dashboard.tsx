@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
@@ -198,6 +199,8 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         });
         return;
       }
+      
+      // ✅ COMPORTAMENTO IDÊNTICO ao "Testar Link"
       window.open(testLink, '_blank');
     };
     
@@ -409,7 +412,5 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         </div>
     );
 }
-
-    
 
     
