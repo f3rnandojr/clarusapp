@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -35,7 +34,7 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (open) {
+    if (open && typeof window !== "undefined") {
       setFullUrl(`${window.location.origin}/clean/${item.code}`);
     }
   }, [open, item.code]);
