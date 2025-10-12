@@ -34,8 +34,8 @@ export default function LoginPage() {
 
       if (response.ok) {
         console.log('🔐 5. Login OK - Redirecionando para o dashboard...');
-        // Força um full-page reload para garantir que o middleware e a sessão sejam processados corretamente.
-        window.location.href = '/dashboard';
+        // Forçar redirecionamento imediato
+        window.location.replace('/dashboard');
       } else {
         console.log('🔐 5. Login FALHOU');
         toast({
