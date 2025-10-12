@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
@@ -16,6 +15,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Separator } from './ui/separator';
 import { CleaningSections } from './cleaning-sections';
+import LocationCard from './location-card';
 
 type SetorGroup = {
   nome: string;
@@ -78,7 +78,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             ]);
             setAllLocations(refreshedLocations);
             setPendingRequests(refreshedRequests);
-            setActiveCleanings(refreshedActiveCleanings);
+            setActiveCleanings(refreshedActiveCleanings.filter(ac => ac.userId === user._id));
             setCleaningSettings(settings);
         } catch (error) {
             toast({ title: 'Erro', description: 'Não foi possível atualizar os dados.', variant: 'destructive' });
@@ -93,6 +93,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
              setCleaningSettings(settings);
         }
         fetchInitialSettings();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     
     const myCleaningJobs = useMemo(() => {
@@ -106,12 +107,17 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         if (!searchTerm) {
             return allLocations;
         }
-        return allLocations.filter(loc => 
-            loc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        // Excluir as tarefas do próprio usuário da busca geral, pois já são mostradas em destaque
+        const myJobIds = new Set(myCleaningJobs.map(job => job._id.toString()));
+        return allLocations.filter(loc => {
+            const isMyJob = myJobIds.has(loc._id.toString());
+            if(isMyJob) return false;
+
+            return loc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             loc.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (loc.setor && loc.setor.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-    }, [allLocations, searchTerm]);
+        });
+    }, [allLocations, searchTerm, myCleaningJobs]);
 
     const setoresAgrupados: SetorGroup[] = useMemo(() => {
         const grupos: Record<string, Location[]> = filteredLocations.reduce((acc, local) => {
@@ -130,7 +136,9 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     }, [filteredLocations]);
 
     const handleScanClick = () => {
-        toast({ title: "Scanner Ativado", description: "Aponte para um QR code para iniciar a limpeza."});
+        // Esta funcionalidade dependeria da implementação de um leitor de QR no dispositivo.
+        // Por agora, o redirecionamento do middleware simula o scan.
+        toast({ title: "Simulação de Scanner", description: "Use um QR Code para ser redirecionado para a limpeza."});
     };
     
     const handleAcceptRequest = async (requestId: string) => {
@@ -211,26 +219,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                     </Button>
                 </div>
 
-                {myCleaningJobs.length > 0 && cleaningSettings && (
-                  <div className="mb-6">
-                    <div className="flex items-center gap-2 px-4 mb-3">
-                      <UserIcon className="h-5 w-5 text-blue-500" />
-                      <h2 className="font-bold text-lg text-blue-700">Minhas Tarefas em Andamento</h2>
-                      <Badge variant="secondary" className="ml-2">{myCleaningJobs.length}</Badge>
-                    </div>
-                    <CleaningSections
-                      locations={myCleaningJobs}
-                      cleaningSettings={cleaningSettings}
-                      onFinalizeCleaning={handleFinalizeCleaning}
-                      isFinalizing={isFinalizing}
-                      userProfile={user.perfil}
-                      currentUserId={user._id}
-                    />
-                    <Separator className="my-4" />
-                  </div>
-                )}
-
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
                     <div className='flex flex-col gap-2'>
                         <h2 className='font-bold text-lg px-4'>Solicitações Pendentes</h2>
@@ -269,14 +257,34 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                     </div>
                      <div className='flex flex-col gap-2'>
                         <h2 className='font-bold text-lg px-4'>Consulta de Status</h2>
-                         <div className="px-4 pb-2 flex-shrink-0">
-                            <Input 
-                                placeholder="Buscar por nome, número ou setor..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex-1 overflow-y-auto space-y-3 pb-4 px-2">
+                          <div className="px-4 pb-2 flex-shrink-0">
+                              <Input 
+                                  placeholder="Buscar por nome, número ou setor..."
+                                  value={searchTerm}
+                                  onChange={(e) => setSearchTerm(e.target.value)}
+                              />
+                          </div>
+                          <div className="flex-1 overflow-y-auto space-y-3 pb-4 px-2">
+                              
+                              {myCleaningJobs.length > 0 && cleaningSettings && (
+                                <div className="mb-4">
+                                  <h3 className="font-semibold text-sm mb-2 text-blue-600 px-2">Minhas Higienizações em Andamento</h3>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {myCleaningJobs.map(local => (
+                                      <LocationCard 
+                                        key={local._id.toString()} 
+                                        location={local} 
+                                        cleaningSettings={cleaningSettings}
+                                        onFinalizeClick={handleFinalizeCleaning}
+                                        isFinalizing={isFinalizing}
+                                        userProfile={user.perfil}
+                                        currentUserId={user._id}
+                                      />
+                                    ))}
+                                  </div>
+                                  <Separator className="my-4" />
+                                </div>
+                              )}
                           
                           {setoresAgrupados.map((setor) => (
                               <div key={setor.nome} className="border rounded-lg bg-card shadow-sm">
