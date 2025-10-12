@@ -103,6 +103,18 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
       );
     }, [allLocations, user._id]);
 
+    // DEBUG FINAL
+    console.log('🔍 [DEBUG] myCleaningJobs:', {
+        total: myCleaningJobs.length,
+        jobs: myCleaningJobs.map(job => ({
+            id: job._id,
+            name: job.name,
+            status: job.status,
+            userId: job.currentCleaning?.userId,
+            currentUser: user._id
+        }))
+    });
+
     const filteredLocations = useMemo(() => {
         if (!searchTerm) {
             return allLocations;
@@ -218,6 +230,28 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                         Escanear QR Code para Iniciar Higienização
                     </Button>
                 </div>
+                
+                {/* ✅ SOLUÇÃO DEFINITIVA - MINHAS HIGIENIZAÇÕES */}
+                {myCleaningJobs.length > 0 && cleaningSettings && (
+                  <div className="mb-6">
+                    <h2 className="font-bold text-lg px-4 mb-3 text-green-600">✅ Minhas Higienizações</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 px-4">
+                      {myCleaningJobs.map(local => (
+                        <LocationCard 
+                          key={local._id.toString()} 
+                          location={local} 
+                          cleaningSettings={cleaningSettings}
+                          onFinalizeClick={handleFinalizeCleaning}
+                          isFinalizing={isFinalizing}
+                          userProfile={user.perfil}
+                          currentUserId={user._id}
+                        />
+                      ))}
+                    </div>
+                    <Separator className="my-4" />
+                  </div>
+                )}
+
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
                     <div className='flex flex-col gap-2'>
@@ -265,26 +299,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                               />
                           </div>
                           <div className="flex-1 overflow-y-auto space-y-3 pb-4 px-2">
-                              
-                              {myCleaningJobs.length > 0 && cleaningSettings && (
-                                <div className="mb-4">
-                                  <h3 className="font-semibold text-sm mb-2 text-blue-600 px-2">Minhas Higienizações em Andamento</h3>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {myCleaningJobs.map(local => (
-                                      <LocationCard 
-                                        key={local._id.toString()} 
-                                        location={local} 
-                                        cleaningSettings={cleaningSettings}
-                                        onFinalizeClick={handleFinalizeCleaning}
-                                        isFinalizing={isFinalizing}
-                                        userProfile={user.perfil}
-                                        currentUserId={user._id}
-                                      />
-                                    ))}
-                                  </div>
-                                  <Separator className="my-4" />
-                                </div>
-                              )}
                           
                           {setoresAgrupados.map((setor) => (
                               <div key={setor.nome} className="border rounded-lg bg-card shadow-sm">

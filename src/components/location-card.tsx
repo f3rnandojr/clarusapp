@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Location, CleaningSettings, LocationStatus, UserProfile } from "@/lib/schemas";
@@ -77,7 +76,13 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
   const renderCardFooter = () => {
     if (location.status === 'in_cleaning' && onFinalizeClick) {
       return (
-        <Button size="sm" variant="destructive" className="w-full" onClick={() => onFinalizeClick(location._id.toString())} disabled={isFinalizing}>
+        <Button 
+          size="sm" 
+          variant="destructive" 
+          className="w-full" 
+          onClick={() => onFinalizeClick(location._id.toString())} 
+          disabled={isFinalizing}
+        >
           {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
           Finalizar
         </Button>
