@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
@@ -199,8 +198,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         });
         return;
       }
-      // ✅ SOLUÇÃO: Usar window.location.href em vez de router.push()
-      window.location.href = testLink;
+      window.open(testLink, '_blank');
     };
     
     const handleLinkInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
