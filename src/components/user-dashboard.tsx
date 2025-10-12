@@ -5,7 +5,7 @@ import { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Location, LocationStatus, User, ScheduledRequest, CleaningSettings, ActiveCleaning } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
-import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles } from 'lucide-react';
+import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles, Link } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getCleaningSettings, getActiveCleanings } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
@@ -62,6 +62,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
     const [activeCleanings, setActiveCleanings] = useState<ActiveCleaning[]>(initialMyActiveCleanings);
     const [cleaningSettings, setCleaningSettings] = useState<CleaningSettings | null>(null);
+    const [testLink, setTestLink] = useState('');
 
     const [isLoading, setIsLoading] = useState(false);
     
@@ -187,6 +188,35 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             }
         });
     };
+    
+    const handleStartWithLink = () => {
+        if (!testLink || !testLink.includes('/clean/')) {
+            toast({
+                title: "Link Inválido",
+                description: "Por favor, cole um link de higienização válido.",
+                variant: "destructive",
+            });
+            return;
+        }
+        try {
+            const url = new URL(testLink);
+            const pathParts = url.pathname.split('/');
+            const locationCode = pathParts[pathParts.length - 1];
+            
+            if (locationCode) {
+                 router.push(`/dashboard?startCleaning=${locationCode}`);
+            } else {
+                 throw new Error("Código do local não encontrado no link.");
+            }
+        } catch (error) {
+             toast({
+                title: "Erro ao processar link",
+                description: "O link fornecido não parece ser uma URL válida.",
+                variant: "destructive",
+            });
+        }
+    };
+
 
     return (
         <div className="flex flex-col h-screen bg-background">
@@ -235,6 +265,29 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                     </Button>
                 </div>
                 
+                <Card className="mx-4 mb-4">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-md">Teste com Link</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground mb-2">
+                            Cole o link copiado do gerenciamento para simular o escaneamento.
+                        </p>
+                        <div className="flex w-full items-center space-x-2">
+                            <Input 
+                                type="url" 
+                                placeholder="https://seu-dominio/clean/codigo-do-local" 
+                                value={testLink}
+                                onChange={(e) => setTestLink(e.target.value)}
+                            />
+                            <Button onClick={handleStartWithLink}>
+                                <Link className="mr-2 h-4 w-4"/>
+                                Iniciar por Link
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* ✅ SOLUÇÃO DEFINITIVA - MINHAS HIGIENIZAÇÕES */}
                 {myCleaningJobs.length > 0 && cleaningSettings && (
                   <div className="mb-6">

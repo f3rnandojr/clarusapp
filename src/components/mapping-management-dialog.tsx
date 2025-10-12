@@ -144,7 +144,7 @@ export function MappingManagementDialog({ children }: MappingManagementDialogPro
                         >
                           <Button variant="outline" size="sm">
                             <QrCode className="mr-2 h-4 w-4" />
-                            QR
+                            QR / Link
                           </Button>
                         </QrCodeDialog>
                         <Button variant="ghost" size="icon" onClick={() => handleEditClick(mapping)}>

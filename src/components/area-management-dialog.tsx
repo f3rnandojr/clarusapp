@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
@@ -10,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { AreaForm } from "./area-form";
 import { useToast } from "@/hooks/use-toast";
 import { getAreas, toggleAreaActive } from "@/lib/actions";
-import { Loader2, Pencil, PlusCircle, List, QrCode } from "lucide-react";
+import { Loader2, Pencil, PlusCircle, List, QrCode, Copy } from "lucide-react";
 import { QrCodeDialog } from "./qr-code-dialog";
 
 interface AreaManagementDialogProps {
@@ -127,7 +128,7 @@ export function AreaManagementDialog({ allAreas, children }: AreaManagementDialo
                         >
                           <Button variant="outline" size="sm">
                             <QrCode className="mr-2 h-4 w-4" />
-                            Gerar QR
+                            QR / Link
                           </Button>
                         </QrCodeDialog>
                         <Button variant="ghost" size="icon" onClick={() => handleEditClick(area)}>
@@ -159,5 +160,3 @@ export function AreaManagementDialog({ allAreas, children }: AreaManagementDialo
     </Dialog>
   );
 }
-
-    

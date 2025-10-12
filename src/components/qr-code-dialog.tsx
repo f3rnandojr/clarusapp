@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Download, FileDown, ImageDown, Link as LinkIcon } from "lucide-react";
+import { Download, FileDown, ImageDown, Link as LinkIcon, Copy } from "lucide-react";
 
 interface QrCodeItem {
   type: 'leito' | 'area';
@@ -36,7 +36,6 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
 
   useEffect(() => {
     if (open) {
-      // A URL é sempre construída no lado do cliente
       setFullUrl(`${window.location.origin}/clean/${item.code}`);
     }
   }, [open, item.code]);
@@ -72,7 +71,7 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
       const img = new Image();
 
       img.onload = () => {
-        canvas.width = img.width * 4; // Aumenta a resolução
+        canvas.width = img.width * 4;
         canvas.height = img.height * 4;
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
         const pngUrl = canvas.toDataURL("image/png");
@@ -90,7 +89,24 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
     if (fullUrl) {
       window.open(fullUrl, '_blank');
     }
-  }
+  };
+
+  const handleCopyLink = () => {
+    if (!fullUrl) return;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+        toast({
+            title: "Link Copiado!",
+            description: "A URL de higienização foi copiada.",
+        });
+    }).catch(err => {
+        console.error('Falha ao copiar:', err);
+        toast({
+            title: "Erro ao Copiar",
+            description: "Não foi possível copiar o link.",
+            variant: "destructive",
+        });
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -118,26 +134,32 @@ export function QrCodeDialog({ item, children }: QrCodeDialogProps) {
             Escaneie para iniciar a higienização.
           </p>
            <p className="text-xs text-muted-foreground mt-2 text-center">
-             Use "Testar Link" para simular o escaneamento do QR Code no navegador.
+             Use "Testar Link" para simular o escaneamento ou copie o link para testes.
            </p>
         </div>
-        <DialogFooter className="gap-2 sm:justify-end">
-          <Button variant="outline" onClick={handleTestLink} disabled={!fullUrl}>
-            <LinkIcon className="mr-2 h-4 w-4" />
-            Testar Link
-          </Button>
-          <Button variant="outline" onClick={() => downloadAs("svg")}>
-            <FileDown className="mr-2" />
-            Baixar SVG
-          </Button>
-          <Button onClick={() => downloadAs("png")}>
-            <ImageDown className="mr-2" />
-            Baixar PNG
-          </Button>
+        <DialogFooter className="gap-2 sm:justify-between flex-wrap">
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleTestLink} disabled={!fullUrl}>
+              <LinkIcon className="mr-2 h-4 w-4" />
+              Testar Link
+            </Button>
+            <Button variant="outline" onClick={handleCopyLink} disabled={!fullUrl}>
+              <Copy className="mr-2 h-4 w-4" />
+              Copiar Link
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => downloadAs("svg")}>
+              <FileDown className="mr-2" />
+              Baixar SVG
+            </Button>
+            <Button onClick={() => downloadAs("png")}>
+              <ImageDown className="mr-2" />
+              Baixar PNG
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-    
