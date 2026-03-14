@@ -165,13 +165,10 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const handleScanSuccess = (decodedText: string) => {
         console.log('📡 QR Scaneado:', decodedText);
         let code = decodedText;
-        // Se for uma URL completa, extrai a parte final após /clean/
         if (decodedText.includes('/clean/')) {
             const parts = decodedText.split('/clean/');
             code = parts[parts.length - 1];
         }
-        
-        // Remove possíveis parâmetros de busca da URL se houver
         code = code.split('?')[0];
         
         toast({ title: "QR Code Lido", description: `Local identificado: ${code}` });
@@ -265,17 +262,15 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
 
             <main className="flex-1 flex flex-col p-2 md:p-4 overflow-hidden">
                 
-                {/* ÁREA AZUL - BOTÃO SCANNER INTEGRADO */}
-                <div className="px-4 pb-6 pt-2 flex-shrink-0">
-                    <button 
+                {/* BOTÃO SCANNER CENTRALIZADO */}
+                <div className="flex justify-center px-4 pb-8 pt-4 flex-shrink-0">
+                    <Button 
                         onClick={() => setIsScannerOpen(true)}
-                        className="w-full h-32 bg-primary text-primary-foreground rounded-2xl flex flex-col items-center justify-center gap-3 shadow-lg hover:bg-primary/90 transition-all active:scale-[0.98] active:shadow-inner border-b-4 border-primary-foreground/20 group"
+                        className="w-full max-w-[300px] h-14 bg-primary text-primary-foreground rounded-xl flex items-center justify-center gap-3 shadow-md hover:bg-primary/90 transition-all active:scale-[0.98] border-b-2 border-primary-foreground/20"
                     >
-                        <div className="bg-primary-foreground/10 p-3 rounded-full group-active:scale-90 transition-transform">
-                            <QrCode className="h-10 w-10" />
-                        </div>
-                        <span className="text-xl font-black tracking-widest uppercase">Escanear QR Code</span>
-                    </button>
+                        <QrCode className="h-6 w-6" />
+                        <span className="font-bold tracking-wide uppercase">Escanear QR Code</span>
+                    </Button>
                 </div>
 
                 {myCleaningJobs.length > 0 && cleaningSettings && (
