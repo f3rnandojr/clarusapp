@@ -3,10 +3,10 @@
 
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, finishCleaning, getActiveCleanings } from "@/lib/actions";
+import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, finishCleaning, getActiveCleanings, getNonConformities } from "@/lib/actions";
 import Header from "@/components/header";
 import { Loader2 } from "lucide-react";
-import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area } from "@/lib/schemas";
+import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area, NonConformity } from "@/lib/schemas";
 import { StartCleaningDialog } from "@/components/start-cleaning-dialog";
 import { CleaningSections } from "@/components/cleaning-sections";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ type DashboardData = {
     cleaningSettings: CleaningSettings;
     occurrences: CleaningOccurrence[];
     areas: Area[];
+    nonConformities: NonConformity[];
 };
 
 interface AdminDashboardProps {
@@ -61,6 +62,7 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
         cleaningSettings,
         occurrences,
         areas,
+        nonConformities,
       ] = await Promise.all([
         getLocations(),
         getAsgs(),
@@ -69,9 +71,10 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
         getCleaningSettings(),
         getCleaningOccurrences(),
         getAreas(),
+        getNonConformities(),
       ]);
       
-      setData({ locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas });
+      setData({ locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas, nonConformities });
 
     } catch (error) {
       console.error("❌ Erro ao carregar dashboard:", error);
@@ -162,7 +165,7 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
     );
   }
 
-  const { locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas } = data;
+  const { locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas, nonConformities } = data;
   const inCleaningLocations = locations.filter((l) => l.status === "in_cleaning");
   
   const handleLocationClick = (location: Location) => {
@@ -178,6 +181,7 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
         nextAsgCode={nextAsgCode} 
         cleaningSettings={cleaningSettings} 
         occurrences={occurrences} 
+        nonConformities={nonConformities}
         allAreas={areas}
         user={user}
       />

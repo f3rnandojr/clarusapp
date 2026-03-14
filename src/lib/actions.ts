@@ -1,9 +1,8 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -797,7 +796,7 @@ export async function updateCleaningSettings(prevState: any, formData: FormData)
 
 // --- Occurrences Actions ---
 
-export async function getCleaningOccurrences() {
+export async function getCleaningOccurrences(): Promise<CleaningOccurrence[]> {
     const db = await dbConnect();
     const occurrences = await db.collection('cleaning_occurrences').find().sort({ occurredAt: -1 }).toArray();
     return convertToPlainObject(occurrences);
@@ -1472,4 +1471,10 @@ export async function createNonConformity(formData: FormData) {
     console.error('Erro ao registrar NC:', error);
     return { success: false, error: 'Erro interno ao registrar não conformidade.' };
   }
+}
+
+export async function getNonConformities(): Promise<NonConformity[]> {
+    const db = await dbConnect();
+    const ncs = await db.collection('non_conformities').find().sort({ timestamp: -1 }).toArray();
+    return convertToPlainObject(ncs);
 }
