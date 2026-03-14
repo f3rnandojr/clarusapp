@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 
 // --- AUTH ---
@@ -43,7 +42,7 @@ export const LocationSchema = z.object({
   currentCleaning: CurrentCleaningSchema,
   externalCode: z.string().optional(),
   locationType: z.enum(['leito', 'area']),
-  setor: z.string(), // NOVO CAMPO
+  setor: z.string(), 
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),
 });
@@ -56,9 +55,9 @@ export const LocationMappingSchema = z.object({
   internalName: z.string().min(1, "O nome interno é obrigatório."),
   internalNumber: z.string().min(1, "O número interno é obrigatório."),
   setor: z.string().min(1, "O setor é obrigatório."),
-  locationId: z.string(), // Gerado automaticamente
-  qrCodeUrl: z.string(), // Gerado automaticamente
-  shortCode: z.string(), // Gerado automaticamente
+  locationId: z.string(), 
+  qrCodeUrl: z.string(), 
+  shortCode: z.string(), 
   description: z.string().optional(),
   type: z.enum(['leito', 'area']),
   isActive: z.boolean(),
@@ -129,7 +128,7 @@ export const StartCleaningFormSchema = z.object({
   type: CleaningTypeEnum,
 });
 
-// --- Scheduled Requests (New) ---
+// --- Scheduled Requests ---
 export const ScheduledRequestStatusEnum = z.enum(["agendada", "em_andamento", "concluida", "cancelada"]);
 export type ScheduledRequestStatus = z.infer<typeof ScheduledRequestStatusEnum>;
 
@@ -197,7 +196,7 @@ export const CleaningOccurrenceSchema = z.object({
   _id: z.union([z.string(), z.any()]),
   locationName: z.string(),
   cleaningType: CleaningTypeEnum,
-  userName: z.string(), // MUDOU de asgName
+  userName: z.string(), 
   delayInMinutes: z.number(),
   occurredAt: z.union([z.string(), z.date()]),
 });
@@ -264,7 +263,6 @@ export const UpdateUserSchema = UserSchema.pick({
 });
 
 
-// Schema para configurações de integração
 export const IntegrationConfigSchema = z.object({
   _id: z.union([z.string(), z.any()]),
   enabled: z.boolean().default(false),
@@ -275,30 +273,23 @@ export const IntegrationConfigSchema = z.object({
   password: z.string(),
   syncInterval: z.number().default(5),
   query: z.string().default("SELECT code1, tipobloq FROM cable1"),
-  
-  // Mapeamento de status aprimorado
   statusMappings: z.object({
     available: z.string().default("L"),
     occupied: z.string().default("*"),
-    in_cleaning: z.string().optional(), // Para sistemas que têm status de limpeza
+    in_cleaning: z.string().optional(), 
   }),
-  
-  // Mapeamento de campos flexível
   fieldMappings: z.object({
     codeField: z.string().default("code1"),
     statusField: z.string().default("tipobloq"),
-    nameField: z.string().optional(), // Campo específico para nome (se existir)
-    numberField: z.string().optional(), // Campo específico para número (se existir)
+    nameField: z.string().optional(), 
+    numberField: z.string().optional(), 
   }),
-  
-  // Configurações de transformação avançadas
   transformation: z.object({
-    nameSeparator: z.string().default(" "), // Como separar code1 em name/number
-    namePattern: z.string().optional(), // Regex para extrair nome: "([A-Za-z]+)"
-    numberPattern: z.string().optional(), // Regex para extrair número: "([0-9]+)"
-    customTransform: z.boolean().default(false), // Usar transformação customizada
+    nameSeparator: z.string().default(" "), 
+    namePattern: z.string().optional(), 
+    numberPattern: z.string().optional(), 
+    customTransform: z.boolean().default(false), 
   }),
-  
   lastSync: z.union([z.string(), z.date()]).optional(),
   lastSyncStats: z.object({
     total: z.number().default(0),
@@ -313,7 +304,7 @@ export const IntegrationConfigSchema = z.object({
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
 
-// --- Non Conformities (Nova) ---
+// --- Non Conformities ---
 export const NonConformitySchema = z.object({
   _id: z.union([z.string(), z.any()]),
   locationId: z.string(),
@@ -323,9 +314,6 @@ export const NonConformitySchema = z.object({
   photoDataUri: z.string().optional(),
   description: z.string().min(1, "A descrição é obrigatória."),
   timestamp: z.union([z.string(), z.date()]),
-  aiCategory: z.string().optional(),
-  aiPriority: z.string().optional(),
-  aiAnalysis: z.string().optional(),
 });
 export type NonConformity = z.infer<typeof NonConformitySchema>;
 

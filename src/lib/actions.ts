@@ -1,4 +1,3 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -11,7 +10,6 @@ import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
 import { convertToPlainObject } from './utils';
 import { DataTransformer, validateTransformationConfig, generateSampleTransformation } from './advanced-transformation';
 import { syncLogger } from './logger';
-import { analyzeNonConformity } from '@/ai/flows/analyze-nc-flow';
 
 // --- Logger Action ---
 async function logAction(action: string, details: Record<string, any>) {
@@ -50,10 +48,9 @@ export async function login(prevState: any, formData: FormData) {
     return { error: 'Credenciais inválidas ou usuário inativo.' };
   }
 
-  // CORREÇÃO: Garante que o usuário 'admin' sempre tenha o perfil correto
   if (user.login === 'admin' && user.perfil !== 'admin') {
     await db.collection('users').updateOne({ _id: user._id }, { $set: { perfil: 'admin' } });
-    user.perfil = 'admin'; // Atualiza o objeto em memória para a sessão atual
+    user.perfil = 'admin';
     console.log("Perfil do administrador corrigido para 'admin' durante o login.");
   }
 
@@ -89,12 +86,10 @@ const getLocationById = async (id: string): Promise<Location | null> => {
     const db = await dbConnect();
     const objectId = new ObjectId(id);
 
-    // Tenta encontrar em 'locations' (leitos) ou 'areas'
     let item = await db.collection('locations').findOne({ _id: objectId }) || await db.collection('areas').findOne({ _id: objectId });
 
     if (!item) return null;
 
-    // Constrói o objeto Location unificado
     const isArea = !!item.setor; 
     const location: Location = {
         _id: item._id,
@@ -104,7 +99,7 @@ const getLocationById = async (id: string): Promise<Location | null> => {
         currentCleaning: item.currentCleaning || null,
         externalCode: isArea ? item.locationId : item.externalCode,
         locationType: isArea ? 'area' : 'leito',
-        setor: isArea ? item.setor : 'Sem Setor', // Assumindo que leitos não têm setor direto
+        setor: isArea ? item.setor : 'Sem Setor', 
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
     };
@@ -134,7 +129,6 @@ export async function getLocations(): Promise<Location[]> {
 
   const combinedLocations: Location[] = [];
 
-  // Process Leitos
   leitos.forEach(leito => {
     const mapping = mappingsByExternalCode[leito.externalCode];
     const activeCleaning = activeCleaningsByLocationId[leito._id.toString()];
@@ -159,7 +153,6 @@ export async function getLocations(): Promise<Location[]> {
     });
   });
 
-  // Process Areas
   areas.forEach(area => {
     const activeCleaning = activeCleaningsByLocationId[area._id.toString()];
     const status = activeCleaning ? 'in_cleaning' : (area.status || 'available');
@@ -183,7 +176,6 @@ export async function getLocations(): Promise<Location[]> {
     });
   });
 
-  // Ordena a lista combinada
   combinedLocations.sort((a, b) => {
     if (a.setor < b.setor) return -1;
     if (a.setor > b.setor) return 1;
@@ -202,7 +194,6 @@ export async function getLocations(): Promise<Location[]> {
 export async function getLocationByCode(code: string) {
     const db = await dbConnect();
     
-    // Find in mappings
     let mapping = await db.collection('location_mappings').findOne({ locationId: code, isActive: true });
     if (mapping) {
         let locationData = {
@@ -230,7 +221,6 @@ export async function getLocationByCode(code: string) {
                 startTime: activeCleaning.startTime
             };
         } else {
-             // If no active cleaning, get status from original collection
              let originalItem;
              if(locationData.locationType === 'leito') {
                  originalItem = await db.collection('locations').findOne({_id: new ObjectId(locationData._id)})
@@ -242,11 +232,10 @@ export async function getLocationByCode(code: string) {
         return convertToPlainObject(locationData);
     }
     
-    // Fallback to areas and locations if no mapping
     let item: any = await db.collection('areas').findOne({ locationId: code, isActive: true }) || await db.collection('locations').findOne({ externalCode: code });
     if (!item) return null;
 
-    const isArea = !!item.setor; // Simple check
+    const isArea = !!item.setor; 
     const locationId = isArea ? item._id.toString() : item._id.toString();
     const activeCleaning = await db.collection('active_cleanings').findOne({ locationId: locationId });
     
@@ -294,7 +283,6 @@ export async function startCleaning(prevState: any, formData: FormData) {
     return { success: false, error: 'Local não encontrado.' };
   }
 
-  // Check if cleaning is already active or scheduled for this location
   const existingActive = await db.collection('active_cleanings').findOne({ locationId: location._id.toString() });
   if (existingActive) {
       return { success: false, error: 'Este local já está em higienização.' };
@@ -307,7 +295,6 @@ export async function startCleaning(prevState: any, formData: FormData) {
   const cleaningSettings = await getCleaningSettings();
   const expectedDuration = cleaningSettings[type];
   
-  // FLUXO 1: GESTOR/ADMIN CRIA UMA SOLICITAÇÃO AGENDADA
   if (userProfile === 'admin' || userProfile === 'gestor') {
      const newScheduledRequest = {
       locationId: location._id.toString(),
@@ -339,7 +326,6 @@ export async function startCleaning(prevState: any, formData: FormData) {
     return { success: true, message: `Solicitação de higienização para ${location.name} - ${location.number} criada com sucesso!` };
   }
 
-  // FLUXO 2: COLABORADOR INICIA HIGIENIZAÇÃO (via QR Code)
   if (userProfile === 'usuario') {
     const newActiveCleaning: Omit<ActiveCleaning, '_id'> = {
       locationId: location._id.toString(),
@@ -355,7 +341,6 @@ export async function startCleaning(prevState: any, formData: FormData) {
 
     await db.collection('active_cleanings').insertOne(newActiveCleaning);
 
-    // Update location status in its original collection
     const collectionName = location.locationType === 'leito' ? 'locations' : 'areas';
     await db.collection(collectionName).updateOne({_id: new ObjectId(location._id)}, {$set: { status: 'in_cleaning', updatedAt: new Date() }});
     
@@ -368,19 +353,15 @@ export async function startCleaning(prevState: any, formData: FormData) {
 
 
 export async function finishCleaning(locationId: string) {
-  console.log(`[finishCleaning] Iniciando finalização para locationId: ${locationId}`);
   const db = await dbConnect();
   
   let activeCleaning: any = null;
   let sourceType: 'active_cleanings' | 'scheduled_requests' | null = null;
   
-  // Cenário 1: Busca em `active_cleanings` (início direto por QR code ou gestor)
   activeCleaning = await db.collection('active_cleanings').findOne({ locationId: locationId.toString() });
   if (activeCleaning) {
       sourceType = 'active_cleanings';
-      console.log(`[finishCleaning] Higienização encontrada em 'active_cleanings'`);
   } 
-  // Cenário 2: Se não encontrar, busca em `scheduled_requests` (solicitação aceita)
   else {
       activeCleaning = await db.collection('scheduled_requests').findOne({ 
           locationId: locationId.toString(),
@@ -388,17 +369,15 @@ export async function finishCleaning(locationId: string) {
       });
       if (activeCleaning) {
           sourceType = 'scheduled_requests';
-          console.log(`[finishCleaning] Higienização encontrada em 'scheduled_requests'`);
       }
   }
 
   if (!activeCleaning || !sourceType) {
-    console.error(`[finishCleaning] Nenhuma higienização ativa encontrada para locationId: ${locationId}`);
     return { error: 'Higienização ativa não encontrada para este local.' };
   }
 
   const finishTime = new Date();
-  const startTime = new Date(activeCleaning.startTime || activeCleaning.startedAt); // Compatível com ambos schemas
+  const startTime = new Date(activeCleaning.startTime || activeCleaning.startedAt); 
   const actualDuration = Math.round((finishTime.getTime() - startTime.getTime()) / (1000 * 60));
   const isDelayed = actualDuration > activeCleaning.expectedDuration;
 
@@ -410,7 +389,6 @@ export async function finishCleaning(locationId: string) {
       delayInMinutes: actualDuration - activeCleaning.expectedDuration,
       occurredAt: finishTime,
     });
-    console.log(`[finishCleaning] Ocorrência de atraso registrada.`);
   }
 
   const record: Omit<CleaningRecord, '_id'> = {
@@ -429,27 +407,21 @@ export async function finishCleaning(locationId: string) {
     date: finishTime,
   };
   await db.collection('cleaning_records').insertOne(record);
-  console.log(`[finishCleaning] Registro de histórico de limpeza criado.`);
 
-  // Atualiza ou remove o registro de origem
   if (sourceType === 'active_cleanings') {
     await db.collection('active_cleanings').deleteOne({ _id: activeCleaning._id });
-    console.log(`[finishCleaning] Registro removido de 'active_cleanings'.`);
   } else if (sourceType === 'scheduled_requests') {
      await db.collection('scheduled_requests').updateOne(
         { _id: activeCleaning._id },
         { $set: { status: 'concluida', completedAt: finishTime, timeToComplete: actualDuration, updatedAt: new Date() } }
     );
-    console.log(`[finishCleaning] Status da 'scheduled_requests' atualizado para 'concluida'.`);
   }
   
-  // Atualiza status do local original
   const collectionName = activeCleaning.locationType === 'leito' ? 'locations' : 'areas';
   await db.collection(collectionName).updateOne(
       { _id: new ObjectId(locationId) }, 
       { $set: { status: 'available', currentCleaning: null, updatedAt: new Date() }}
   );
-  console.log(`[finishCleaning] Status do local (${collectionName}) atualizado para 'available'.`);
 
   revalidatePath('/dashboard');
   return { success: true, message: 'Higienização finalizada com sucesso!' };
@@ -572,8 +544,6 @@ export async function getNextAsgCode() {
 }
 
 export async function createAsg(prevState: any, formData: FormData) {
-  console.log('🎯 CREATE_ASG INICIADA');
-  
   try {
     const nextCode = await getNextAsgCode();
     
@@ -652,9 +622,6 @@ export async function getAreas() {
 }
 
 export async function createArea(prevState: any, formData: FormData) {
-    console.log('🔴🔴🔴 CREATE AREA INICIADO - ESTAMOS AQUI!');
-    console.log('🔴 FormData recebido:', formData);
-    
     try {
         const rawData = {
             setor: formData.get('setor'),
@@ -665,7 +632,6 @@ export async function createArea(prevState: any, formData: FormData) {
         const validatedFields = CreateAreaSchema.safeParse(rawData);
 
         if (!validatedFields.success) {
-            console.log('❌ Validação do formulário falhou:', validatedFields.error.flatten());
             return {
                 error: "Dados inválidos.",
                 fieldErrors: validatedFields.error.flatten().fieldErrors,
@@ -675,15 +641,11 @@ export async function createArea(prevState: any, formData: FormData) {
         }
 
         const { locationId, setor, description } = validatedFields.data;
-        console.log('📝 Dados validados:', { setor, locationId, description });
 
-        console.log('🗄️ Tentando conectar com MongoDB...');
         const db = await dbConnect();
-        console.log('🗄️ Conexão com MongoDB estabelecida.');
 
         const existingArea = await db.collection('areas').findOne({ locationId });
         if (existingArea) {
-            console.log('⚠️ Tentativa de criar área com locationId duplicado:', locationId);
             return { 
                 error: 'O ID da Localização já está em uso.', 
                 fieldErrors: { locationId: ['Este ID já está em uso.'] },
@@ -703,20 +665,17 @@ export async function createArea(prevState: any, formData: FormData) {
             updatedAt: new Date(),
         };
 
-        console.log('➕ Tentando inserir nova área no banco de dados:', newArea);
         await db.collection('areas').insertOne(newArea);
-        console.log('✅ Área criada com sucesso no banco de dados.');
 
         revalidatePath('/dashboard');
         return { success: true, message: 'Área criada com sucesso!', fieldErrors: {}, error: null };
     } catch (error: any) {
         console.error('💥 Erro fatal em createArea:', error);
-        console.error('📌 Detalhes do erro:', error.message, error.stack);
         return {
             error: 'Erro interno do servidor ao criar área.',
             fieldErrors: {},
             success: false,
-            message: error.message // Retorna a mensagem de erro real
+            message: error.message 
         };
     }
 }
@@ -838,16 +797,13 @@ export async function generateReport(prevState: any, formData: FormData) {
         queryStartDate = new Date(sDate + 'T00:00:00');
         queryEndDate = new Date(eDate + 'T23:59:59');
     } else {
-        // Fallback para mês atual se intervalo estiver vazio
         const now = new Date();
         queryStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
         queryEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     }
 
-    // Filtro de tipos de higienização (ignorado para NC)
     const typeFilter = cleaningTypes && cleaningTypes.length > 0 ? { cleaningType: { $in: cleaningTypes } } : {};
 
-    // --- Lógica Geral ---
     if (scope === 'general') {
         const cleaningRecords = await db.collection('cleaning_records').find({
             date: { $gte: queryStartDate, $lte: queryEndDate },
@@ -893,7 +849,6 @@ export async function generateReport(prevState: any, formData: FormData) {
         };
     }
 
-    // --- Lógica Atrasos ---
     if (scope === 'delays') {
         const delayedRecords = await db.collection('cleaning_records').find({
             date: { $gte: queryStartDate, $lte: queryEndDate },
@@ -912,7 +867,6 @@ export async function generateReport(prevState: any, formData: FormData) {
         };
     }
 
-    // --- Lógica NCs ---
     if (scope === 'nc') {
         const ncs = await db.collection('non_conformities').find({
             timestamp: { $gte: queryStartDate, $lte: queryEndDate }
@@ -1065,7 +1019,6 @@ export async function acceptRequest(requestId: string) {
         return { success: false, error: 'Este local já está em processo de higienização.'};
     }
 
-    // Create active cleaning record
     const newActiveCleaning: Omit<ActiveCleaning, '_id'> = {
         locationId: location._id.toString(),
         locationName: location.name,
@@ -1079,12 +1032,10 @@ export async function acceptRequest(requestId: string) {
     };
     await db.collection('active_cleanings').insertOne(newActiveCleaning);
 
-    // Update location status
     const collectionName = location.locationType === 'leito' ? 'locations' : 'areas';
     await db.collection(collectionName).updateOne({ _id: new ObjectId(location._id) }, { $set: { status: 'in_cleaning', updatedAt: new Date() }});
     
-    // Update the scheduled request
-    const timeToAssign = Math.round((new Date().getTime() - new Date(request.requestedAt).getTime()) / 60000); // in minutes
+    const timeToAssign = Math.round((new Date().getTime() - new Date(request.requestedAt).getTime()) / 60000); 
     await db.collection('scheduled_requests').updateOne(
         { _id: new ObjectId(requestId) },
         {
@@ -1137,24 +1088,6 @@ export async function createNonConformity(formData: FormData) {
       timestamp: new Date(),
     };
 
-    // Analisar com IA (Genkit Flow)
-    try {
-        const aiAnalysis = await analyzeNonConformity({
-            description: validatedFields.data.description,
-            photoDataUri: validatedFields.data.photoDataUri as string
-        });
-        
-        // Adicionar resultados da análise ao documento
-        Object.assign(newNC, {
-            aiCategory: aiAnalysis.category,
-            aiPriority: aiAnalysis.priority,
-            aiAnalysis: aiAnalysis.reasoning
-        });
-    } catch (aiError) {
-        console.error('Falha na análise da IA para a NC:', aiError);
-        // Continuamos sem a análise se a IA falhar
-    }
-
     await db.collection('non_conformities').insertOne(newNC);
     
     await logAction('non_conformity_reported', { 
@@ -1175,7 +1108,7 @@ export async function getNonConformities(): Promise<NonConformity[]> {
     return convertToPlainObject(ncs);
 }
 
-// --- NEW USER MANAGEMENT ACTIONS ---
+// --- USER MANAGEMENT ACTIONS ---
 
 export async function getUsers(): Promise<User[]> {
   const db = await dbConnect();
