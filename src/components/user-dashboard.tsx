@@ -18,6 +18,7 @@ import { Separator } from './ui/separator';
 import { CleaningSections } from './cleaning-sections';
 import LocationCard from './location-card';
 import { StartCleaningDialog } from './start-cleaning-dialog';
+import { QrScannerDialog } from './qr-scanner-dialog';
 
 type SetorGroup = {
   nome: string;
@@ -64,7 +65,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
     const [activeCleanings, setActiveCleanings] = useState<ActiveCleaning[]>(initialMyActiveCleanings);
     const [cleaningSettings, setCleaningSettings] = useState<CleaningSettings | null>(null);
-    const [testLink, setTestLink] = useState('');
 
     const [isLoading, setIsLoading] = useState(false);
     
@@ -73,6 +73,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
 
     const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
 
     const refreshData = async () => {
         setIsLoading(true);
@@ -100,7 +101,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
              setCleaningSettings(settings);
         }
         fetchInitialSettings();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -122,8 +122,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             handleStartCleaningByCode(startCleaningParam);
             router.replace('/dashboard', { scroll: false });
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams]);
+    }, [searchParams, router, toast]);
     
     const myCleaningJobs = useMemo(() => {
       return allLocations.filter(loc => 
@@ -163,8 +162,30 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         })).sort((a,b) => a.nome.localeCompare(b.nome));
     }, [filteredLocations]);
 
-    const handleScanClick = () => {
-        toast({ title: "Simulação de Scanner", description: "Use um QR Code para ser redirecionado para a limpeza."});
+    const handleScanSuccess = (decodedText: string) => {
+        console.log('📡 QR Scaneado:', decodedText);
+        let code = decodedText;
+        // Se for uma URL completa, extrai a parte final após /clean/
+        if (decodedText.includes('/clean/')) {
+            const parts = decodedText.split('/clean/');
+            code = parts[parts.length - 1];
+        }
+        
+        // Remove possíveis parâmetros de busca da URL se houver
+        code = code.split('?')[0];
+        
+        toast({ title: "QR Code Lido", description: `Local identificado: ${code}` });
+        handleStartCleaningByCode(code);
+    };
+
+    const handleStartCleaningByCode = async (code: string) => {
+        const location = await getLocationByCode(code);
+        if (location) {
+            setCleaningLocation(location);
+            setIsDialogOpen(true);
+        } else {
+            toast({ title: "Erro", description: `Local "${code}" não encontrado.`, variant: "destructive" });
+        }
     };
     
     const handleAcceptRequest = async (requestId: string) => {
@@ -196,26 +217,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                 });
             }
         });
-    };
-    
-    const handleStartWithLink = () => {
-      console.log('🚀 [DEBUG INÍCIO] Tentando iniciar com link:', testLink);
-      if (!testLink || !testLink.includes('/clean/')) {
-        toast({
-          title: "Link Inválido",
-          description: "Por favor, cole um link de higienização válido.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      window.open(testLink, '_blank');
-    };
-    
-    const handleLinkInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const linkValue = e.target.value;
-        setTestLink(linkValue);
-        console.log('📥 [DEBUG COLA] Link inserido:', linkValue);
     };
 
     const handleDialogClose = () => {
@@ -264,35 +265,18 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
 
             <main className="flex-1 flex flex-col p-2 md:p-4 overflow-hidden">
                 
-                <div className="px-4 pb-4 flex-shrink-0">
-                    <Button size="lg" className="w-full text-lg" onClick={handleScanClick}>
-                        <QrCode className="mr-3 h-6 w-6" />
-                        Escanear QR Code para Iniciar Higienização
-                    </Button>
-                </div>
-                
-                <Card className="mx-4 mb-4">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-md">Teste com Link</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground mb-2">
-                            Cole o link copiado do gerenciamento para simular o escaneamento.
-                        </p>
-                        <div className="flex w-full items-center space-x-2">
-                            <Input 
-                                type="url" 
-                                placeholder="https://seu-dominio/clean/codigo-do-local" 
-                                value={testLink}
-                                onChange={handleLinkInputChange}
-                            />
-                            <Button onClick={handleStartWithLink}>
-                                <Link className="mr-2 h-4 w-4"/>
-                                Iniciar por Link
-                            </Button>
+                {/* ÁREA AZUL - BOTÃO SCANNER INTEGRADO */}
+                <div className="px-4 pb-6 pt-2 flex-shrink-0">
+                    <button 
+                        onClick={() => setIsScannerOpen(true)}
+                        className="w-full h-32 bg-primary text-primary-foreground rounded-2xl flex flex-col items-center justify-center gap-3 shadow-lg hover:bg-primary/90 transition-all active:scale-[0.98] active:shadow-inner border-b-4 border-primary-foreground/20 group"
+                    >
+                        <div className="bg-primary-foreground/10 p-3 rounded-full group-active:scale-90 transition-transform">
+                            <QrCode className="h-10 w-10" />
                         </div>
-                    </CardContent>
-                </Card>
+                        <span className="text-xl font-black tracking-widest uppercase">Escanear QR Code</span>
+                    </button>
+                </div>
 
                 {myCleaningJobs.length > 0 && cleaningSettings && (
                   <div className="mb-6">
@@ -421,6 +405,12 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
 
             </main>
             
+            <QrScannerDialog 
+                open={isScannerOpen} 
+                onOpenChange={setIsScannerOpen} 
+                onScanSuccess={handleScanSuccess} 
+            />
+
             {cleaningLocation && (
                 <StartCleaningDialog
                     location={cleaningLocation}
@@ -432,5 +422,3 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         </div>
     );
 }
-
-    
