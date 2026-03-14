@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -10,6 +11,7 @@ import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
 import { convertToPlainObject } from './utils';
 import { DataTransformer, validateTransformationConfig, generateSampleTransformation } from './advanced-transformation';
 import { syncLogger } from './logger';
+import { analyzeNonConformity } from '@/ai/flows/analyze-nc-flow';
 
 // --- Logger Action ---
 async function logAction(action: string, details: Record<string, any>) {
@@ -1134,6 +1136,24 @@ export async function createNonConformity(formData: FormData) {
       userName: session.user.name,
       timestamp: new Date(),
     };
+
+    // Analisar com IA (Genkit Flow)
+    try {
+        const aiAnalysis = await analyzeNonConformity({
+            description: validatedFields.data.description,
+            photoDataUri: validatedFields.data.photoDataUri as string
+        });
+        
+        // Adicionar resultados da análise ao documento
+        Object.assign(newNC, {
+            aiCategory: aiAnalysis.category,
+            aiPriority: aiAnalysis.priority,
+            aiAnalysis: aiAnalysis.reasoning
+        });
+    } catch (aiError) {
+        console.error('Falha na análise da IA para a NC:', aiError);
+        // Continuamos sem a análise se a IA falhar
+    }
 
     await db.collection('non_conformities').insertOne(newNC);
     

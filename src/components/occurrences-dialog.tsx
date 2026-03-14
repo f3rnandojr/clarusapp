@@ -9,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, Clock, AlertTriangle, X } from "lucide-react";
+import { Eye, Clock, AlertTriangle, X, BrainCircuit, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface OccurrencesDialogProps {
   occurrences: CleaningOccurrence[];
@@ -21,6 +22,16 @@ interface OccurrencesDialogProps {
 
 export function OccurrencesDialog({ occurrences, nonConformities, children }: OccurrencesDialogProps) {
   const [selectedNC, setSelectedNC] = useState<NonConformity | null>(null);
+
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case 'Crítica': return 'destructive';
+      case 'Alta': return 'destructive';
+      case 'Média': return 'default';
+      case 'Baixa': return 'secondary';
+      default: return 'outline';
+    }
+  };
 
   return (
     <>
@@ -91,6 +102,7 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="whitespace-nowrap">Local</TableHead>
+                      <TableHead className="whitespace-nowrap">Prioridade (IA)</TableHead>
                       <TableHead className="whitespace-nowrap">Responsável</TableHead>
                       <TableHead className="whitespace-nowrap">Relato (Resumo)</TableHead>
                       <TableHead className="whitespace-nowrap">Evidência</TableHead>
@@ -105,6 +117,15 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
                         onClick={() => setSelectedNC(nc)}
                       >
                         <TableCell className="font-medium whitespace-nowrap">{nc.locationName}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {nc.aiPriority ? (
+                            <Badge variant={getPriorityColor(nc.aiPriority)}>
+                              {nc.aiPriority}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                         <TableCell className="whitespace-nowrap">{nc.userName}</TableCell>
                         <TableCell className="max-w-[200px] truncate whitespace-nowrap">
                           {nc.description}
@@ -122,7 +143,7 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
                       </TableRow>
                     )) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground italic">
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground italic">
                           Nenhuma não conformidade registrada.
                         </TableCell>
                       </TableRow>
@@ -135,9 +156,9 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Detalhe da NC (Clique Mágico) */}
+      {/* Modal de Detalhe da NC */}
       <Dialog open={!!selectedNC} onOpenChange={(open) => !open && setSelectedNC(null)}>
-        <DialogContent className="sm:max-w-[500px] w-[95vw]">
+        <DialogContent className="sm:max-w-[500px] w-[95vw] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -149,9 +170,29 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <div className="bg-muted p-3 rounded-md">
-              <p className="text-sm font-semibold mb-1">Local:</p>
-              <p className="text-sm">{selectedNC?.locationName}</p>
+            <div className="flex flex-wrap gap-2">
+              <div className="bg-muted p-2 rounded-md flex-1 min-w-[120px]">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Local</p>
+                <p className="text-sm font-semibold">{selectedNC?.locationName}</p>
+              </div>
+              {selectedNC?.aiCategory && (
+                <div className="bg-primary/5 p-2 rounded-md flex-1 min-w-[120px] border border-primary/10">
+                  <p className="text-[10px] font-bold text-primary uppercase flex items-center gap-1">
+                    <BrainCircuit className="h-3 w-3" /> Categoria (IA)
+                  </p>
+                  <p className="text-sm font-semibold">{selectedNC.aiCategory}</p>
+                </div>
+              )}
+               {selectedNC?.aiPriority && (
+                <div className={cn("p-2 rounded-md flex-1 min-w-[120px] border", 
+                  selectedNC.aiPriority === 'Crítica' || selectedNC.aiPriority === 'Alta' ? "bg-destructive/5 border-destructive/10" : "bg-muted border-muted-foreground/10"
+                )}>
+                  <p className={cn("text-[10px] font-bold uppercase", 
+                    selectedNC.aiPriority === 'Crítica' || selectedNC.aiPriority === 'Alta' ? "text-destructive" : "text-muted-foreground"
+                  )}>Prioridade (IA)</p>
+                  <p className="text-sm font-semibold">{selectedNC.aiPriority}</p>
+                </div>
+              )}
             </div>
 
             {selectedNC?.photoDataUri && (
@@ -166,11 +207,24 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
             )}
 
             <div className="space-y-1">
-              <p className="text-sm font-semibold">Descrição completa:</p>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                {selectedNC?.description}
-              </p>
+              <p className="text-xs font-bold text-muted-foreground uppercase">Descrição do Colaborador</p>
+              <div className="bg-muted/50 p-3 rounded-md italic">
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                  "{selectedNC?.description}"
+                </p>
+              </div>
             </div>
+
+            {selectedNC?.aiAnalysis && (
+               <div className="space-y-1 bg-accent/5 p-3 rounded-md border border-accent/20">
+                <p className="text-xs font-bold text-accent uppercase flex items-center gap-1">
+                  <Info className="h-3 w-3" /> Análise Técnica da IA
+                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {selectedNC.aiAnalysis}
+                </p>
+              </div>
+            )}
           </div>
 
           <DialogFooter>

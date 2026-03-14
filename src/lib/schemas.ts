@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 // --- AUTH ---
@@ -322,6 +323,9 @@ export const NonConformitySchema = z.object({
   photoDataUri: z.string().optional(),
   description: z.string().min(1, "A descrição é obrigatória."),
   timestamp: z.union([z.string(), z.date()]),
+  aiCategory: z.string().optional(),
+  aiPriority: z.string().optional(),
+  aiAnalysis: z.string().optional(),
 });
 export type NonConformity = z.infer<typeof NonConformitySchema>;
 
