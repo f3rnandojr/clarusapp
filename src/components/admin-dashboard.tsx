@@ -174,7 +174,7 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background">
       <Header 
         asgs={asgs} 
         users={users} 
@@ -186,11 +186,11 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
         user={user}
       />
       
-      <main className="flex-1 p-2 md:p-4 overflow-y-auto">
+      <main className="flex-1 p-2 md:p-4 pb-10">
         <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="cleaning"><Sparkles className="mr-2 h-4 w-4" />Em Higienização ({inCleaningLocations.length})</TabsTrigger>
-                <TabsTrigger value="overview"><Building className="mr-2 h-4 w-4" />Visão Geral por Setor</TabsTrigger>
+                <TabsTrigger value="cleaning"><Sparkles className="mr-2 h-4 w-4" />Higienização ({inCleaningLocations.length})</TabsTrigger>
+                <TabsTrigger value="overview"><Building className="mr-2 h-4 w-4" />Setores</TabsTrigger>
             </TabsList>
             
             <TabsContent value="cleaning">

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -67,8 +68,9 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
+  html, body {
+    @apply h-auto min-h-screen bg-background text-foreground overflow-x-hidden;
+    -webkit-overflow-scrolling: touch;
   }
   
   /* Estilos de scrollbar customizados */
@@ -78,8 +80,8 @@
   }
 
   .scroll-container::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
 
   .scroll-container::-webkit-scrollbar-track {

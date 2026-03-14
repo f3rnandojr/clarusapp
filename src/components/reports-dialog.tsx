@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useActionState } from "react";
@@ -67,7 +68,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
     return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-4xl w-[95vw] sm:w-full max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>📈 Central de Relatórios Inteligentes</DialogTitle>
           <DialogDescription>
@@ -75,7 +76,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
           </DialogDescription>
         </DialogHeader>
         
-        <form action={formAction} className="flex-1 overflow-y-auto px-1 space-y-6 pt-2">
+        <form action={formAction} className="flex-1 overflow-y-auto px-1 space-y-6 pt-2 pb-4 scroll-container">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Lado Esquerdo: Escopo e Tipos */}
                 <div className="space-y-4 rounded-md border p-4 bg-muted/20">
@@ -117,20 +118,20 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                 <div className="space-y-4 rounded-md border p-4 bg-muted/20">
                     <h3 className="font-semibold text-sm flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> Período Detalhado</h3>
                     
-                    <div className="flex items-center gap-4 mb-2">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
                         <Button 
                             type="button" 
                             size="sm" 
                             variant={periodType === 'month' ? 'default' : 'outline'}
                             onClick={() => setPeriodType('month')}
-                            className="h-7 text-xs"
+                            className="h-7 text-[10px] sm:text-xs"
                         >Mês/Ano</Button>
                         <Button 
                             type="button" 
                             size="sm" 
                             variant={periodType === 'range' ? 'default' : 'outline'}
                             onClick={() => setPeriodType('range')}
-                            className="h-7 text-xs"
+                            className="h-7 text-[10px] sm:text-xs"
                         >Data Específica</Button>
                         <input type="hidden" name="periodType" value={periodType} />
                     </div>
@@ -157,7 +158,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                             </div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label htmlFor="startDate" className="text-xs">Início</Label>
                                 <Input id="startDate" name="startDate" type="date" className="h-8" required={periodType === 'range'} />
@@ -171,8 +172,8 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                 </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-                <Button variant="outline" type="button" disabled><Download className="mr-2 h-4 w-4"/>Exportar Planilha</Button>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <Button variant="outline" type="button" disabled className="w-full sm:w-auto"><Download className="mr-2 h-4 w-4"/>Exportar</Button>
                 <SubmitButton />
             </div>
 
@@ -186,57 +187,57 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                 <div className="mt-2 space-y-6 pb-6">
                     <Separator />
                     <div className="text-center">
-                        <h3 className="font-semibold text-lg flex items-center justify-center gap-2">
+                        <h3 className="font-semibold text-base sm:text-lg flex items-center justify-center gap-2">
                             {state.report.scope === 'general' && <ClipboardList className="h-5 w-5 text-primary" />}
                             {state.report.scope === 'delays' && <AlertTriangle className="h-5 w-5 text-destructive" />}
                             {state.report.scope === 'nc' && <AlertTriangle className="h-5 w-5 text-destructive" />}
                             Resultados: {state.report.scope === 'general' ? 'Resumo Geral' : state.report.scope === 'delays' ? 'Ocorrências de Atraso' : 'Não Conformidades'}
                         </h3>
-                        {reportPeriodLabel && <p className="text-sm text-muted-foreground capitalize">{reportPeriodLabel}</p>}
+                        {reportPeriodLabel && <p className="text-xs sm:text-sm text-muted-foreground capitalize">{reportPeriodLabel}</p>}
                     </div>
                     
                     {state.report.scope === 'general' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                             <div className="rounded-lg border p-4 space-y-2 bg-card shadow-sm">
                                 <h4 className="font-semibold text-primary">Volumetria</h4>
-                                <p>Higienizações: <span className="font-bold float-right">{state.report.total}</span></p>
-                                <p>Não Conformidades: <span className="font-bold float-right text-destructive">{state.report.totalNCs}</span></p>
+                                <div className="flex justify-between border-b pb-1"><span>Higienizações:</span> <span className="font-bold">{state.report.total}</span></div>
+                                <div className="flex justify-between"><span>Não Conformidades:</span> <span className="font-bold text-destructive">{state.report.totalNCs}</span></div>
                             </div>
                             <div className="rounded-lg border p-4 space-y-2 bg-card shadow-sm">
                                 <h4 className="font-semibold text-primary">Detalhamento</h4>
-                                <p>Concorrente: <span className="font-bold float-right">{state.report.concurrent} (Média {state.report.avgConcurrentTime}m)</span></p>
-                                <p>Terminal: <span className="font-bold float-right">{state.report.terminal} (Média {state.report.avgTerminalTime}m)</span></p>
+                                <div className="flex justify-between border-b pb-1"><span>Concorrente:</span> <span className="font-bold">{state.report.concurrent} (Média {state.report.avgConcurrentTime}m)</span></div>
+                                <div className="flex justify-between"><span>Terminal:</span> <span className="font-bold">{state.report.terminal} (Média {state.report.avgTerminalTime}m)</span></div>
                             </div>
                             <div className="rounded-lg border p-4 space-y-2 bg-card shadow-sm sm:col-span-2 lg:col-span-1">
                                 <h4 className="font-semibold text-primary">SLA e Prazos</h4>
-                                <p>No Prazo: <span className="font-bold text-green-600 float-right">{state.report.onTime} ({state.report.onTimePercent.toFixed(1)}%)</span></p>
-                                <p>Atrasados: <span className="font-bold text-destructive float-right">{state.report.delayed} ({state.report.delayedPercent.toFixed(1)}%)</span></p>
+                                <div className="flex justify-between border-b pb-1"><span>No Prazo:</span> <span className="font-bold text-green-600">{state.report.onTime} ({state.report.onTimePercent.toFixed(1)}%)</span></div>
+                                <div className="flex justify-between"><span>Atrasados:</span> <span className="font-bold text-destructive">{state.report.delayed} ({state.report.delayedPercent.toFixed(1)}%)</span></div>
                             </div>
                         </div>
                     ) : (
-                        <div className="rounded-md border">
+                        <div className="rounded-md border overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow className="bg-muted/50">
-                                        <TableHead className="w-[100px]">Data</TableHead>
-                                        <TableHead>Local</TableHead>
-                                        <TableHead>Responsável</TableHead>
-                                        <TableHead>{state.report.scope === 'delays' ? 'Atraso' : 'Relato'}</TableHead>
+                                        <TableHead className="whitespace-nowrap">Data</TableHead>
+                                        <TableHead className="whitespace-nowrap">Local</TableHead>
+                                        <TableHead className="whitespace-nowrap">Responsável</TableHead>
+                                        <TableHead className="whitespace-nowrap">{state.report.scope === 'delays' ? 'Atraso' : 'Relato'}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {state.report.details && state.report.details.length > 0 ? (
                                         state.report.details.map((item: any) => (
                                             <TableRow key={item._id}>
-                                                <TableCell className="text-xs">
+                                                <TableCell className="text-[10px] sm:text-xs whitespace-nowrap">
                                                     {format(new Date(item.date || item.timestamp), 'dd/MM/yy HH:mm')}
                                                 </TableCell>
-                                                <TableCell className="font-medium">{item.locationName}</TableCell>
-                                                <TableCell>{item.userName}</TableCell>
-                                                <TableCell className={state.report.scope === 'delays' ? 'text-destructive font-bold' : 'text-xs text-muted-foreground'}>
+                                                <TableCell className="font-medium whitespace-nowrap">{item.locationName}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{item.userName}</TableCell>
+                                                <TableCell className={cn("whitespace-nowrap", state.report.scope === 'delays' ? 'text-destructive font-bold' : 'text-[10px] sm:text-xs text-muted-foreground')}>
                                                     {state.report.scope === 'delays' 
                                                         ? `${item.actualDuration - item.expectedDuration} min`
-                                                        : item.description
+                                                        : (item.description?.substring(0, 30) + (item.description?.length > 30 ? '...' : ''))
                                                     }
                                                 </TableCell>
                                             </TableRow>

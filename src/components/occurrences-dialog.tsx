@@ -26,7 +26,7 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
     <>
       <Dialog>
         <DialogTrigger asChild>{children}</DialogTrigger>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="max-w-5xl w-[95vw] sm:w-full">
           <DialogHeader>
             <DialogTitle>📊 Central de Eventos e Ocorrências</DialogTitle>
             <DialogDescription>
@@ -36,42 +36,42 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
 
           <Tabs defaultValue="delays" className="mt-4">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="delays">
-                <Clock className="mr-2 h-4 w-4" />
+              <TabsTrigger value="delays" className="text-xs sm:text-sm">
+                <Clock className="mr-2 h-4 w-4 hidden sm:inline" />
                 Atrasos ({occurrences.length})
               </TabsTrigger>
-              <TabsTrigger value="ncs">
-                <AlertTriangle className="mr-2 h-4 w-4" />
+              <TabsTrigger value="ncs" className="text-xs sm:text-sm">
+                <AlertTriangle className="mr-2 h-4 w-4 hidden sm:inline" />
                 Não Conformidades ({nonConformities.length})
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="delays" className="mt-4">
-              <div className="max-h-[60vh] overflow-y-auto">
+              <div className="max-h-[60vh] overflow-y-auto overflow-x-auto border rounded-md">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Local</TableHead>
-                      <TableHead>Tipo de Limpeza</TableHead>
-                      <TableHead>Responsável</TableHead>
-                      <TableHead>Atraso (min)</TableHead>
-                      <TableHead>Data</TableHead>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="whitespace-nowrap">Local</TableHead>
+                      <TableHead className="whitespace-nowrap">Tipo</TableHead>
+                      <TableHead className="whitespace-nowrap">Responsável</TableHead>
+                      <TableHead className="whitespace-nowrap">Atraso</TableHead>
+                      <TableHead className="whitespace-nowrap">Data</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {occurrences.length > 0 ? occurrences.map((occ) => (
                       <TableRow key={occ._id.toString()}>
-                        <TableCell className="font-medium">{occ.locationName}</TableCell>
-                        <TableCell>
+                        <TableCell className="font-medium whitespace-nowrap">{occ.locationName}</TableCell>
+                        <TableCell className="whitespace-nowrap">
                           <Badge variant={occ.cleaningType === 'concurrent' ? 'secondary' : 'default'}>
                             {occ.cleaningType === 'concurrent' ? 'Concorrente' : 'Terminal'}
                           </Badge>
                         </TableCell>
-                        <TableCell>{occ.userName}</TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">{occ.userName}</TableCell>
+                        <TableCell className="whitespace-nowrap">
                           <span className="font-bold text-destructive">{occ.delayInMinutes} min</span>
                         </TableCell>
-                        <TableCell>{format(new Date(occ.occurredAt), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
+                        <TableCell className="whitespace-nowrap">{format(new Date(occ.occurredAt), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
                       </TableRow>
                     )) : (
                       <TableRow>
@@ -86,15 +86,15 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
             </TabsContent>
 
             <TabsContent value="ncs" className="mt-4">
-              <div className="max-h-[60vh] overflow-y-auto">
+              <div className="max-h-[60vh] overflow-y-auto overflow-x-auto border rounded-md">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Local</TableHead>
-                      <TableHead>Responsável</TableHead>
-                      <TableHead>Relato (Resumo)</TableHead>
-                      <TableHead>Evidência</TableHead>
-                      <TableHead>Data</TableHead>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="whitespace-nowrap">Local</TableHead>
+                      <TableHead className="whitespace-nowrap">Responsável</TableHead>
+                      <TableHead className="whitespace-nowrap">Relato (Resumo)</TableHead>
+                      <TableHead className="whitespace-nowrap">Evidência</TableHead>
+                      <TableHead className="whitespace-nowrap">Data</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -104,12 +104,12 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => setSelectedNC(nc)}
                       >
-                        <TableCell className="font-medium">{nc.locationName}</TableCell>
-                        <TableCell>{nc.userName}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">
+                        <TableCell className="font-medium whitespace-nowrap">{nc.locationName}</TableCell>
+                        <TableCell className="whitespace-nowrap">{nc.userName}</TableCell>
+                        <TableCell className="max-w-[200px] truncate whitespace-nowrap">
                           {nc.description}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="whitespace-nowrap">
                           {nc.photoDataUri ? (
                             <Badge variant="outline" className="flex items-center gap-1 w-fit">
                               <Eye className="h-3 w-3" /> Foto
@@ -118,7 +118,7 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
                             <span className="text-xs text-muted-foreground italic">Sem foto</span>
                           )}
                         </TableCell>
-                        <TableCell>{format(new Date(nc.timestamp), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
+                        <TableCell className="whitespace-nowrap">{format(new Date(nc.timestamp), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
                       </TableRow>
                     )) : (
                       <TableRow>
@@ -137,7 +137,7 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
 
       {/* Modal de Detalhe da NC (Clique Mágico) */}
       <Dialog open={!!selectedNC} onOpenChange={(open) => !open && setSelectedNC(null)}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] w-[95vw]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -174,7 +174,7 @@ export function OccurrencesDialog({ occurrences, nonConformities, children }: Oc
           </div>
 
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setSelectedNC(null)}>
+            <Button variant="secondary" className="w-full" onClick={() => setSelectedNC(null)}>
               <X className="mr-2 h-4 w-4" /> Fechar Detalhes
             </Button>
           </DialogFooter>

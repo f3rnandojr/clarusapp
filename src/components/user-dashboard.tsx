@@ -223,8 +223,8 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     };
 
     return (
-        <div className="flex flex-col h-screen bg-background">
-             <header className="flex items-center justify-between p-4 border-b bg-card shadow-sm shrink-0">
+        <div className="flex flex-col min-h-screen bg-background">
+             <header className="flex items-center justify-between p-4 border-b bg-card shadow-sm shrink-0 sticky top-0 z-50">
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-bold text-accent">Basiclean</h1>
                 </div>
@@ -242,7 +242,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                             </span>
                         )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right hidden sm:block">
                         <div className="font-semibold text-sm flex items-center gap-2">
                            <UserIcon className="h-4 w-4 text-muted-foreground" />
                            {user.name}
@@ -252,18 +252,18 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                         </Badge>
                     </div>
                     <form action={logout}>
-                        <Button variant="outline" type="submit">
+                        <Button variant="outline" type="submit" size="sm" className="sm:size-default">
                             <LogOut className="mr-2 h-4 w-4" />
-                            Sair
+                            <span className="hidden sm:inline">Sair</span>
                         </Button>
                     </form>
                 </div>
             </header>
 
-            <main className="flex-1 flex flex-col p-2 md:p-4 overflow-hidden">
+            <main className="flex-1 p-2 md:p-4 pb-10">
                 
                 {/* BOTÃO SCANNER CENTRALIZADO */}
-                <div className="flex justify-center px-4 pb-8 pt-4 flex-shrink-0">
+                <div className="flex justify-center px-4 pb-8 pt-4">
                     <Button 
                         onClick={() => setIsScannerOpen(true)}
                         className="w-full max-w-[300px] h-14 bg-primary text-primary-foreground rounded-xl flex items-center justify-center gap-3 shadow-md hover:bg-primary/90 transition-all active:scale-[0.98] border-b-2 border-primary-foreground/20"
@@ -274,7 +274,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                 </div>
 
                 {myCleaningJobs.length > 0 && cleaningSettings && (
-                  <div className="mb-6">
+                  <div className="mb-8">
                     <h2 className="font-bold text-lg px-4 mb-3 text-green-600">✅ Minhas Higienizações</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 px-4">
                       {myCleaningJobs.map(local => (
@@ -289,54 +289,36 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                         />
                       ))}
                     </div>
-                    <Separator className="my-4" />
+                    <Separator className="my-6" />
                   </div>
                 )}
 
-                {allLocations.filter(loc => loc.status === 'in_cleaning' && !myCleaningJobs.some(job => job._id.toString() === loc._id.toString())).length > 0 && cleaningSettings && (
-                  <div className="mb-6">
-                    <h2 className="font-bold text-lg px-4 mb-3 text-yellow-600">🚨 Outras Higienizações em Andamento</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 px-4">
-                      {allLocations
-                        .filter(loc => loc.status === 'in_cleaning' && !myCleaningJobs.some(job => job._id.toString() === loc._id.toString()))
-                        .map(local => (
-                        <LocationCard 
-                          key={local._id.toString()} 
-                          location={local} 
-                          cleaningSettings={cleaningSettings}
-                          onFinalizeClick={handleFinalizeCleaning}
-                          isFinalizing={isFinalizing}
-                          userProfile={user.perfil}
-                          currentUserId={user._id}
-                        />
-                      ))}
-                    </div>
-                    <Separator className="my-4" />
-                  </div>
-                )}
-
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden">
-                    <div className='flex flex-col gap-2'>
-                        <h2 className='font-bold text-lg px-4'>Solicitações Pendentes</h2>
-                         <div className="flex-1 overflow-y-auto space-y-3 pb-4 px-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+                    {/* SOLICITAÇÕES PENDENTES */}
+                    <div className='flex flex-col gap-4'>
+                        <h2 className='font-bold text-lg px-4 flex items-center gap-2'>
+                            <Bell className="h-5 w-5 text-muted-foreground" />
+                            Solicitações Pendentes
+                        </h2>
+                         <div className="space-y-3 px-2">
                              {pendingRequests.length > 0 ? (
                                 pendingRequests.map(req => (
-                                    <Card key={req._id.toString()}>
-                                        <CardHeader className="p-3">
+                                    <Card key={req._id.toString()} className="shadow-sm">
+                                        <CardHeader className="p-4">
                                             <CardTitle className="text-base flex justify-between items-center">
-                                                <span>{req.locationName}</span>
+                                                <span className="font-bold">{req.locationName}</span>
                                                  <Badge variant={req.cleaningType === 'terminal' ? 'default' : 'secondary'}>
                                                     {req.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente'}
                                                 </Badge>
                                             </CardTitle>
                                         </CardHeader>
-                                        <CardContent className="p-3 pt-0 text-sm text-muted-foreground flex justify-between items-center">
+                                        <CardContent className="p-4 pt-0 text-sm text-muted-foreground flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                             <div>
-                                                <p>Solicitado por: {req.requestedBy.userName}</p>
-                                                <p>Há {formatDistanceToNowStrict(new Date(req.requestedAt), { locale: ptBR, addSuffix: false })}</p>
+                                                <p className="flex items-center gap-1.5"><UserIcon className="h-3.5 w-3.5" /> Solicitado por: {req.requestedBy.userName}</p>
+                                                <p className="text-xs mt-1">Há {formatDistanceToNowStrict(new Date(req.requestedAt), { locale: ptBR, addSuffix: false })}</p>
                                             </div>
                                              <Button 
+                                                className="w-full sm:w-auto"
                                                 size="sm" 
                                                 onClick={() => handleAcceptRequest(req._id.toString())}
                                                 disabled={isAccepting}
@@ -348,43 +330,47 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                                     </Card>
                                 ))
                              ) : (
-                                <div className="text-center text-muted-foreground italic py-10">Nenhuma solicitação pendente.</div>
+                                <div className="text-center text-muted-foreground italic py-10 bg-card/50 rounded-lg border border-dashed">Nenhuma solicitação pendente.</div>
                              )}
                         </div>
                     </div>
-                     <div className='flex flex-col gap-2'>
-                        <h2 className='font-bold text-lg px-4'>Consulta de Status</h2>
-                          <div className="px-4 pb-2 flex-shrink-0">
+
+                    {/* CONSULTA DE STATUS */}
+                     <div className='flex flex-col gap-4'>
+                        <h2 className='font-bold text-lg px-4 flex items-center gap-2'>
+                            <Hospital className="h-5 w-5 text-muted-foreground" />
+                            Consulta de Status
+                        </h2>
+                          <div className="px-4">
                               <Input 
                                   placeholder="Buscar por nome, número ou setor..."
                                   value={searchTerm}
                                   onChange={(e) => setSearchTerm(e.target.value)}
+                                  className="shadow-sm"
                               />
                           </div>
-                          <div className="flex-1 overflow-y-auto space-y-3 pb-4 px-2">
+                          <div className="space-y-4 px-2">
                           
-                          {setoresAgrupados.map((setor) => (
-                              <div key={setor.nome} className="border rounded-lg bg-card shadow-sm">
-                                  <div className="flex justify-between items-center p-3 md:p-4 cursor-default">
-                                      <div className="flex items-center gap-3 md:gap-4">
-                                          <Hospital className="h-6 w-6 text-primary" />
-                                          <div>
-                                              <h3 className="font-semibold text-card-foreground">{setor.nome}</h3>
-                                          </div>
+                          {setoresAgrupados.length > 0 ? setoresAgrupados.map((setor) => (
+                              <div key={setor.nome} className="border rounded-lg bg-card shadow-sm overflow-hidden">
+                                  <div className="bg-muted/30 p-3 md:p-4 border-b">
+                                      <div className="flex items-center gap-3">
+                                          <Hospital className="h-5 w-5 text-primary" />
+                                          <h3 className="font-semibold text-card-foreground">{setor.nome}</h3>
                                       </div>
                                   </div>
-                                  <div className="border-t bg-muted/30">
+                                  <div className="divide-y">
                                       {setor.locais.map((local) => (
                                           <div
                                           key={local._id.toString()}
-                                          className="flex items-center gap-4 p-3 border-b last:border-b-0"
+                                          className="flex items-center gap-4 p-3 hover:bg-muted/10 transition-colors"
                                           >
                                           <div className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', statusIndicatorClasses[local.status])} />
                                           
                                           <div className="flex-1">
-                                              <div className="flex justify-between items-center">
+                                              <div className="flex justify-between items-center gap-2">
                                               <span className="font-medium text-sm text-foreground">{local.name} - {local.number}</span>
-                                              <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', statusTextClasses[local.status])}>
+                                              <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap uppercase', statusTextClasses[local.status])}>
                                                   {statusText[local.status]}
                                               </span>
                                               </div>
@@ -393,7 +379,9 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                                       ))}
                                   </div>
                               </div>
-                          ))}
+                          )) : (
+                              <div className="text-center text-muted-foreground italic py-10">Nenhum local encontrado.</div>
+                          )}
                       </div>
                     </div>
                 </div>
