@@ -802,17 +802,17 @@ export async function getCleaningOccurrences(): Promise<CleaningOccurrence[]> {
 
 // --- Report Actions ---
 export async function generateReport(prevState: any, formData: FormData) {
-    const data = {
-        scope: formData.get('scope') as string,
-        periodType: formData.get('periodType') as string,
-        month: formData.get('month') as string,
-        year: formData.get('year') as string,
-        startDate: formData.get('startDate') as string,
-        endDate: formData.get('endDate') as string,
+    const rawData = {
+        scope: formData.get('scope') || 'general',
+        periodType: formData.get('periodType') || 'month',
+        month: formData.get('month') || String(new Date().getMonth() + 1),
+        year: formData.get('year') || String(new Date().getFullYear()),
+        startDate: formData.get('startDate') || undefined,
+        endDate: formData.get('endDate') || undefined,
         cleaningTypes: formData.getAll('cleaningTypes'),
     }
 
-    const validatedFields = ReportFiltersSchema.safeParse(data);
+    const validatedFields = ReportFiltersSchema.safeParse(rawData);
     
     if (!validatedFields.success) {
         return {
@@ -828,20 +828,28 @@ export async function generateReport(prevState: any, formData: FormData) {
     let queryEndDate: Date;
 
     if (periodType === 'month') {
-        const monthIndex = parseInt(month || '1', 10);
+        const monthIndex = parseInt(month || String(new Date().getMonth() + 1), 10);
         const yearIndex = parseInt(year || String(new Date().getFullYear()), 10);
         queryStartDate = new Date(yearIndex, monthIndex - 1, 1);
         queryEndDate = new Date(yearIndex, monthIndex, 0, 23, 59, 59);
-    } else {
+    } else if (sDate && eDate) {
         queryStartDate = new Date(sDate + 'T00:00:00');
         queryEndDate = new Date(eDate + 'T23:59:59');
+    } else {
+        // Fallback para mês atual se intervalo estiver vazio
+        const now = new Date();
+        queryStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        queryEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     }
+
+    // Filtro de tipos de higienização (ignorado para NC)
+    const typeFilter = cleaningTypes && cleaningTypes.length > 0 ? { cleaningType: { $in: cleaningTypes } } : {};
 
     // --- Lógica Geral ---
     if (scope === 'general') {
         const cleaningRecords = await db.collection('cleaning_records').find({
             date: { $gte: queryStartDate, $lte: queryEndDate },
-            ...(cleaningTypes && cleaningTypes.length > 0 ? { cleaningType: { $in: cleaningTypes } } : {})
+            ...typeFilter
         }).toArray() as CleaningRecord[];
 
         const totalNCs = await db.collection('non_conformities').countDocuments({
@@ -888,7 +896,7 @@ export async function generateReport(prevState: any, formData: FormData) {
         const delayedRecords = await db.collection('cleaning_records').find({
             date: { $gte: queryStartDate, $lte: queryEndDate },
             delayed: true,
-            ...(cleaningTypes && cleaningTypes.length > 0 ? { cleaningType: { $in: cleaningTypes } } : {})
+            ...typeFilter
         }).sort({ date: -1 }).toArray();
 
         return {
@@ -908,7 +916,6 @@ export async function generateReport(prevState: any, formData: FormData) {
             timestamp: { $gte: queryStartDate, $lte: queryEndDate }
         }).sort({ timestamp: -1 }).toArray();
 
-        // Omitir photoDataUri para manter o objeto leve (como solicitado)
         const ncDetails = ncs.map(nc => {
             const { photoDataUri, ...rest } = nc;
             return rest;

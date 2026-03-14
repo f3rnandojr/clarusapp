@@ -54,12 +54,15 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
         const { periodType, month, year, startDate, endDate } = state.report.filters;
         
         if (periodType === 'month') {
-            const date = new Date(parseInt(year!), parseInt(month!) - 1);
+            const m = month || String(currentMonth);
+            const y = year || String(currentYear);
+            const date = new Date(parseInt(y), parseInt(m) - 1);
             return format(date, "MMMM 'de' yyyy", { locale: ptBR });
         } else {
-            return `De ${format(new Date(startDate!), 'dd/MM/yy')} até ${format(new Date(endDate!), 'dd/MM/yy')}`;
+            if (!startDate || !endDate) return "Período personalizado";
+            return `De ${format(new Date(startDate), 'dd/MM/yy')} até ${format(new Date(endDate), 'dd/MM/yy')}`;
         }
-    }, [state?.report?.filters]);
+    }, [state?.report?.filters, currentMonth, currentYear]);
 
     return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -81,15 +84,15 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                     <RadioGroup name="scope" value={scope} onValueChange={(v: any) => setScope(v)} className="grid grid-cols-1 gap-2">
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="general" id="scope-general" />
-                            <Label htmlFor="scope-general" className="font-normal">Geral (Consolidado)</Label>
+                            <Label htmlFor="scope-general" className="font-normal cursor-pointer">Geral (Consolidado)</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="delays" id="scope-delays" />
-                            <Label htmlFor="scope-delays" className="font-normal">Apenas Ocorrências de Atraso</Label>
+                            <Label htmlFor="scope-delays" className="font-normal cursor-pointer">Apenas Ocorrências de Atraso</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="nc" id="scope-nc" />
-                            <Label htmlFor="scope-nc" className="font-normal">Apenas Não Conformidades (NC)</Label>
+                            <Label htmlFor="scope-nc" className="font-normal cursor-pointer">Apenas Não Conformidades (NC)</Label>
                         </div>
                     </RadioGroup>
 
@@ -99,11 +102,11 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
                                     <Checkbox id="rep-concurrent" name="cleaningTypes" value="concurrent" defaultChecked />
-                                    <Label htmlFor="rep-concurrent" className="text-xs font-normal">Concorrente</Label>
+                                    <Label htmlFor="rep-concurrent" className="text-xs font-normal cursor-pointer">Concorrente</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox id="rep-terminal" name="cleaningTypes" value="terminal" defaultChecked />
-                                    <Label htmlFor="rep-terminal" className="text-xs font-normal">Terminal</Label>
+                                    <Label htmlFor="rep-terminal" className="text-xs font-normal cursor-pointer">Terminal</Label>
                                 </div>
                             </div>
                         </div>
@@ -157,11 +160,11 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label htmlFor="startDate" className="text-xs">Início</Label>
-                                <Input id="startDate" name="startDate" type="date" className="h-8" required />
+                                <Input id="startDate" name="startDate" type="date" className="h-8" required={periodType === 'range'} />
                             </div>
                             <div className="space-y-1">
                                 <Label htmlFor="endDate" className="text-xs">Fim</Label>
-                                <Input id="endDate" name="endDate" type="date" className="h-8" required />
+                                <Input id="endDate" name="endDate" type="date" className="h-8" required={periodType === 'range'} />
                             </div>
                         </div>
                     )}

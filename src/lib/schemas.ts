@@ -223,11 +223,11 @@ export type CleaningRecord = z.infer<typeof CleaningRecordSchema>;
 export const ReportFiltersSchema = z.object({
     scope: z.enum(['general', 'delays', 'nc']).default('general'),
     periodType: z.enum(['month', 'range']).default('month'),
-    month: z.string().optional(),
-    year: z.string().optional(),
-    startDate: z.string().optional(),
-    endDate: z.string().optional(),
-    cleaningTypes: z.array(CleaningTypeEnum).optional(),
+    month: z.string().optional().nullable(),
+    year: z.string().optional().nullable(),
+    startDate: z.string().optional().nullable(),
+    endDate: z.string().optional().nullable(),
+    cleaningTypes: z.array(CleaningTypeEnum).optional().nullable(),
 });
 
 export type ReportFilters = z.infer<typeof ReportFiltersSchema>;
