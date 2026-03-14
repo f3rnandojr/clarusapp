@@ -16,10 +16,47 @@ interface NonConformityDialogProps {
   children: React.ReactNode;
 }
 
+/**
+ * Utilitário para comprimir imagem no client-side usando Canvas
+ */
+const compressImage = (dataUri: string, maxWidth = 1024, maxHeight = 1024, quality = 0.7): Promise<string> => {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.src = dataUri;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      // Mantém a proporção
+      if (width > height) {
+        if (width > maxWidth) {
+          height *= maxWidth / width;
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width *= maxHeight / height;
+          height = maxHeight;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      // Exporta como JPEG comprimido
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+  });
+};
+
 export function NonConformityDialog({ locationId, locationName, children }: NonConformityDialogProps) {
   const [open, setOpen] = useState(false);
   const [description, setDescription] = useState("");
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,9 +64,19 @@ export function NonConformityDialog({ locationId, locationName, children }: NonC
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsCompressing(true);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoDataUri(reader.result as string);
+      reader.onloadend = async () => {
+        try {
+          const base64 = reader.result as string;
+          const compressed = await compressImage(base64);
+          setPhotoDataUri(compressed);
+        } catch (err) {
+          console.error("Erro na compressão:", err);
+          toast({ title: "Erro", description: "Falha ao processar a imagem.", variant: "destructive" });
+        } finally {
+          setIsCompressing(false);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -92,7 +139,7 @@ export function NonConformityDialog({ locationId, locationName, children }: NonC
               onChange={(e) => setDescription(e.target.value)}
               required
               rows={3}
-              disabled={isPending}
+              disabled={isPending || isCompressing}
             />
           </div>
 
@@ -119,11 +166,11 @@ export function NonConformityDialog({ locationId, locationName, children }: NonC
                   variant="outline"
                   className="w-full h-24 border-dashed"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isPending}
+                  disabled={isPending || isCompressing}
                 >
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Camera className="h-8 w-8" />
-                    <span>Tirar Foto / Anexar</span>
+                    {isCompressing ? <Loader2 className="h-8 w-8 animate-spin" /> : <Camera className="h-8 w-8" />}
+                    <span>{isCompressing ? "Processando..." : "Tirar Foto / Anexar"}</span>
                   </div>
                 </Button>
               )}
@@ -139,10 +186,10 @@ export function NonConformityDialog({ locationId, locationName, children }: NonC
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isPending || isCompressing}>
               Cancelar
             </Button>
-            <Button type="submit" variant="destructive" disabled={isPending}>
+            <Button type="submit" variant="destructive" disabled={isPending || isCompressing}>
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
               Enviar Relato
             </Button>
