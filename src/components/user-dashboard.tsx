@@ -1,11 +1,10 @@
-
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Location, LocationStatus, User, ScheduledRequest, CleaningSettings, ActiveCleaning } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
-import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles, Link } from 'lucide-react';
+import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getCleaningSettings, getActiveCleanings, getLocationByCode } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
@@ -15,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Separator } from './ui/separator';
-import { CleaningSections } from './cleaning-sections';
 import LocationCard from './location-card';
 import { StartCleaningDialog } from './start-cleaning-dialog';
 import { QrScannerDialog } from './qr-scanner-dialog';
@@ -54,18 +52,17 @@ interface UserDashboardProps {
     user: User;
     pendingRequests: ScheduledRequest[];
     myActiveCleanings: ActiveCleaning[];
+    cleaningSettings: CleaningSettings;
 }
 
-export function UserDashboard({ locations: initialLocations, user, pendingRequests: initialPendingRequests, myActiveCleanings: initialMyActiveCleanings }: UserDashboardProps) {
+export function UserDashboard({ locations: initialLocations, user, pendingRequests: initialPendingRequests, myActiveCleanings: initialMyActiveCleanings, cleaningSettings }: UserDashboardProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [allLocations, setAllLocations] = useState<Location[]>(initialLocations);
     const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
-    const [activeCleanings, setActiveCleanings] = useState<ActiveCleaning[]>(initialMyActiveCleanings);
-    const [cleaningSettings, setCleaningSettings] = useState<CleaningSettings | null>(null);
-
+    
     const [isLoading, setIsLoading] = useState(false);
     
     const [isAccepting, startAcceptingTransition] = useTransition();
@@ -78,16 +75,12 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const refreshData = async () => {
         setIsLoading(true);
         try {
-            const [refreshedLocations, refreshedRequests, refreshedActiveCleanings, settings] = await Promise.all([
+            const [refreshedLocations, refreshedRequests] = await Promise.all([
                 getLocations(),
                 getPendingRequests(),
-                getActiveCleanings(),
-                getCleaningSettings(),
             ]);
             setAllLocations(refreshedLocations);
             setPendingRequests(refreshedRequests);
-            setActiveCleanings(refreshedActiveCleanings.filter(ac => ac.userId === user._id));
-            setCleaningSettings(settings);
         } catch (error) {
             toast({ title: 'Erro', description: 'Não foi possível atualizar os dados.', variant: 'destructive' });
         } finally {
@@ -95,14 +88,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
         }
     };
     
-    useEffect(() => {
-        const fetchInitialSettings = async () => {
-             const settings = await getCleaningSettings();
-             setCleaningSettings(settings);
-        }
-        fetchInitialSettings();
-    }, []);
-
     useEffect(() => {
         const handleStartCleaningByCode = async (code: string) => {
             const location = await getLocationByCode(code);
@@ -273,9 +258,11 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                     </Button>
                 </div>
 
-                {myCleaningJobs.length > 0 && cleaningSettings && (
+                {myCleaningJobs.length > 0 && (
                   <div className="mb-8">
-                    <h2 className="font-bold text-lg px-4 mb-3 text-green-600">✅ Minhas Higienizações</h2>
+                    <h2 className="font-bold text-lg px-4 mb-3 text-green-600 flex items-center gap-2">
+                        <Sparkles className="h-5 w-5" /> Minhas Higienizações
+                    </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 px-4">
                       {myCleaningJobs.map(local => (
                         <LocationCard 

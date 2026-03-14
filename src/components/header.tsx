@@ -1,4 +1,3 @@
-
 import type { Area, Asg, CleaningOccurrence, CleaningSettings, User, NonConformity } from '@/lib/schemas';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { OccurrencesDialog } from '@/components/occurrences-dialog';
@@ -43,21 +42,21 @@ export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occ
 
         <div className="flex items-center gap-2">
             <OccurrencesDialog occurrences={occurrences} nonConformities={nonConformities}>
-                <Button variant="outline">
-                    <ClipboardList className="mr-2 h-4 w-4" />
-                    Ocorrências
+                <Button variant="outline" size="sm" className="h-9 px-2 sm:px-4">
+                    <ClipboardList className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Ocorrências</span>
                 </Button>
             </OccurrencesDialog>
             <SettingsDialog allAsgs={asgs} allUsers={users} nextAsgCode={nextAsgCode} cleaningSettings={cleaningSettings} allAreas={allAreas}>
-                <Button variant="outline">
-                <Settings className="mr-2 h-4 w-4" />
-                Configurações
+                <Button variant="outline" size="sm" className="h-9 px-2 sm:px-4">
+                    <Settings className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Configurações</span>
                 </Button>
             </SettingsDialog>
             <form action={logout}>
-              <Button variant="outline" type="submit">
-                <LogOut className="mr-2 h-4 w-4" />
-                Sair
+              <Button variant="outline" type="submit" size="sm" className="h-9 px-2 sm:px-4">
+                <LogOut className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sair</span>
               </Button>
             </form>
         </div>

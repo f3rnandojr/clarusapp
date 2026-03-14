@@ -1,4 +1,3 @@
-
 "use server";
 
 import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getPendingRequests, getActiveCleanings, getNonConformities } from "@/lib/actions";
@@ -54,7 +53,15 @@ export default async function DashboardPage() {
 
   if (user.perfil === 'usuario') {
     const myActiveCleanings = activeCleanings.filter(ac => ac.userId === user._id);
-    return <UserDashboard locations={locations} user={user} pendingRequests={pendingRequests} myActiveCleanings={myActiveCleanings} />;
+    return (
+      <UserDashboard 
+        locations={locations} 
+        user={user} 
+        pendingRequests={pendingRequests} 
+        myActiveCleanings={myActiveCleanings}
+        cleaningSettings={cleaningSettings}
+      />
+    );
   }
   
   // Admin e Gestor veem o dashboard completo
