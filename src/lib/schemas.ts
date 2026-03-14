@@ -221,9 +221,13 @@ export const CleaningRecordSchema = z.object({
 export type CleaningRecord = z.infer<typeof CleaningRecordSchema>;
 
 export const ReportFiltersSchema = z.object({
-    month: z.string().min(1, "Mês é obrigatório"),
-    year: z.string().min(4, "Ano é obrigatório"),
-    cleaningTypes: z.array(CleaningTypeEnum).min(1, { message: "Selecione ao menos um tipo de limpeza." }),
+    scope: z.enum(['general', 'delays', 'nc']).default('general'),
+    periodType: z.enum(['month', 'range']).default('month'),
+    month: z.string().optional(),
+    year: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    cleaningTypes: z.array(CleaningTypeEnum).optional(),
 });
 
 export type ReportFilters = z.infer<typeof ReportFiltersSchema>;

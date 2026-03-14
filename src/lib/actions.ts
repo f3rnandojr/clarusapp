@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence, User } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -10,8 +10,6 @@ import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
 import { convertToPlainObject } from './utils';
 import { DataTransformer, validateTransformationConfig, generateSampleTransformation } from './advanced-transformation';
 import { syncLogger } from './logger';
-import { syncService } from './sync-service'; // Garante que o serviço seja inicializado
-
 
 // --- Logger Action ---
 async function logAction(action: string, details: Record<string, any>) {
@@ -805,8 +803,12 @@ export async function getCleaningOccurrences(): Promise<CleaningOccurrence[]> {
 // --- Report Actions ---
 export async function generateReport(prevState: any, formData: FormData) {
     const data = {
+        scope: formData.get('scope') as string,
+        periodType: formData.get('periodType') as string,
         month: formData.get('month') as string,
         year: formData.get('year') as string,
+        startDate: formData.get('startDate') as string,
+        endDate: formData.get('endDate') as string,
         cleaningTypes: formData.getAll('cleaningTypes'),
     }
 
@@ -814,449 +816,116 @@ export async function generateReport(prevState: any, formData: FormData) {
     
     if (!validatedFields.success) {
         return {
-            error: "Dados de filtro inválidos. Selecione mês, ano e ao menos um tipo de limpeza.",
+            error: "Dados de filtro inválidos. Verifique os campos obrigatórios.",
             fieldErrors: validatedFields.error.flatten().fieldErrors,
         };
     }
     
     const db = await dbConnect();
-    const { month, year, cleaningTypes } = validatedFields.data;
+    const { scope, periodType, month, year, startDate: sDate, endDate: eDate, cleaningTypes } = validatedFields.data;
     
-    const monthIndex = parseInt(month, 10);
-    const yearIndex = parseInt(year, 10);
-    
-    const startDate = new Date(yearIndex, monthIndex - 1, 1);
-    const endDate = new Date(yearIndex, monthIndex, 0, 23, 59, 59);
+    let queryStartDate: Date;
+    let queryEndDate: Date;
 
-    const cleaningRecords = await db.collection('cleaning_records').find({
-        date: { $gte: startDate, $lte: endDate },
-        cleaningType: { $in: cleaningTypes }
-    }).toArray() as CleaningRecord[];
-
-    const total = cleaningRecords.length;
-    const concurrentRecords = cleaningRecords.filter(r => r.cleaningType === 'concurrent');
-    const terminalRecords = cleaningRecords.filter(r => r.cleaningType === 'terminal');
-    
-    const concurrent = concurrentRecords.length;
-    const terminal = terminalRecords.length;
-
-    const totalConcurrentDuration = concurrentRecords.reduce((sum, r) => sum + r.actualDuration, 0);
-    const totalTerminalDuration = terminalRecords.reduce((sum, r) => sum + r.actualDuration, 0);
-
-    const avgConcurrentTime = concurrent > 0 ? Math.round(totalConcurrentDuration / concurrent) : 0;
-    const avgTerminalTime = terminal > 0 ? Math.round(totalTerminalDuration / terminal) : 0;
-
-    const delayed = cleaningRecords.filter(r => r.delayed).length;
-    const onTime = total - delayed;
-    const delayedConcurrent = concurrentRecords.filter(r => r.delayed).length;
-    const delayedTerminal = terminalRecords.filter(r => r.delayed).length;
-
-
-    return {
-        success: true,
-        report: {
-            total,
-            concurrent,
-            terminal,
-            avgConcurrentTime,
-            avgTerminalTime,
-            onTime,
-            onTimePercent: total > 0 ? (onTime / total) * 100 : 0,
-            delayed,
-            delayedPercent: total > 0 ? (delayed / total) * 100 : 0,
-            delayedConcurrent,
-            delayedTerminal,
-            filters: validatedFields.data
-        }
-    }
-}
-
-// --- User Actions ---
-
-export async function getUsers() {
-    const db = await dbConnect();
-    const users = await db.collection('users').find().sort({ name: 1 }).toArray();
-    return convertToPlainObject(users);
-}
-
-export async function createUser(prevState: any, formData: FormData) {
-  const validatedFields = CreateUserSchema.safeParse(Object.fromEntries(formData.entries()));
-
-  if (!validatedFields.success) {
-    return {
-      error: "Dados inválidos.",
-      fieldErrors: validatedFields.error.flatten().fieldErrors,
-    };
-  }
-  
-  const { login } = validatedFields.data;
-  const db = await dbConnect();
-  
-  const existingUser = await db.collection('users').findOne({ login });
-  if (existingUser) {
-    return {
-      error: "Dados inválidos.",
-      fieldErrors: { login: ['Este login já está em uso.'] },
-    }
-  }
-
-  await db.collection('users').insertOne({ 
-      ...validatedFields.data, 
-      active: true, 
-      createdAt: new Date() 
-  });
-
-  revalidatePath('/dashboard');
-  return { success: true, message: 'Usuário adicionado com sucesso!' };
-}
-
-export async function updateUser(id: string, prevState: any, formData: FormData) {
-    const password = formData.get('password') as string;
-
-    const validatedFields = UpdateUserSchema.safeParse({
-        name: formData.get('name'),
-        login: formData.get('login'),
-        active: formData.get('active') === 'on',
-        perfil: formData.get('perfil'),
-        password: password || undefined,
-    });
-
-    if (!validatedFields.success) {
-        return {
-            error: "Dados inválidos.",
-            fieldErrors: validatedFields.error.flatten().fieldErrors,
-        };
-    }
-    
-    const db = await dbConnect();
-    const { login } = validatedFields.data;
-    
-    const existingUser = await db.collection('users').findOne({ login, _id: { $ne: new ObjectId(id) } });
-    if (existingUser) {
-        return {
-            error: "Dados inválidos.",
-            fieldErrors: { login: ['Este login já está em uso.'] },
-        }
+    if (periodType === 'month') {
+        const monthIndex = parseInt(month || '1', 10);
+        const yearIndex = parseInt(year || String(new Date().getFullYear()), 10);
+        queryStartDate = new Date(yearIndex, monthIndex - 1, 1);
+        queryEndDate = new Date(yearIndex, monthIndex, 0, 23, 59, 59);
+    } else {
+        queryStartDate = new Date(sDate + 'T00:00:00');
+        queryEndDate = new Date(eDate + 'T23:59:59');
     }
 
-    const dataToUpdate: any = { ...validatedFields.data };
-    if (!dataToUpdate.password) {
-        delete dataToUpdate.password;
-    }
+    // --- Lógica Geral ---
+    if (scope === 'general') {
+        const cleaningRecords = await db.collection('cleaning_records').find({
+            date: { $gte: queryStartDate, $lte: queryEndDate },
+            ...(cleaningTypes && cleaningTypes.length > 0 ? { cleaningType: { $in: cleaningTypes } } : {})
+        }).toArray() as CleaningRecord[];
 
-    await db.collection('users').updateOne({ _id: new ObjectId(id) }, { $set: dataToUpdate });
-
-    revalidatePath('/dashboard');
-    return { success: true, message: 'Usuário atualizado com sucesso!' };
-}
-
-export async function toggleUserActive(id: string, active: boolean) {
-  const db = await dbConnect();
-  const user = await db.collection('users').findOne({ _id: new ObjectId(id) });
-  if (user?.login === 'admin' && !active) {
-    return { error: 'Não é possível desativar o usuário administrador.' };
-  }
-  await db.collection('users').updateOne({ _id: new ObjectId(id) }, { $set: { active } });
-  revalidatePath('/dashboard');
-  return { success: true, message: `Usuário ${active ? 'ativado' : 'desativado'} com sucesso!` };
-}
-
-// --- Log Actions ---
-export async function getLogs() {
-  const db = await dbConnect();
-  const logs = await db.collection('app_logs').find().sort({ timestamp: -1 }).limit(100).toArray();
-  return convertToPlainObject(logs);
-}
-
-
-// --- Integration Actions ---
-
-const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
-  _id: 'integration_settings',
-  enabled: false,
-  host: '',
-  port: 5432,
-  database: '',
-  username: '',
-  password: '',
-  syncInterval: 5,
-  query: "SELECT code1, tipobloq FROM cable1",
-  statusMappings: {
-    available: 'L',
-    occupied: '*'
-  },
-  fieldMappings: {
-    codeField: 'code1',
-    statusField: 'tipobloq',
-  },
-  transformation: {
-    nameSeparator: " ",
-  },
-  createdAt: new Date(),
-  updatedAt: new Date()
-};
-
-export async function getIntegrationConfig(): Promise<IntegrationConfig> {
-  try {
-    const db = await dbConnect();
-    const collection = db.collection('integration_config');
-    
-    const config = await collection.findOne({ _id: 'integration_settings' });
-    
-    if (!config) {
-      // @ts-ignore
-      return DEFAULT_INTEGRATION_CONFIG;
-    }
-    
-    // @ts-ignore
-    return convertToPlainObject(config);
-  } catch (error) {
-    console.error('Erro ao buscar configuração de integração:', error);
-    // @ts-ignore
-    return DEFAULT_INTEGRATION_CONFIG;
-  }
-}
-
-export async function validateIntegrationConfig(configData: any) {
-  try {
-    const validated = IntegrationConfigSchema.parse(configData);
-    
-    if (configData.host && !configData.host.includes('.')) {
-      return { isValid: false, message: 'Host deve ser um endereço válido' };
-    }
-    
-    if (configData.port && (configData.port < 1 || configData.port > 65535)) {
-      return { isValid: false, message: 'Porta deve estar entre 1 e 65535' };
-    }
-    
-    return { isValid: true, data: validated };
-  } catch (error: any) {
-    return { isValid: false, message: 'Dados de configuração inválidos: ' + error.message };
-  }
-}
-
-export async function saveIntegrationConfig(configData: Partial<IntegrationConfig>) {
-  try {
-    const db = await dbConnect();
-    const collection = db.collection('integration_config');
-    
-    const validation = await validateIntegrationConfig(configData);
-    if (!validation.isValid) {
-      return { 
-        success: false, 
-        message: validation.message 
-      };
-    }
-
-    const result = await collection.updateOne(
-      { _id: 'integration_settings' },
-      { 
-        $set: {
-          ...validation.data,
-          updatedAt: new Date()
-        }
-      },
-      { upsert: true }
-    );
-
-    revalidatePath('/dashboard');
-
-    return { 
-      success: true, 
-      message: 'Configurações salvas com sucesso',
-      data: validation.data
-    };
-  } catch (error: any) {
-    console.error('Erro ao salvar configuração de integração:', error);
-    return { 
-      success: false, 
-      message: 'Erro ao salvar configurações: ' + error.message 
-    };
-  }
-}
-
-export async function testIntegrationConnection(configData: any) {
-  try {
-    const { testExternalConnection } = await import('./external-db-connection');
-    const result = await testExternalConnection(configData);
-    return result;
-  } catch (error: any) {
-    console.error('Erro no teste de conexão:', error);
-    return {
-      success: false,
-      message: `Erro no teste de conexão: ${error.message}`
-    };
-  }
-}
-
-export async function runManualSync() {
-  const syncId = `sync-${Date.now()}`;
-  const startTime = Date.now();
-  
-  syncLogger.info('Iniciando sincronização manual', { syncId });
-
-  try {
-    const db = await dbConnect();
-    const config = await getIntegrationConfig();
-    
-    if (!config.enabled) {
-      syncLogger.warn('Tentativa de sync com integração desativada', { syncId });
-      return {
-        success: false,
-        message: 'Integração não está ativada.',
-        syncId
-      };
-    }
-
-    const configErrors = validateTransformationConfig(config);
-    if (configErrors.length > 0) {
-       syncLogger.error('Configuração de sync inválida', { syncId, errors: configErrors });
-      return {
-        success: false,
-        message: `Configuração incompleta: ${configErrors.join(', ')}`
-      };
-    }
-
-    syncLogger.info('Buscando dados do sistema externo', { syncId });
-    
-    const { fetchExternalData } = await import('./external-db-connection');
-    const externalData = await fetchExternalData(config);
-    
-    if (externalData.length === 0) {
-      syncLogger.info('Nenhum dado encontrado no sistema externo', { syncId });
-      return {
-        success: true,
-        message: 'Sincronização concluída. Nenhum dado encontrado no sistema externo.',
-        stats: { total: 0, updated: 0, created: 0, skipped: 0, errors: 0 }
-      };
-    }
-
-    syncLogger.info(`Transformando ${externalData.length} registros`, { syncId });
-    const transformer = new DataTransformer(config);
-    const transformationResult = await transformer.transform(externalData);
-    
-    syncLogger.info('Resultado da transformação', { syncId, stats: transformationResult.stats });
-    if (transformationResult.errors.length > 0) {
-      syncLogger.warn('Erros durante a transformação', { syncId, errors: transformationResult.errors });
-    }
-
-    const locationsCollection = db.collection('locations');
-    let updatedCount = 0;
-    let createdCount = 0;
-    let skippedCount = 0;
-
-    for (const leito of transformationResult.data) {
-      try {
-        const existingLeito = await locationsCollection.findOne({
-          externalCode: leito.externalCode,
+        const totalNCs = await db.collection('non_conformities').countDocuments({
+            timestamp: { $gte: queryStartDate, $lte: queryEndDate }
         });
 
-        if (existingLeito) {
-           if (existingLeito.status === 'in_cleaning') {
-             skippedCount++;
-             continue;
-           }
+        const total = cleaningRecords.length;
+        const concurrentRecords = cleaningRecords.filter(r => r.cleaningType === 'concurrent');
+        const terminalRecords = cleaningRecords.filter(r => r.cleaningType === 'terminal');
+        
+        const concurrent = concurrentRecords.length;
+        const terminal = terminalRecords.length;
 
-          const hasChanges = 
-            existingLeito.status !== leito.status ||
-            existingLeito.name !== leito.name ||
-            existingLeito.number !== leito.number;
+        const totalConcurrentDuration = concurrentRecords.reduce((sum, r) => sum + r.actualDuration, 0);
+        const totalTerminalDuration = terminalRecords.reduce((sum, r) => sum + r.actualDuration, 0);
 
-          if (hasChanges) {
-            await locationsCollection.updateOne(
-              { _id: existingLeito._id },
-              { $set: { 
-                  status: leito.status, 
-                  name: leito.name, 
-                  number: leito.number, 
-                  updatedAt: new Date() 
-                } 
-              }
-            );
-            updatedCount++;
-          } else {
-            skippedCount++;
-          }
-        } else {
-          await locationsCollection.insertOne({
-            name: leito.name,
-            number: leito.number,
-            status: leito.status,
-            externalCode: leito.externalCode,
-            locationType: 'leito',
-            currentCleaning: null,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          createdCount++;
-        }
-      } catch (error: any) {
-        syncLogger.error('Erro ao processar leito no banco local', { syncId, leito, error: error.message });
-        transformationResult.stats.errors++;
-      }
+        const avgConcurrentTime = concurrent > 0 ? Math.round(totalConcurrentDuration / concurrent) : 0;
+        const avgTerminalTime = terminal > 0 ? Math.round(totalTerminalDuration / terminal) : 0;
+
+        const delayed = cleaningRecords.filter(r => r.delayed).length;
+        const onTime = total - delayed;
+
+        return {
+            success: true,
+            report: {
+                scope,
+                total,
+                totalNCs,
+                concurrent,
+                terminal,
+                avgConcurrentTime,
+                avgTerminalTime,
+                onTime,
+                onTimePercent: total > 0 ? (onTime / total) * 100 : 0,
+                delayed,
+                delayedPercent: total > 0 ? (delayed / total) * 100 : 0,
+                filters: validatedFields.data
+            }
+        };
     }
 
-    const integrationCollection = db.collection('integration_config');
-    const syncStats = {
-      total: transformationResult.stats.total,
-      updated: updatedCount,
-      created: createdCount,
-      skipped: skippedCount + transformationResult.stats.skipped,
-      errors: transformationResult.stats.errors
-    };
+    // --- Lógica Atrasos ---
+    if (scope === 'delays') {
+        const delayedRecords = await db.collection('cleaning_records').find({
+            date: { $gte: queryStartDate, $lte: queryEndDate },
+            delayed: true,
+            ...(cleaningTypes && cleaningTypes.length > 0 ? { cleaningType: { $in: cleaningTypes } } : {})
+        }).sort({ date: -1 }).toArray();
 
-    await integrationCollection.updateOne(
-      { _id: 'integration_settings' },
-      { $set: { lastSync: new Date(), lastSyncStats: syncStats } }
-    );
-    
-    const message = `Sincronização concluída! ${createdCount} novos, ${updatedCount} atualizados, ${syncStats.skipped} ignorados, ${syncStats.errors} erros.`;
-    
-    syncLogger.info('Sincronização concluída com sucesso', {
-      syncId,
-      stats: syncStats,
-      duration: Date.now() - startTime
-    });
+        return {
+            success: true,
+            report: {
+                scope,
+                total: delayedRecords.length,
+                details: convertToPlainObject(delayedRecords),
+                filters: validatedFields.data
+            }
+        };
+    }
 
-    await saveSyncHistory({
-      syncId,
-      timestamp: new Date(),
-      type: 'manual',
-      success: true,
-      stats: syncStats,
-      duration: Date.now() - startTime,
-      config: { host: config.host, database: config.database }
-    });
+    // --- Lógica NCs ---
+    if (scope === 'nc') {
+        const ncs = await db.collection('non_conformities').find({
+            timestamp: { $gte: queryStartDate, $lte: queryEndDate }
+        }).sort({ timestamp: -1 }).toArray();
 
-    revalidatePath('/dashboard');
+        // Omitir photoDataUri para manter o objeto leve (como solicitado)
+        const ncDetails = ncs.map(nc => {
+            const { photoDataUri, ...rest } = nc;
+            return rest;
+        });
 
-    return {
-      success: transformationResult.stats.errors === 0,
-      message,
-      stats: syncStats,
-      syncId
-    };
+        return {
+            success: true,
+            report: {
+                scope,
+                total: ncDetails.length,
+                details: convertToPlainObject(ncDetails),
+                filters: validatedFields.data
+            }
+        };
+    }
 
-  } catch (error: any) {
-    const duration = Date.now() - startTime;
-    syncLogger.error('Erro na sincronização', { syncId, error: error.message, duration });
-    
-    await saveSyncHistory({
-      syncId,
-      timestamp: new Date(),
-      type: 'manual',
-      success: false,
-      error: error.message,
-      duration
-    });
-
-    return {
-      success: false,
-      message: `Erro na sincronização: ${error.message}`,
-      stats: { total: 0, updated: 0, created: 0, skipped: 0, errors: 1 },
-      syncId
-    };
-  }
+    return { error: "Escopo de relatório inválido." };
 }
 
 async function saveSyncHistory(historyItem: any) {
@@ -1477,4 +1146,178 @@ export async function getNonConformities(): Promise<NonConformity[]> {
     const db = await dbConnect();
     const ncs = await db.collection('non_conformities').find().sort({ timestamp: -1 }).toArray();
     return convertToPlainObject(ncs);
+}
+
+// --- NEW USER MANAGEMENT ACTIONS ---
+
+export async function getUsers(): Promise<User[]> {
+  const db = await dbConnect();
+  const users = await db.collection('users').find().sort({ name: 1 }).toArray();
+  return convertToPlainObject(users);
+}
+
+export async function createUser(prevState: any, formData: FormData) {
+  const rawData = Object.fromEntries(formData.entries());
+  const validatedFields = CreateUserSchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      error: "Dados inválidos.",
+      fieldErrors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const { login } = validatedFields.data;
+  const db = await dbConnect();
+
+  const existingUser = await db.collection('users').findOne({ login });
+  if (existingUser) {
+    return {
+      error: "Este login já está em uso.",
+      fieldErrors: { login: ["Login indisponível."] },
+    };
+  }
+
+  await db.collection('users').insertOne({
+    ...validatedFields.data,
+    active: true,
+    createdAt: new Date(),
+  });
+
+  revalidatePath('/dashboard');
+  return { success: true, message: "Usuário criado com sucesso!" };
+}
+
+export async function updateUser(id: string, prevState: any, formData: FormData) {
+  const rawData = Object.fromEntries(formData.entries());
+  const validatedFields = UpdateUserSchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      error: "Dados inválidos.",
+      fieldErrors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const db = await dbConnect();
+  const { name, login, perfil, password } = validatedFields.data;
+
+  const updateData: any = {
+    name,
+    login,
+    active: formData.get('active') === 'on',
+    perfil,
+    updatedAt: new Date(),
+  };
+
+  if (password) {
+    updateData.password = password;
+  }
+
+  await db.collection('users').updateOne(
+    { _id: new ObjectId(id) },
+    { $set: updateData }
+  );
+
+  revalidatePath('/dashboard');
+  return { success: true, message: "Usuário atualizado com sucesso!" };
+}
+
+export async function toggleUserActive(id: string, active: boolean) {
+  const db = await dbConnect();
+  const user = await db.collection('users').findOne({ _id: new ObjectId(id) });
+  
+  if (user?.login === 'admin') {
+    return { error: 'Não é possível desativar o administrador principal.' };
+  }
+
+  await db.collection('users').updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { active } }
+  );
+
+  revalidatePath('/dashboard');
+  return { success: true, message: `Usuário ${active ? 'ativado' : 'desativado'} com sucesso!` };
+}
+
+// --- INTEGRATION ACTIONS ---
+
+export async function getIntegrationConfig(): Promise<IntegrationConfig> {
+  const db = await dbConnect();
+  const config = await db.collection('integration_settings').findOne({ _id: 'default' });
+  if (config) {
+    return convertToPlainObject(config);
+  }
+  return {
+    _id: 'default',
+    enabled: false,
+    host: '',
+    port: 5432,
+    database: '',
+    username: '',
+    password: '',
+    syncInterval: 5,
+    query: 'SELECT code1, tipobloq FROM cable1',
+    statusMappings: { available: 'L', occupied: '*' },
+    fieldMappings: { codeField: 'code1', statusField: 'tipobloq' },
+    transformation: { nameSeparator: ' ', customTransform: false },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+export async function saveIntegrationConfig(config: IntegrationConfig) {
+  const db = await dbConnect();
+  const { _id, ...data } = config;
+  await db.collection('integration_settings').updateOne(
+    { _id: 'default' },
+    { $set: { ...data, updatedAt: new Date() } },
+    { upsert: true }
+  );
+  revalidatePath('/dashboard');
+  return { success: true, message: 'Configurações de integração salvas com sucesso!' };
+}
+
+export async function testIntegrationConnection(config: IntegrationConfig) {
+  const { testExternalConnection } = await import('./external-db-connection');
+  return await testExternalConnection(config);
+}
+
+export async function runManualSync() {
+  const config = await getIntegrationConfig();
+  if (!config.enabled) return { success: false, message: 'Integração desativada.' };
+
+  const { fetchExternalData } = await import('./external-db-connection');
+  try {
+    const externalData = await fetchExternalData(config);
+    const transformer = new DataTransformer(config);
+    const result = await transformer.transform(externalData);
+
+    const db = await dbConnect();
+    let updatedCount = 0;
+
+    for (const item of result.data) {
+      const updateResult = await db.collection('locations').updateOne(
+        { externalCode: item.externalCode },
+        { $set: { status: item.status, updatedAt: new Date() } }
+      );
+      if (updateResult.modifiedCount > 0) updatedCount++;
+    }
+
+    await db.collection('integration_settings').updateOne(
+      { _id: 'default' },
+      { $set: { lastSync: new Date(), lastSyncStats: { ...result.stats, updated: updatedCount } } }
+    );
+
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Sincronização concluída.', stats: { ...result.stats, updated: updatedCount } };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+}
+
+export async function getLogs() {
+  const db = await dbConnect();
+  const logs = await db.collection('app_logs').find().sort({ timestamp: -1 }).limit(100).toArray();
+  return convertToPlainObject(logs);
 }
