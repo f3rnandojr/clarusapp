@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { NonConformityDialog } from "./non-conformity-dialog";
 
 interface StartCleaningDialogProps {
   location: Location;
@@ -107,6 +108,15 @@ export function StartCleaningDialog({ location, open, onOpenChange, onCleaningSt
         <p className="text-sm text-muted-foreground pt-2">
           Ao confirmar, a higienização será iniciada imediatamente.
         </p>
+
+        <div className="border-t pt-4 mt-4">
+            <NonConformityDialog locationId={location._id.toString()} locationName={`${location.name} - ${location.number}`}>
+                <Button type="button" variant="outline" className="w-full text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isPending}>
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Registrar Não Conformidade
+                </Button>
+            </NonConformityDialog>
+        </div>
         
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>

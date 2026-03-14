@@ -1,14 +1,16 @@
+
 "use client";
 
 import type { Location, CleaningSettings, LocationStatus, UserProfile } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2 } from "lucide-react";
+import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2, AlertTriangle } from "lucide-react";
 import { StatusBadge } from "./status-badge";
 import { ElapsedTime } from "./elapsed-time";
 import { StartCleaningDialog } from "./start-cleaning-dialog";
 import { ProgressBar } from "./progress-bar";
 import { QrCodeDialog } from "./qr-code-dialog";
+import { NonConformityDialog } from "./non-conformity-dialog";
 import { cn } from "@/lib/utils";
 
 interface LocationCardProps {
@@ -34,7 +36,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
       case "in_cleaning":
         if (!location.currentCleaning) return null;
         // @ts-ignore
-        const cleaningTime = cleaningSettings[location.currentCleaning.type]
+        const cleaningTime = cleaningSettings[location.currentCleaning.type] || 30;
         return (
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground space-y-1">
@@ -74,18 +76,31 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
   }
 
   const renderCardFooter = () => {
-    if (location.status === 'in_cleaning' && onFinalizeClick) {
+    if (location.status === 'in_cleaning') {
+      const isMyJob = location.currentCleaning?.userId === currentUserId;
+      
       return (
-        <Button 
-          size="sm" 
-          variant="destructive" 
-          className="w-full" 
-          onClick={() => onFinalizeClick(location._id.toString())} 
-          disabled={isFinalizing}
-        >
-          {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-          Finalizar
-        </Button>
+        <div className="flex flex-col gap-2 w-full">
+            <NonConformityDialog locationId={location._id.toString()} locationName={`${location.name} - ${location.number}`}>
+                <Button size="sm" variant="outline" className="w-full text-xs text-destructive h-8">
+                    <AlertTriangle className="mr-2 h-3 w-3" />
+                    Relatar Problema (NC)
+                </Button>
+            </NonConformityDialog>
+            
+            {onFinalizeClick && (
+                <Button 
+                    size="sm" 
+                    variant="destructive" 
+                    className="w-full" 
+                    onClick={() => onFinalizeClick(location._id.toString())} 
+                    disabled={isFinalizing}
+                >
+                    {isFinalizing && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                    Finalizar Limpeza
+                </Button>
+            )}
+        </div>
       );
     }
     
@@ -141,7 +156,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
                 item={{
                   type: location.locationType as 'leito' | 'area',
                   displayName: `${location.name} - ${location.number}`,
-                  code: location.locationType === 'area' ? location.externalCode : location.number, // Ajuste para usar o código correto
+                  code: location.locationType === 'area' ? location.externalCode : location.number,
                   shortCode: location.locationType === 'area' ? location.number : location.externalCode,
                 }}
               >

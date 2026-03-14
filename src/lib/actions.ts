@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -1426,4 +1426,50 @@ export async function acceptRequest(requestId: string) {
     return { success: true, message: 'Solicitação aceita! Higienização iniciada.' };
 }
 
+// --- Non Conformities Actions ---
+
+export async function createNonConformity(formData: FormData) {
+  const session = await getSession();
+  if (!session?.user) {
+    return { success: false, error: "Usuário não autenticado." };
+  }
+
+  const rawData = {
+    locationId: formData.get('locationId'),
+    locationName: formData.get('locationName'),
+    description: formData.get('description'),
+    photoDataUri: formData.get('photoDataUri'),
+  };
+
+  const validatedFields = CreateNonConformitySchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      error: "Dados inválidos.",
+      fieldErrors: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  try {
+    const db = await dbConnect();
+    const newNC = {
+      ...validatedFields.data,
+      userId: new ObjectId(session.user._id),
+      userName: session.user.name,
+      timestamp: new Date(),
+    };
+
+    await db.collection('non_conformities').insertOne(newNC);
     
+    await logAction('non_conformity_reported', { 
+      locationId: validatedFields.data.locationId, 
+      locationName: validatedFields.data.locationName 
+    });
+
+    return { success: true, message: 'Não conformidade registrada com sucesso!' };
+  } catch (error: any) {
+    console.error('Erro ao registrar NC:', error);
+    return { success: false, error: 'Erro interno ao registrar não conformidade.' };
+  }
+}

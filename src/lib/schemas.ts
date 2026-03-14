@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 
 // --- AUTH ---
@@ -308,3 +307,23 @@ export const IntegrationConfigSchema = z.object({
 });
 
 export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
+
+// --- Non Conformities (Nova) ---
+export const NonConformitySchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  locationId: z.string(),
+  locationName: z.string(),
+  userId: z.union([z.string(), z.any()]),
+  userName: z.string(),
+  photoDataUri: z.string().optional(),
+  description: z.string().min(1, "A descrição é obrigatória."),
+  timestamp: z.union([z.string(), z.date()]),
+});
+export type NonConformity = z.infer<typeof NonConformitySchema>;
+
+export const CreateNonConformitySchema = NonConformitySchema.pick({
+  locationId: true,
+  locationName: true,
+  photoDataUri: true,
+  description: true,
+});
