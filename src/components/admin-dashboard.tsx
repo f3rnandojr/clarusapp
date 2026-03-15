@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, finishCleaning, getActiveCleanings, getNonConformities } from "@/lib/actions";
+import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, finishCleaning, getNonConformities } from "@/lib/actions";
 import Header from "@/components/header";
 import { Loader2 } from "lucide-react";
 import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area, NonConformity } from "@/lib/schemas";
@@ -52,7 +51,9 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
   const [isFinalizing, startFinalizingTransition] = useTransition();
 
   const loadDashboardData = async () => {
-    setIsLoading(true);
+    // Não dispara o loading se já temos dados iniciais
+    if (!data.locations.length) setIsLoading(true);
+    
     try {
       const [
         locations,
@@ -77,8 +78,11 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
       setData({ locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas, nonConformities });
 
     } catch (error) {
-      console.error("❌ Erro ao carregar dashboard:", error);
-      toast({ title: "Erro de Carregamento", description: "Não foi possível carregar os dados do dashboard.", variant: "destructive" });
+      console.error("❌ Erro ao atualizar dashboard:", error);
+      // Silencioso se já houver dados na tela para evitar interrupções
+      if (!data.locations.length) {
+        toast({ title: "Erro de Conexão", description: "Não foi possível sincronizar os dados agora.", variant: "destructive" });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -88,23 +92,19 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
     const handleStartCleaningByCode = async (code: string) => {
         const location = await getLocationByCode(code);
         if (location) {
-            console.log('📍 [DEBUG PROCESSAMENTO] Local encontrado:', location);
             setCleaningLocation(location);
             setIsDialogOpen(true);
         } else {
-            console.warn(`❌ [DEBUG PROCESSAMENTO] Local NÃO encontrado para código: '${code}'`);
-            toast({ title: "Erro", description: `Local com código "${code}" não encontrado.`, variant: "destructive" });
+            toast({ title: "Atenção", description: `Local "${code}" não identificado.`, variant: "destructive" });
         }
     };
     
     const startCleaningParam = searchParams.get('startCleaning');
     if (startCleaningParam) {
-        console.log('🚀 [AUTO-START] Iniciando higienização automática para:', startCleaningParam);
         handleStartCleaningByCode(startCleaningParam);
         router.replace('/dashboard', { scroll: false });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, router, toast]);
 
   const handleDialogClose = (wasSuccessful: boolean) => {
     setIsDialogOpen(false);
@@ -157,14 +157,6 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
     })).sort((a,b) => a.nome.localeCompare(b.nome));
   }, [data?.locations]);
 
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   const { locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas, nonConformities } = data;
   const inCleaningLocations = locations.filter((l) => l.status === "in_cleaning");
   
@@ -188,9 +180,9 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
       
       <main className="flex-1 p-2 md:p-4 pb-10">
         <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="cleaning"><Sparkles className="mr-2 h-4 w-4" />Higienização ({inCleaningLocations.length})</TabsTrigger>
-                <TabsTrigger value="overview"><Building className="mr-2 h-4 w-4" />Setores</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-4 bg-slate-900/50 border border-slate-800 p-1 h-12 rounded-xl">
+                <TabsTrigger value="cleaning" className="rounded-lg data-[state=active]:bg-sky-500 data-[state=active]:text-slate-900 font-bold uppercase text-[10px] tracking-widest"><Sparkles className="mr-2 h-3.5 w-3.5" />Higienização ({inCleaningLocations.length})</TabsTrigger>
+                <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-sky-500 data-[state=active]:text-slate-900 font-bold uppercase text-[10px] tracking-widest"><Building className="mr-2 h-3.5 w-3.5" />Setores</TabsTrigger>
             </TabsList>
             
             <TabsContent value="cleaning">

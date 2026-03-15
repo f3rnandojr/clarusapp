@@ -19,21 +19,15 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     
-    console.log('🔐 1. Iniciando login com Server Action...');
-    
     const formData = new FormData();
     formData.append('login', login);
     formData.append('password', password);
 
     try {
-      // A Server Action 'login' irá lidar com a lógica, cookies e redirecionamento.
-      // Se houver um erro, ela o retornará. Se for bem-sucedida, o Next.js
-      // seguirá o `redirect` dentro da ação.
+      // Chamada direta para a Server Action
       const result = await loginAction(null, formData);
-      console.log('🔐 [DEBUG LOGIN RESULT]', result);
 
       if (result?.error) {
-        console.log('❌ Erro no login:', result.error);
         toast({
           title: "Falha no Login",
           description: result.error,
@@ -41,14 +35,18 @@ export default function LoginPage() {
         });
         setLoading(false);
       }
-      // Se o login for bem-sucedido, a ação `login` redirecionará internamente.
-      // O código aqui só será executado em caso de erro, então não precisamos de um `else`.
-      // O `setLoading(false)` só é necessário no caminho do erro, pois no sucesso, a página será recarregada.
-    } catch (error) {
-       console.error('💥 Erro Inesperado:', error);
+      // O Next.js gerencia o redirecionamento interno da Action.
+      // Se não houver erro, a página será redirecionada automaticamente.
+    } catch (error: any) {
+       // Silencia o erro se for um redirecionamento interno do Next.js
+       if (error?.message?.includes('NEXT_REDIRECT')) {
+         return;
+       }
+       
+       console.error('💥 Erro no Login:', error);
        toast({
-          title: "Erro Inesperado",
-          description: "Ocorreu um erro durante o login. Tente novamente.",
+          title: "Erro de Conexão",
+          description: "Não foi possível conectar ao servidor. Verifique sua rede.",
           variant: "destructive"
         });
        setLoading(false);
@@ -57,20 +55,17 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-lg sm:p-8">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-card p-6 shadow-2xl sm:p-8">
         <div className="flex flex-col items-center text-center">
-            <h1 className="text-4xl font-bold text-accent mb-4">Basiclean</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Faça login para gerenciar a higienização.
-            </p>
-             <p className="mt-1 text-xs text-muted-foreground/80">
-              (Use admin/admin para testar)
+            <h1 className="text-4xl font-black text-sky-400 mb-2 tracking-tighter">Basiclean</h1>
+            <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest">
+              Gestão de Higienização
             </p>
         </div>
         
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="login">Usuário</Label>
+            <Label htmlFor="login" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Usuário</Label>
             <Input 
               id="login"
               type="text"
@@ -79,10 +74,11 @@ export default function LoginPage() {
               placeholder="seu.usuario"
               required
               disabled={loading}
+              className="bg-slate-900/50 border-slate-800 h-12 rounded-xl focus:ring-sky-500/20"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <Label htmlFor="password" id="pass-label" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Senha</Label>
             <Input 
               id="password"
               type="password"
@@ -91,13 +87,19 @@ export default function LoginPage() {
               placeholder="••••••••"
               required
               disabled={loading}
+              className="bg-slate-900/50 border-slate-800 h-12 rounded-xl focus:ring-sky-500/20"
             />
           </div>
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Entrar
+          <Button type="submit" disabled={loading} className="w-full h-12 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-900 font-black uppercase tracking-widest transition-all shadow-lg shadow-sky-500/20 mt-2">
+            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Entrar no Sistema"}
           </Button>
         </form>
+        
+        <div className="mt-6 text-center">
+            <p className="text-[10px] text-muted-foreground/50 font-bold uppercase tracking-tighter">
+              Utilize as credenciais fornecidas pela TI
+            </p>
+        </div>
       </div>
     </div>
   );
