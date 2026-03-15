@@ -5,7 +5,7 @@
 
 @layer base {
   :root {
-    --background: 210 100% 97%;
+    --background: 210 40% 98%; /* #F8FAFC - Cinza quase branco e limpo */
     --foreground: 222 84% 10%;
     --card: 0 0% 100%;
     --card-foreground: 222 84% 10%;
@@ -19,12 +19,12 @@
     --muted-foreground: 222 24% 45%;
     --accent: 258 35% 75%;
     --accent-foreground: 258 35% 25%;
-    --destructive: 0 72% 51%;
+    --destructive: 0 72% 51%; /* #DC2626 aproximado */
     --destructive-foreground: 0 0% 98%;
     --border: 210 40% 88%;
     --input: 210 40% 92%;
     --ring: 201 62% 83%;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     --status-available-bg: 130 95% 96%;
     --status-available-fg: 140 60% 30%;
@@ -73,7 +73,6 @@
     -webkit-overflow-scrolling: touch;
   }
   
-  /* Estilos de scrollbar customizados */
   .scroll-container {
       scrollbar-width: thin;
       scrollbar-color: hsl(var(--border)) hsl(var(--background));
