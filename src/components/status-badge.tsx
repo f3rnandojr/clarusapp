@@ -8,14 +8,14 @@ type StatusBadgeProps = {
 };
 
 const statusClasses: Record<LocationStatus, string> = {
-  available: "bg-status-available-bg text-status-available-fg border-status-available-fg/20 shadow-sm",
-  in_cleaning: "bg-status-cleaning-bg text-status-cleaning-fg border-status-cleaning-fg/20 animate-pulse shadow-sm",
-  occupied: "bg-status-occupied-bg text-status-occupied-fg border-status-occupied-fg/20 shadow-sm",
+  available: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  in_cleaning: "bg-sky-500/10 text-sky-400 border-sky-500/20 animate-pulse",
+  occupied: "bg-orange-500/10 text-orange-400 border-orange-500/20",
 };
 
 const statusText: Record<LocationStatus, string> = {
     available: "Disponível",
-    in_cleaning: "Em Higienização",
+    in_cleaning: "Higienizando",
     occupied: "Ocupado"
 }
 
@@ -23,7 +23,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider",
+        "inline-flex items-center justify-center px-3 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-[0.15em]",
         statusClasses[status],
         className
       )}

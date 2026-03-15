@@ -24,9 +24,9 @@ interface LocationCardProps {
 }
 
 const statusIndicatorClasses: Record<LocationStatus, string> = {
-  available: "bg-green-500",
-  in_cleaning: "bg-yellow-500",
-  occupied: "bg-orange-500",
+  available: "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]",
+  in_cleaning: "bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.5)]",
+  occupied: "bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]",
 };
 
 export default function LocationCard({ location, cleaningSettings, onStartClick, onFinalizeClick, isFinalizing, userProfile = 'admin', currentUserId }: LocationCardProps) {
@@ -38,20 +38,20 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
         // @ts-ignore
         const cleaningTime = cleaningSettings[location.currentCleaning.type] || 30;
         return (
-          <div className="space-y-3 mt-2">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
+          <div className="space-y-4 mt-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <User className="h-3.5 w-3.5" />
-                <span className="truncate">{location.currentCleaning.userName}</span>
+                <span className="truncate font-medium">{location.currentCleaning.userName}</span>
               </div>
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                <Sparkles className="h-3.5 w-3.5 text-accent" />
-                <span>
+              <div className="flex items-center gap-2 text-xs font-semibold text-sky-400/80">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span className="uppercase tracking-wider">
                   {location.currentCleaning.type === "concurrent" ? "Limpeza Concorrente" : "Limpeza Terminal"}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm font-bold text-foreground bg-accent/10 w-fit px-2 py-0.5 rounded-md mt-1">
-                <Clock className="h-3.5 w-3.5 text-accent" />
+              <div className="flex items-center gap-2 text-lg font-bold text-white bg-sky-500/10 w-fit px-3 py-1 rounded-lg mt-1 border border-sky-500/20">
+                <Clock className="h-4 w-4 text-sky-400" />
                 <ElapsedTime startTime={location.currentCleaning.startTime} />
               </div>
             </div>
@@ -64,7 +64,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
         );
       default:
         return (
-            <p className="text-[11px] text-muted-foreground italic mt-2">Pronto para a próxima tarefa.</p>
+            <p className="text-xs text-muted-foreground/60 italic mt-4 font-medium">Pronto para nova tarefa</p>
         );
     }
   };
@@ -78,23 +78,22 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
   const renderCardFooter = () => {
     if (location.status === 'in_cleaning') {
       return (
-        <div className="flex flex-col gap-3 w-full pt-2">
+        <div className="flex flex-col gap-4 w-full pt-4">
             <NonConformityDialog locationId={location._id.toString()} locationName={`${location.name} - ${location.number}`}>
-                <Button variant="ghost" size="sm" className="w-full text-[11px] text-orange-600 hover:text-orange-700 hover:bg-orange-50 h-7 flex items-center justify-center gap-1.5 font-semibold uppercase tracking-wider">
+                <button className="w-full text-[11px] text-orange-400/80 hover:text-orange-400 flex items-center justify-center gap-2 font-bold uppercase tracking-widest transition-colors">
                     <AlertTriangle className="h-3.5 w-3.5" />
                     Relatar Problema
-                </Button>
+                </button>
             </NonConformityDialog>
             
             {onFinalizeClick && (
                 <Button 
                     size="lg" 
-                    variant="destructive" 
-                    className="w-full font-bold text-sm uppercase tracking-tight shadow-sm border-b-4 border-red-800 active:border-b-0 active:translate-y-0.5 transition-all h-12 bg-red-600 hover:bg-red-700" 
+                    className="w-full font-black text-sm uppercase tracking-widest shadow-[0_4px_12px_rgba(220,38,38,0.3)] rounded-xl transition-all h-14 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 border-none group" 
                     onClick={() => onFinalizeClick(location._id.toString())} 
                     disabled={isFinalizing}
                 >
-                    {isFinalizing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4" />}
+                    {isFinalizing ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Sparkles className="mr-2 h-5 w-5 transition-transform group-hover:rotate-12" />}
                     Finalizar Limpeza
                 </Button>
             )}
@@ -107,25 +106,15 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
 
       switch (location.status) {
         case "available":
-          if (onStartClick) {
-              return <Button size="sm" className="w-full shadow-sm font-bold uppercase text-[10px]" onClick={handleStartClick}>{buttonText}</Button>;
-          }
           return (
             <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
-              <Button size="sm" className="w-full shadow-sm font-bold uppercase text-[10px]">{buttonText}</Button>
+              <Button size="sm" className="w-full shadow-lg font-bold uppercase text-[10px] tracking-widest h-10 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-900" onClick={handleStartClick}>{buttonText}</Button>
             </StartCleaningDialog>
           );
         case "occupied":
-          if (onStartClick) {
-              return (
-                  <Button size="sm" variant="outline" className="w-full shadow-sm font-bold uppercase text-[10px]" onClick={handleStartClick}>
-                      Limpeza Concorrente
-                  </Button>
-              );
-          }
           return (
             <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
-              <Button size="sm" variant="outline" className="w-full shadow-sm font-bold uppercase text-[10px]">Limpeza Concorrente</Button>
+              <Button size="sm" variant="outline" className="w-full shadow-sm font-bold uppercase text-[10px] tracking-widest h-10 rounded-lg border-sky-500/30 text-sky-400 hover:bg-sky-500/10" onClick={handleStartClick}>Limpeza Concorrente</Button>
             </StartCleaningDialog>
           );
         default:
@@ -139,12 +128,12 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
   const Icon = location.locationType === 'leito' ? Bed : Building;
 
   return (
-    <Card className="shadow-md hover:shadow-lg transition-all duration-200 border-none bg-card flex flex-col overflow-hidden">
-      <CardHeader className="p-4 pb-2">
-        <div className="flex items-center justify-between gap-2 mb-1">
+    <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-800/50 bg-card flex flex-col overflow-hidden group">
+      <CardHeader className="p-5 pb-2">
+        <div className="flex items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
-                <div className={cn("w-2.5 h-2.5 rounded-full ring-2 ring-background shadow-sm", statusIndicatorClasses[location.status])}></div>
-                <Icon className="h-4 w-4 text-muted-foreground/60" />
+                <div className={cn("w-2.5 h-2.5 rounded-full ring-4 ring-background/50", statusIndicatorClasses[location.status])}></div>
+                <Icon className="h-4 w-4 text-muted-foreground/40 group-hover:text-sky-400/50 transition-colors" />
             </div>
             <div className="flex items-center gap-1">
                 {location.externalCode && (
@@ -156,22 +145,23 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
                         shortCode: location.locationType === 'area' ? location.number : location.externalCode,
                         }}
                     >
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground/40 hover:text-accent">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/30 hover:text-sky-400 hover:bg-sky-500/5">
                         <QrCode className="h-4 w-4" />
                         </Button>
                     </QrCodeDialog>
                 )}
-                <StatusBadge status={location.status} className="scale-90 origin-right" />
+                <StatusBadge status={location.status} className="scale-90 origin-right border-none" />
             </div>
         </div>
-        <CardTitle className="text-xl sm:text-2xl font-extrabold text-card-foreground tracking-tight leading-tight">
-          {location.name} - {location.number}
+        <CardTitle className="text-2xl sm:text-3xl font-black text-white tracking-tighter leading-none group-hover:text-sky-400 transition-colors">
+          {location.name}
+          <span className="block text-sm font-bold text-muted-foreground mt-1 uppercase tracking-[0.2em]">{location.number}</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-4 pt-0 flex-grow pb-2">
+      <CardContent className="px-5 pt-0 flex-grow pb-4">
         {renderCardContent()}
       </CardContent>
-       <CardFooter className="px-4 pb-4 pt-0">
+       <CardFooter className="px-5 pb-5 pt-0">
           {renderCardFooter()}
        </CardFooter>
     </Card>
