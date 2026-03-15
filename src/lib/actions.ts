@@ -791,14 +791,14 @@ export async function generateReport(prevState: any, formData: FormData) {
     if (periodType === 'month') {
         const monthIndex = parseInt(month || String(new Date().getMonth() + 1), 10);
         const yearIndex = parseInt(year || String(new Date().getFullYear()), 10);
-        queryStartDate = new Date(yearIndex, monthIndex - 1, 1);
+        queryStartDate = new Date(yearIndex, monthIndex - 1, 1, 0, 0, 0);
         queryEndDate = new Date(yearIndex, monthIndex, 0, 23, 59, 59);
     } else if (sDate && eDate) {
         queryStartDate = new Date(sDate + 'T00:00:00');
         queryEndDate = new Date(eDate + 'T23:59:59');
     } else {
         const now = new Date();
-        queryStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        queryStartDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
         queryEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     }
 
@@ -861,7 +861,7 @@ export async function generateReport(prevState: any, formData: FormData) {
             report: {
                 scope,
                 total: delayedRecords.length,
-                details: convertToPlainObject(delayedRecords),
+                details: convertToPlainObject(delayedRecords) || [],
                 filters: validatedFields.data
             }
         };
@@ -882,7 +882,7 @@ export async function generateReport(prevState: any, formData: FormData) {
             report: {
                 scope,
                 total: ncDetails.length,
-                details: convertToPlainObject(ncDetails),
+                details: convertToPlainObject(ncDetails) || [],
                 filters: validatedFields.data
             }
         };

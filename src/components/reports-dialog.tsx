@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useActionState } from "react";
@@ -14,9 +13,10 @@ import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Separator } from "./ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Input } from "./ui/input";
+import { cn } from "@/lib/utils";
 
 interface ReportsDialogProps {
   children: React.ReactNode;
@@ -54,16 +54,26 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
         if (!state?.report?.filters) return null;
         const { periodType, month, year, startDate, endDate } = state.report.filters;
         
-        if (periodType === 'month') {
-            const m = month || String(currentMonth);
-            const y = year || String(currentYear);
-            const date = new Date(parseInt(y), parseInt(m) - 1);
-            return format(date, "MMMM 'de' yyyy", { locale: ptBR });
-        } else {
-            if (!startDate || !endDate) return "Período personalizado";
-            return `De ${format(new Date(startDate), 'dd/MM/yy')} até ${format(new Date(endDate), 'dd/MM/yy')}`;
+        try {
+            if (periodType === 'month') {
+                const m = month || String(currentMonth);
+                const y = year || String(currentYear);
+                const date = new Date(parseInt(y), parseInt(m) - 1);
+                return format(date, "MMMM 'de' yyyy", { locale: ptBR });
+            } else {
+                if (!startDate || !endDate) return "Período personalizado";
+                return `De ${format(new Date(startDate), 'dd/MM/yy')} até ${format(new Date(endDate), 'dd/MM/yy')}`;
+            }
+        } catch (e) {
+            return "Período selecionado";
         }
     }, [state?.report?.filters, currentMonth, currentYear]);
+
+    const formatSafeDate = (dateStr?: string) => {
+        if (!dateStr) return '--/-- --:--';
+        const d = new Date(dateStr);
+        return isValid(d) ? format(d, 'dd/MM/yy HH:mm') : '--/-- --:--';
+    };
 
     return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -85,29 +95,29 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                     <RadioGroup name="scope" value={scope} onValueChange={(v: any) => setScope(v)} className="grid grid-cols-1 gap-2">
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="general" id="scope-general" />
-                            <Label htmlFor="scope-general" className="font-normal cursor-pointer">Geral (Consolidado)</Label>
+                            <Label htmlFor="scope-general" className="font-normal cursor-pointer text-slate-300">Geral (Consolidado)</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="delays" id="scope-delays" />
-                            <Label htmlFor="scope-delays" className="font-normal cursor-pointer">Apenas Ocorrências de Atraso</Label>
+                            <Label htmlFor="scope-delays" className="font-normal cursor-pointer text-slate-300">Apenas Ocorrências de Atraso</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="nc" id="scope-nc" />
-                            <Label htmlFor="scope-nc" className="font-normal cursor-pointer">Apenas Não Conformidades (NC)</Label>
+                            <Label htmlFor="scope-nc" className="font-normal cursor-pointer text-slate-300">Apenas Não Conformidades (NC)</Label>
                         </div>
                     </RadioGroup>
 
-                    {scope !== 'nc' && (
+                    {(scope === 'general' || scope === 'delays') && (
                         <div className="pt-2 space-y-2">
                             <Label className="text-xs text-muted-foreground">Tipo de Higienização</Label>
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
                                     <Checkbox id="rep-concurrent" name="cleaningTypes" value="concurrent" defaultChecked />
-                                    <Label htmlFor="rep-concurrent" className="text-xs font-normal cursor-pointer">Concorrente</Label>
+                                    <Label htmlFor="rep-concurrent" className="text-xs font-normal cursor-pointer text-slate-400">Concorrente</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox id="rep-terminal" name="cleaningTypes" value="terminal" defaultChecked />
-                                    <Label htmlFor="rep-terminal" className="text-xs font-normal cursor-pointer">Terminal</Label>
+                                    <Label htmlFor="rep-terminal" className="text-xs font-normal cursor-pointer text-slate-400">Terminal</Label>
                                 </div>
                             </div>
                         </div>
@@ -141,7 +151,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                             <div className="space-y-1">
                                 <Label htmlFor="month" className="text-xs">Mês</Label>
                                 <Select name="month" defaultValue={String(currentMonth)}>
-                                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-8 bg-slate-800 border-slate-700"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
                                     </SelectContent>
@@ -150,7 +160,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                             <div className="space-y-1">
                                 <Label htmlFor="year" className="text-xs">Ano</Label>
                                 <Select name="year" defaultValue={String(currentYear)}>
-                                    <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-8 bg-slate-800 border-slate-700"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                                     </SelectContent>
@@ -161,11 +171,11 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label htmlFor="startDate" className="text-xs">Início</Label>
-                                <Input id="startDate" name="startDate" type="date" className="h-8" required={periodType === 'range'} />
+                                <Input id="startDate" name="startDate" type="date" className="h-8 bg-slate-800 border-slate-700" required={periodType === 'range'} />
                             </div>
                             <div className="space-y-1">
                                 <Label htmlFor="endDate" className="text-xs">Fim</Label>
-                                <Input id="endDate" name="endDate" type="date" className="h-8" required={periodType === 'range'} />
+                                <Input id="endDate" name="endDate" type="date" className="h-8 bg-slate-800 border-slate-700" required={periodType === 'range'} />
                             </div>
                         </div>
                     )}
@@ -185,12 +195,12 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
 
             {state?.success && state.report && (
                 <div className="mt-2 space-y-6 pb-6">
-                    <Separator />
+                    <Separator className="bg-slate-800" />
                     <div className="text-center">
-                        <h3 className="font-semibold text-base sm:text-lg flex items-center justify-center gap-2">
-                            {state.report.scope === 'general' && <ClipboardList className="h-5 w-5 text-primary" />}
-                            {state.report.scope === 'delays' && <AlertTriangle className="h-5 w-5 text-destructive" />}
-                            {state.report.scope === 'nc' && <AlertTriangle className="h-5 w-5 text-destructive" />}
+                        <h3 className="font-semibold text-base sm:text-lg flex items-center justify-center gap-2 text-white">
+                            {state.report.scope === 'general' && <ClipboardList className="h-5 w-5 text-sky-400" />}
+                            {state.report.scope === 'delays' && <AlertTriangle className="h-5 w-5 text-red-400" />}
+                            {state.report.scope === 'nc' && <AlertTriangle className="h-5 w-5 text-orange-400" />}
                             Resultados: {state.report.scope === 'general' ? 'Resumo Geral' : state.report.scope === 'delays' ? 'Ocorrências de Atraso' : 'Não Conformidades'}
                         </h3>
                         {reportPeriodLabel && <p className="text-xs sm:text-sm text-muted-foreground capitalize">{reportPeriodLabel}</p>}
@@ -198,59 +208,61 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                     
                     {state.report.scope === 'general' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                            <div className="rounded-lg border p-4 space-y-2 bg-card shadow-sm">
-                                <h4 className="font-semibold text-primary">Volumetria</h4>
-                                <div className="flex justify-between border-b pb-1"><span>Higienizações:</span> <span className="font-bold">{state.report.total}</span></div>
-                                <div className="flex justify-between"><span>Não Conformidades:</span> <span className="font-bold text-destructive">{state.report.totalNCs}</span></div>
+                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-sky-400">Volumetria</h4>
+                                <div className="flex justify-between border-b border-slate-800/50 pb-1"><span>Higienizações:</span> <span className="font-bold text-white">{state.report.total || 0}</span></div>
+                                <div className="flex justify-between"><span>Não Conformidades:</span> <span className="font-bold text-red-400">{state.report.totalNCs || 0}</span></div>
                             </div>
-                            <div className="rounded-lg border p-4 space-y-2 bg-card shadow-sm">
-                                <h4 className="font-semibold text-primary">Detalhamento</h4>
-                                <div className="flex justify-between border-b pb-1"><span>Concorrente:</span> <span className="font-bold">{state.report.concurrent} (Média {state.report.avgConcurrentTime}m)</span></div>
-                                <div className="flex justify-between"><span>Terminal:</span> <span className="font-bold">{state.report.terminal} (Média {state.report.avgTerminalTime}m)</span></div>
+                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-sky-400">Detalhamento</h4>
+                                <div className="flex justify-between border-b border-slate-800/50 pb-1"><span>Concorrente:</span> <span className="font-bold text-white">{state.report.concurrent || 0} (Média {state.report.avgConcurrentTime || 0}m)</span></div>
+                                <div className="flex justify-between"><span>Terminal:</span> <span className="font-bold text-white">{state.report.terminal || 0} (Média {state.report.avgTerminalTime || 0}m)</span></div>
                             </div>
-                            <div className="rounded-lg border p-4 space-y-2 bg-card shadow-sm sm:col-span-2 lg:col-span-1">
-                                <h4 className="font-semibold text-primary">SLA e Prazos</h4>
-                                <div className="flex justify-between border-b pb-1"><span>No Prazo:</span> <span className="font-bold text-green-600">{state.report.onTime} ({state.report.onTimePercent.toFixed(1)}%)</span></div>
-                                <div className="flex justify-between"><span>Atrasados:</span> <span className="font-bold text-destructive">{state.report.delayed} ({state.report.delayedPercent.toFixed(1)}%)</span></div>
+                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm sm:col-span-2 lg:col-span-1">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-sky-400">SLA e Prazos</h4>
+                                <div className="flex justify-between border-b border-slate-800/50 pb-1"><span>No Prazo:</span> <span className="font-bold text-emerald-400">{(state.report.onTimePercent || 0).toFixed(1)}%</span></div>
+                                <div className="flex justify-between"><span>Atrasados:</span> <span className="font-bold text-red-400">{(state.report.delayedPercent || 0).toFixed(1)}%</span></div>
                             </div>
                         </div>
                     ) : (
-                        <div className="rounded-md border overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-muted/50">
-                                        <TableHead className="whitespace-nowrap">Data</TableHead>
-                                        <TableHead className="whitespace-nowrap">Local</TableHead>
-                                        <TableHead className="whitespace-nowrap">Responsável</TableHead>
-                                        <TableHead className="whitespace-nowrap">{state.report.scope === 'delays' ? 'Atraso' : 'Relato'}</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {state.report.details && state.report.details.length > 0 ? (
-                                        state.report.details.map((item: any) => (
-                                            <TableRow key={item._id}>
-                                                <TableCell className="text-[10px] sm:text-xs whitespace-nowrap">
-                                                    {format(new Date(item.date || item.timestamp), 'dd/MM/yy HH:mm')}
-                                                </TableCell>
-                                                <TableCell className="font-medium whitespace-nowrap">{item.locationName}</TableCell>
-                                                <TableCell className="whitespace-nowrap">{item.userName}</TableCell>
-                                                <TableCell className={cn("whitespace-nowrap", state.report.scope === 'delays' ? 'text-destructive font-bold' : 'text-[10px] sm:text-xs text-muted-foreground')}>
-                                                    {state.report.scope === 'delays' 
-                                                        ? `${item.actualDuration - item.expectedDuration} min`
-                                                        : (item.description?.substring(0, 30) + (item.description?.length > 30 ? '...' : ''))
-                                                    }
+                        <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-slate-800/50 border-slate-800">
+                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Data</TableHead>
+                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Local</TableHead>
+                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Responsável</TableHead>
+                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">{state.report.scope === 'delays' ? 'Atraso' : 'Relato'}</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {state.report.details && state.report.details.length > 0 ? (
+                                            state.report.details.map((item: any, idx: number) => (
+                                                <TableRow key={item._id || idx} className="border-slate-800 hover:bg-slate-800/20">
+                                                    <TableCell className="text-[10px] sm:text-xs whitespace-nowrap text-slate-300">
+                                                        {formatSafeDate(item.date || item.timestamp)}
+                                                    </TableCell>
+                                                    <TableCell className="font-bold whitespace-nowrap text-white">{item.locationName || 'N/A'}</TableCell>
+                                                    <TableCell className="whitespace-nowrap text-slate-300">{item.userName || 'N/A'}</TableCell>
+                                                    <TableCell className={cn("whitespace-nowrap", state.report.scope === 'delays' ? 'text-red-400 font-black' : 'text-[10px] sm:text-xs text-slate-400')}>
+                                                        {state.report.scope === 'delays' 
+                                                            ? `${(item.actualDuration || 0) - (item.expectedDuration || 0)} min`
+                                                            : (item.description ? (item.description.substring(0, 40) + (item.description.length > 40 ? '...' : '')) : 'Sem descrição')
+                                                        }
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground italic text-xs">
+                                                    Nenhum registro encontrado para este filtro.
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center text-muted-foreground italic">
-                                                Nenhum registro encontrado para este filtro.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </div>
                     )}
                 </div>
