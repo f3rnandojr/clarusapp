@@ -232,7 +232,7 @@ export const ReportFiltersSchema = z.object({
 
 export type ReportFilters = z.infer<typeof ReportFiltersSchema>;
 
-const UserProfileEnum = z.enum(['admin', 'gestor', 'usuario']);
+const UserProfileEnum = z.enum(['admin', 'gestor', 'usuario', 'auditor']);
 export type UserProfile = z.infer<typeof UserProfileEnum>;
 
 export const UserSchema = z.object({
@@ -323,3 +323,16 @@ export const CreateNonConformitySchema = NonConformitySchema.pick({
   photoDataUri: true,
   description: true,
 });
+
+// --- Audit Records ---
+export const AuditRecordSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  locationId: z.string(),
+  locationName: z.string(),
+  auditorId: z.union([z.string(), z.any()]),
+  auditorName: z.string(),
+  lastCleaningId: z.string().nullable(), // ID do último registro de limpeza finalizado
+  checklistData: z.record(z.string(), z.enum(["conforme", "não_conforme", "n/a"])),
+  timestamp: z.union([z.string(), z.date()]),
+});
+export type AuditRecord = z.infer<typeof AuditRecordSchema>;

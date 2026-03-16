@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useActionState } from "react";
@@ -23,6 +22,7 @@ const profileOptions: { value: UserProfile; label: string }[] = [
     { value: 'admin', label: 'Administrador' },
     { value: 'gestor', label: 'Gestor' },
     { value: 'usuario', label: 'Usuário' },
+    { value: 'auditor', label: 'Auditor' },
 ];
 
 export function UserForm({ user, onFinished }: UserFormProps) {
@@ -73,14 +73,14 @@ export function UserForm({ user, onFinished }: UserFormProps) {
       className="space-y-4 p-1"
     >
       <div className="space-y-2">
-        <Label htmlFor="name">Nome Completo</Label>
-        <Input id="name" name="name" defaultValue={user?.name} required />
+        <Label htmlFor="name" className="text-white/70">Nome Completo</Label>
+        <Input id="name" name="name" defaultValue={user?.name} required className="bg-slate-900 border-slate-800" />
         {state?.fieldErrors?.name && <p className="text-sm text-destructive">{state.fieldErrors.name[0]}</p>}
       </div>
       
        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-                <Label htmlFor="login">Login</Label>
+                <Label htmlFor="login" className="text-white/70">Login</Label>
                 <Input 
                 id="login" 
                 name="login" 
@@ -88,14 +88,15 @@ export function UserForm({ user, onFinished }: UserFormProps) {
                 required 
                 readOnly={isEditing || user?.login === 'admin'} 
                 disabled={user?.login === 'admin'} 
+                className="bg-slate-900 border-slate-800"
                 />
                 {state?.fieldErrors?.login && <p className="text-sm text-destructive">{state.fieldErrors.login[0]}</p>}
             </div>
              <div className="space-y-2">
-                <Label htmlFor="perfil">Perfil</Label>
+                <Label htmlFor="perfil" className="text-white/70">Perfil</Label>
                 <Select name="perfil" defaultValue={user?.perfil || 'usuario'} disabled={user?.login === 'admin'}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
+                    <SelectTrigger className="bg-slate-900 border-slate-800"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-800">
                         {profileOptions.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                     </SelectContent>
                 </Select>
@@ -104,13 +105,14 @@ export function UserForm({ user, onFinished }: UserFormProps) {
        </div>
       
       <div className="space-y-2">
-        <Label htmlFor="password">Senha</Label>
+        <Label htmlFor="password" className="text-white/70">Senha</Label>
         <Input 
           id="password" 
           name="password" 
           type="password" 
           placeholder={passwordPlaceholder} 
           required={!isEditing} 
+          className="bg-slate-900 border-slate-800"
         />
         {state?.fieldErrors?.password && <p className="text-sm text-destructive">{state.fieldErrors.password[0]}</p>}
       </div>
@@ -118,15 +120,15 @@ export function UserForm({ user, onFinished }: UserFormProps) {
       {isEditing && (
         <div className="flex items-center space-x-2">
           <Switch id="active" name="active" defaultChecked={user?.active} disabled={user?.login === 'admin'} />
-          <Label htmlFor="active">Usuário Ativo</Label>
+          <Label htmlFor="active" className="text-white/70">Usuário Ativo</Label>
         </div>
       )}
       
       <div className="flex justify-end pt-4 space-x-2">
-        <Button type="button" variant="ghost" onClick={onFinished}>
+        <Button type="button" variant="ghost" onClick={onFinished} className="text-white/50 hover:text-white">
           Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="bg-sky-500 hover:bg-sky-400 text-slate-900 font-bold">
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isEditing ? 'Salvar Alterações' : 'Adicionar Usuário'}
         </Button>

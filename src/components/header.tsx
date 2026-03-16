@@ -1,4 +1,3 @@
-
 import type { Area, Asg, CleaningOccurrence, CleaningSettings, User, NonConformity } from '@/lib/schemas';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { OccurrencesDialog } from '@/components/occurrences-dialog';
@@ -22,6 +21,7 @@ const profileLabels: Record<string, string> = {
     admin: 'Admin',
     gestor: 'Gestor',
     usuario: 'Usuário',
+    auditor: 'Auditor',
 };
 
 export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occurrences, nonConformities, allAreas, user }: HeaderProps) {
