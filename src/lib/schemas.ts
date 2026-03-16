@@ -333,6 +333,7 @@ export const AuditRecordSchema = z.object({
   auditorName: z.string(),
   lastCleaningId: z.string().nullable(), // ID do último registro de limpeza finalizado
   checklistData: z.record(z.string(), z.enum(["conforme", "não_conforme", "n/a"])),
+  observations: z.string().optional(),
   timestamp: z.union([z.string(), z.date()]),
 });
 export type AuditRecord = z.infer<typeof AuditRecordSchema>;

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence, User } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence, User, AuditRecord } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -426,6 +426,51 @@ export async function finishCleaning(locationId: string) {
 
   revalidatePath('/dashboard');
   return { success: true, message: 'Higienização finalizada com sucesso!' };
+}
+
+// --- Audit Actions ---
+
+export async function createAuditRecord(data: {
+    locationId: string;
+    locationName: string;
+    lastCleaningId: string | null;
+    checklistData: Record<string, "conforme" | "não_conforme" | "n/a">;
+    observations?: string;
+}) {
+    const session = await getSession();
+    if (!session?.user || session.user.perfil !== 'auditor') {
+        return { success: false, error: "Acesso negado. Apenas auditores podem realizar esta ação." };
+    }
+
+    try {
+        const db = await dbConnect();
+        
+        const newRecord: Omit<AuditRecord, '_id'> = {
+            locationId: data.locationId,
+            locationName: data.locationName,
+            auditorId: new ObjectId(session.user._id),
+            auditorName: session.user.name,
+            lastCleaningId: data.lastCleaningId,
+            checklistData: data.checklistData,
+            observations: data.observations,
+            timestamp: new Date(),
+        };
+
+        await db.collection('audit_records').insertOne(newRecord);
+        
+        // Após gravar a auditoria, finaliza a tarefa de limpeza ativa do auditor
+        const finishResult = await finishCleaning(data.locationId);
+        
+        if (finishResult.success) {
+            await logAction('audit_completed', { locationId: data.locationId, locationName: data.locationName });
+            return { success: true, message: "Auditoria finalizada e gravada com sucesso!" };
+        } else {
+            return { success: false, error: finishResult.error };
+        }
+    } catch (error: any) {
+        console.error('Erro ao gravar auditoria:', error);
+        return { success: false, error: "Erro interno ao gravar registro de auditoria." };
+    }
 }
 
 // --- Location Mappings Actions ---

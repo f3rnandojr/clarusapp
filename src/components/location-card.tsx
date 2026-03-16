@@ -3,14 +3,17 @@
 import type { Location, CleaningSettings, LocationStatus, UserProfile } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2, AlertTriangle } from "lucide-react";
+import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2, AlertTriangle, ClipboardCheck } from "lucide-react";
 import { StatusBadge } from "./status-badge";
 import { ElapsedTime } from "./elapsed-time";
 import { StartCleaningDialog } from "./start-cleaning-dialog";
 import { ProgressBar } from "./progress-bar";
 import { QrCodeDialog } from "./qr-code-dialog";
 import { NonConformityDialog } from "./non-conformity-dialog";
+import { AuditChecklistDialog } from "./audit-checklist-dialog";
 import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
+import { getLastCleaningRecord } from "@/lib/actions";
 
 interface LocationCardProps {
   location: Location;
@@ -29,6 +32,13 @@ const statusIndicatorClasses: Record<LocationStatus, string> = {
 };
 
 export default function LocationCard({ location, cleaningSettings, onStartClick, onFinalizeClick, isFinalizing, userProfile = 'admin', currentUserId }: LocationCardProps) {
+  const [lastCleaning, setLastCleaning] = useState<any>(null);
+
+  useEffect(() => {
+    if (userProfile === 'auditor' && location.status === 'in_cleaning') {
+        getLastCleaningRecord(location._id.toString()).then(setLastCleaning);
+    }
+  }, [userProfile, location.status, location._id]);
   
   const renderCardContent = () => {
     switch (location.status) {
@@ -85,16 +95,28 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
                 </button>
             </NonConformityDialog>
             
-            {onFinalizeClick && (
-                <Button 
-                    size="lg" 
-                    className="w-full font-black text-sm uppercase tracking-widest shadow-[0_4px_12px_rgba(220,38,38,0.3)] rounded-xl transition-all h-14 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 border-none group" 
-                    onClick={() => onFinalizeClick(location._id.toString())} 
-                    disabled={isFinalizing}
-                >
-                    {isFinalizing ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Sparkles className="mr-2 h-5 w-5 transition-transform group-hover:rotate-12" />}
-                    {userProfile === 'auditor' ? 'Concluir Auditoria' : 'Finalizar Limpeza'}
-                </Button>
+            {userProfile === 'auditor' ? (
+                <AuditChecklistDialog location={location} lastCleaning={lastCleaning}>
+                    <Button 
+                        size="lg" 
+                        className="w-full font-black text-sm uppercase tracking-widest shadow-[0_4px_12px_rgba(56,189,248,0.3)] rounded-xl transition-all h-14 bg-gradient-to-br from-sky-500 to-sky-700 hover:from-sky-600 hover:to-sky-800 border-none group"
+                    >
+                        <ClipboardCheck className="mr-2 h-5 w-5 transition-transform group-hover:scale-110" />
+                        Checklist de Verificação
+                    </Button>
+                </AuditChecklistDialog>
+            ) : (
+                onFinalizeClick && (
+                    <Button 
+                        size="lg" 
+                        className="w-full font-black text-sm uppercase tracking-widest shadow-[0_4px_12px_rgba(220,38,38,0.3)] rounded-xl transition-all h-14 bg-gradient-to-br from-red-500 to-red-700 hover:from-red-600 hover:to-red-800 border-none group" 
+                        onClick={() => onFinalizeClick(location._id.toString())} 
+                        disabled={isFinalizing}
+                    >
+                        {isFinalizing ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Sparkles className="mr-2 h-5 w-5 transition-transform group-hover:rotate-12" />}
+                        Finalizar Limpeza
+                    </Button>
+                )
             )}
         </div>
       );
