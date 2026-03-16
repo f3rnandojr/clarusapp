@@ -326,7 +326,7 @@ export async function startCleaning(prevState: any, formData: FormData) {
     return { success: true, message: `Solicitação de higienização para ${location.name} - ${location.number} criada com sucesso!` };
   }
 
-  if (userProfile === 'usuario') {
+  if (userProfile === 'usuario' || userProfile === 'auditor') {
     const newActiveCleaning: Omit<ActiveCleaning, '_id'> = {
       locationId: location._id.toString(),
       locationName: `${location.name} - ${location.number}`,
@@ -345,7 +345,8 @@ export async function startCleaning(prevState: any, formData: FormData) {
     await db.collection(collectionName).updateOne({_id: new ObjectId(location._id)}, {$set: { status: 'in_cleaning', updatedAt: new Date() }});
     
     revalidatePath('/dashboard');
-    return { success: true, message: `Higienização iniciada com sucesso em ${location.name} - ${location.number}!` };
+    const msg = userProfile === 'auditor' ? 'Auditoria iniciada!' : `Higienização iniciada com sucesso em ${location.name} - ${location.number}!`;
+    return { success: true, message: msg };
   }
   
   return { success: false, error: 'Perfil de usuário desconhecido ou não autorizado para esta ação.' };
@@ -1280,4 +1281,18 @@ export async function getLogs() {
   const db = await dbConnect();
   const logs = await db.collection('app_logs').find().sort({ timestamp: -1 }).limit(100).toArray();
   return convertToPlainObject(logs);
+}
+
+// --- AUDIT ACTIONS ---
+
+export async function getLastCleaningRecord(locationId: string): Promise<CleaningRecord | null> {
+    const db = await dbConnect();
+    const lastRecord = await db.collection('cleaning_records')
+        .find({ locationId: locationId.toString(), status: 'completed' })
+        .sort({ finishTime: -1 })
+        .limit(1)
+        .toArray();
+    
+    if (lastRecord.length === 0) return null;
+    return convertToPlainObject(lastRecord[0]);
 }

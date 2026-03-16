@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { Location, CleaningSettings, LocationStatus, UserProfile } from "@/lib/schemas";
@@ -47,7 +46,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
               <div className="flex items-center gap-2 text-xs font-semibold text-sky-400/80">
                 <Sparkles className="h-3.5 w-3.5" />
                 <span className="uppercase tracking-wider">
-                  {location.currentCleaning.type === "concurrent" ? "Limpeza Concorrente" : "Limpeza Terminal"}
+                  {userProfile === 'auditor' ? 'Auditoria em Curso' : (location.currentCleaning.type === "concurrent" ? "Limpeza Concorrente" : "Limpeza Terminal")}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-lg font-bold text-white bg-sky-500/10 w-fit px-3 py-1 rounded-lg mt-1 border border-sky-500/20">
@@ -94,7 +93,7 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
                     disabled={isFinalizing}
                 >
                     {isFinalizing ? <Loader2 className="mr-2 h-5 w-5 animate-spin"/> : <Sparkles className="mr-2 h-5 w-5 transition-transform group-hover:rotate-12" />}
-                    Finalizar Limpeza
+                    {userProfile === 'auditor' ? 'Concluir Auditoria' : 'Finalizar Limpeza'}
                 </Button>
             )}
         </div>
@@ -107,13 +106,13 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
       switch (location.status) {
         case "available":
           return (
-            <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
+            <StartCleaningDialog location={location} userProfile={userProfile} onCleaningStarted={() => {}}>
               <Button size="sm" className="w-full shadow-lg font-bold uppercase text-[10px] tracking-widest h-10 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-900" onClick={handleStartClick}>{buttonText}</Button>
             </StartCleaningDialog>
           );
         case "occupied":
           return (
-            <StartCleaningDialog location={location} onCleaningStarted={() => {}}>
+            <StartCleaningDialog location={location} userProfile={userProfile} onCleaningStarted={() => {}}>
               <Button size="sm" variant="outline" className="w-full shadow-sm font-bold uppercase text-[10px] tracking-widest h-10 rounded-lg border-sky-500/30 text-sky-400 hover:bg-sky-500/10" onClick={handleStartClick}>Limpeza Concorrente</Button>
             </StartCleaningDialog>
           );

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
@@ -181,6 +180,24 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     };
 
     const handleFinalizeCleaning = async (locationId: string) => {
+        if (user.perfil === 'auditor') {
+            // Em vez de finalizar direto, abriremos o checklist na próxima etapa
+            toast({
+                title: "Iniciando Checkout",
+                description: "Por favor, preencha o checklist de validação.",
+            });
+            // Por enquanto, apenas para demonstrar o fluxo, chamaremos a finalização
+            // mas futuramente aqui abrirá o modal do checklist.
+            startFinalizingTransition(async () => {
+                const result = await finishCleaning(locationId);
+                if (result.success) {
+                    toast({ title: "Auditoria Concluída", description: result.success });
+                    await refreshData();
+                }
+            });
+            return;
+        }
+
         startFinalizingTransition(async () => {
             const result = await finishCleaning(locationId);
             if (result.success) {
@@ -259,7 +276,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                 {myCleaningJobs.length > 0 && (
                   <div className="mb-12">
                     <h2 className="font-black text-xs uppercase tracking-[0.3em] px-4 mb-6 text-sky-400 flex items-center gap-3">
-                        <Sparkles className="h-4 w-4" /> Minha Atividade
+                        <Sparkles className="h-4 w-4" /> {user.perfil === 'auditor' ? 'Minha Auditoria' : 'Minha Atividade'}
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-4">
                       {myCleaningJobs.map(local => (
@@ -380,6 +397,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             {cleaningLocation && (
                 <StartCleaningDialog
                     location={cleaningLocation}
+                    userProfile={user.perfil}
                     open={isDialogOpen}
                     onOpenChange={setIsDialogOpen}
                     onCleaningStarted={handleDialogClose}
