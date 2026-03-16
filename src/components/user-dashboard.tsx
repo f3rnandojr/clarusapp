@@ -46,6 +46,7 @@ const profileLabels: Record<string, string> = {
     admin: 'Admin',
     gestor: 'Gestor',
     usuario: 'Usuário',
+    auditor: 'Auditor',
 };
 
 interface UserDashboardProps {

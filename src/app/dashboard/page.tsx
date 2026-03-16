@@ -1,3 +1,4 @@
+
 "use server";
 
 import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getPendingRequests, getActiveCleanings, getNonConformities } from "@/lib/actions";
@@ -51,7 +52,8 @@ export default async function DashboardPage() {
     nonConformities,
   };
 
-  if (user.perfil === 'usuario') {
+  // Usuários comuns e Auditores veem a interface simplificada (Scanner + Status)
+  if (user.perfil === 'usuario' || user.perfil === 'auditor') {
     const myActiveCleanings = activeCleanings.filter(ac => ac.userId === user._id);
     return (
       <UserDashboard 
