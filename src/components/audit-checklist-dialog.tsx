@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -38,7 +39,10 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const isChecklistComplete = CHECKLIST_ITEMS.every(item => answers[item.id]);
+  // Validação rigorosa: todos os 8 itens devem estar no objeto de respostas
+  const isChecklistComplete = CHECKLIST_ITEMS.every(item => 
+    answers[item.id] !== undefined && answers[item.id] !== null && answers[item.id] !== ""
+  );
 
   const handleAnswerChange = (itemId: string, value: Answer) => {
     setAnswers(prev => ({ ...prev, [itemId]: value }));
@@ -46,22 +50,32 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isChecklistComplete) return;
+    if (!isChecklistComplete) {
+        toast({ title: "Atenção", description: "Por favor, responda todos os itens do checklist.", variant: "destructive" });
+        return;
+    }
 
     startTransition(async () => {
+      // Garantir que os IDs sejam strings
+      const locId = typeof location._id === 'string' ? location._id : location._id?.toString();
+      const lastCleanId = lastCleaning ? (typeof lastCleaning._id === 'string' ? lastCleaning._id : lastCleaning._id?.toString()) : null;
+
       const result = await createAuditRecord({
-        locationId: location._id.toString(),
+        locationId: locId,
         locationName: `${location.name} - ${location.number}`,
-        lastCleaningId: lastCleaning ? lastCleaning._id.toString() : null,
-        checklistData: answers,
+        lastCleaningId: lastCleanId || null,
+        checklistData: answers as any,
         observations: observations,
       });
 
       if (result.success) {
         toast({ title: "Sucesso!", description: result.message });
         setOpen(false);
+        // Resetar estado após sucesso
+        setAnswers({});
+        setObservations("");
       } else {
-        toast({ title: "Erro", description: result.error, variant: "destructive" });
+        toast({ title: "Erro ao Salvar", description: result.error, variant: "destructive" });
       }
     });
   };
@@ -86,6 +100,7 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
               <div key={item.id} className="p-4 rounded-2xl bg-slate-800/40 border border-slate-800 space-y-3">
                 <Label className="text-sm font-bold text-slate-200">{item.label}</Label>
                 <RadioGroup 
+                  value={answers[item.id] || ""}
                   onValueChange={(val) => handleAnswerChange(item.id, val as Answer)}
                   className="flex flex-wrap gap-2 sm:gap-4"
                 >
@@ -111,7 +126,7 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
             <Textarea 
               id="obs"
               placeholder="Descreva observações relevantes encontradas na auditoria..."
-              className="bg-slate-950 border-slate-800 min-h-[100px] rounded-xl focus:ring-sky-500/20"
+              className="bg-slate-950 border-slate-800 min-h-[100px] rounded-xl focus:ring-sky-500/20 text-white"
               value={observations}
               onChange={(e) => setObservations(e.target.value)}
             />
@@ -124,8 +139,8 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
             className={cn(
               "w-full h-14 font-black uppercase tracking-widest text-xs rounded-2xl transition-all shadow-lg",
               isChecklistComplete 
-                ? "bg-sky-500 hover:bg-sky-400 text-slate-900 shadow-sky-500/20" 
-                : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                ? "bg-sky-500 hover:bg-sky-400 text-slate-900 shadow-sky-500/20 opacity-100" 
+                : "bg-slate-800 text-slate-500 cursor-not-allowed opacity-50"
             )}
             disabled={!isChecklistComplete || isPending}
           >

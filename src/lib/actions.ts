@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -469,7 +470,7 @@ export async function createAuditRecord(data: {
         }
     } catch (error: any) {
         console.error('Erro ao gravar auditoria:', error);
-        return { success: false, error: "Erro interno ao gravar registro de auditoria." };
+        return { success: false, error: "Erro interno ao gravar registro de auditoria: " + error.message };
     }
 }
 
