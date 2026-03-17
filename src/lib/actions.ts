@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence, User, AuditRecord } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence, User, AuditRecord, AuditRecordSchema } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -457,6 +457,13 @@ export async function createAuditRecord(data: {
             timestamp: new Date(),
         };
 
+        // Validação adicional de schema antes da inserção
+        const validation = AuditRecordSchema.safeParse({ ...newRecord, _id: new ObjectId() });
+        if (!validation.success) {
+            console.error("Erro de validação no schema de auditoria:", validation.error.flatten());
+            return { success: false, error: "Dados da auditoria inconsistentes. Verifique o preenchimento." };
+        }
+
         await db.collection('audit_records').insertOne(newRecord);
         
         // Após gravar a auditoria, finaliza a tarefa de limpeza ativa do auditor
@@ -466,11 +473,12 @@ export async function createAuditRecord(data: {
             await logAction('audit_completed', { locationId: data.locationId, locationName: data.locationName });
             return { success: true, message: "Auditoria finalizada e gravada com sucesso!" };
         } else {
-            return { success: false, error: finishResult.error };
+            console.error("Auditoria gravada mas falhou ao finalizar limpeza:", finishResult.error);
+            return { success: false, error: "Conferência salva, mas erro ao atualizar status do local: " + finishResult.error };
         }
     } catch (error: any) {
-        console.error('Erro ao gravar auditoria:', error);
-        return { success: false, error: "Erro interno ao gravar registro de auditoria: " + error.message };
+        console.error('Erro fatal ao gravar auditoria:', error);
+        return { success: false, error: "Erro crítico de banco de dados: " + (error.message || "Tente novamente mais tarde.") };
     }
 }
 

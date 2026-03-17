@@ -50,32 +50,45 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!isChecklistComplete) {
         toast({ title: "Atenção", description: "Por favor, responda todos os itens do checklist.", variant: "destructive" });
         return;
     }
 
     startTransition(async () => {
-      // Garantir que os IDs sejam strings
-      const locId = typeof location._id === 'string' ? location._id : location._id?.toString();
-      const lastCleanId = lastCleaning ? (typeof lastCleaning._id === 'string' ? lastCleaning._id : lastCleaning._id?.toString()) : null;
+      try {
+        // Garantir que os IDs sejam strings
+        const locId = typeof location._id === 'string' ? location._id : location._id?.toString();
+        const lastCleanId = lastCleaning ? (typeof lastCleaning._id === 'string' ? lastCleaning._id : lastCleaning._id?.toString()) : null;
 
-      const result = await createAuditRecord({
-        locationId: locId,
-        locationName: `${location.name} - ${location.number}`,
-        lastCleaningId: lastCleanId || null,
-        checklistData: answers as any,
-        observations: observations,
-      });
+        const result = await createAuditRecord({
+          locationId: locId,
+          locationName: `${location.name} - ${location.number}`,
+          lastCleaningId: lastCleanId || null,
+          checklistData: answers as any,
+          observations: observations,
+        });
 
-      if (result.success) {
-        toast({ title: "Sucesso!", description: result.message });
-        setOpen(false);
-        // Resetar estado após sucesso
-        setAnswers({});
-        setObservations("");
-      } else {
-        toast({ title: "Erro ao Salvar", description: result.error, variant: "destructive" });
+        if (result.success) {
+          toast({ title: "Sucesso!", description: result.message });
+          setOpen(false);
+          setAnswers({});
+          setObservations("");
+        } else {
+          toast({ 
+            title: "Falha ao Salvar", 
+            description: result.error || "Erro interno no servidor.", 
+            variant: "destructive" 
+          });
+        }
+      } catch (error: any) {
+        console.error("Erro no envio do checklist:", error);
+        toast({ 
+          title: "Erro Inesperado", 
+          description: "Não foi possível processar a gravação agora. Tente novamente.", 
+          variant: "destructive" 
+        });
       }
     });
   };
@@ -94,7 +107,11 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-2 space-y-6 scroll-container">
+        <form 
+          id="audit-form" 
+          onSubmit={handleSubmit} 
+          className="flex-1 overflow-y-auto px-6 py-2 space-y-6 scroll-container"
+        >
           <div className="space-y-4">
             {CHECKLIST_ITEMS.map((item) => (
               <div key={item.id} className="p-4 rounded-2xl bg-slate-800/40 border border-slate-800 space-y-3">
@@ -136,6 +153,7 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
         <DialogFooter className="p-6 pt-2 shrink-0 bg-slate-950/50 border-t border-slate-800">
           <Button 
             type="submit" 
+            form="audit-form"
             className={cn(
               "w-full h-14 font-black uppercase tracking-widest text-xs rounded-2xl transition-all shadow-lg",
               isChecklistComplete 
