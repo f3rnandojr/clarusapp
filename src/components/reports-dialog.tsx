@@ -7,7 +7,7 @@ import { generateReport } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Download, Filter, Calendar as CalendarIcon, ClipboardList, AlertTriangle } from "lucide-react";
+import { Loader2, Download, Filter, Calendar as CalendarIcon, ClipboardList, AlertTriangle, ShieldCheck } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -44,7 +44,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
     const [state, formAction] = useActionState(generateReport, null);
     
     const [periodType, setPeriodType] = useState<'month' | 'range'>('month');
-    const [scope, setScope] = useState<'general' | 'delays' | 'nc'>('general');
+    const [scope, setScope] = useState<'general' | 'delays' | 'nc' | 'audit'>('general');
 
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
@@ -75,6 +75,21 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
         return isValid(d) ? format(d, 'dd/MM/yy HH:mm') : '--/-- --:--';
     };
 
+    const renderAuditDetails = (item: any) => {
+        const ncItems = Object.entries(item.checklistData || {})
+            .filter(([_, val]) => val === 'não_conforme')
+            .map(([key, _]) => key.charAt(0).toUpperCase() + key.slice(1))
+            .join(', ');
+        
+        return (
+            <div className="flex flex-col gap-1 max-w-[200px]">
+                {ncItems && <span className="text-red-400 font-bold text-[10px]">NC: {ncItems}</span>}
+                {item.observations && <span className="text-slate-400 italic text-[10px] truncate">Obs: {item.observations}</span>}
+                {!ncItems && !item.observations && <span className="text-emerald-400 text-[10px]">Conforme</span>}
+            </div>
+        );
+    };
+
     return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -82,7 +97,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
         <DialogHeader>
           <DialogTitle>📈 Central de Relatórios Inteligentes</DialogTitle>
           <DialogDescription>
-            Extraia dados consolidados de desempenho, atrasos e não conformidades.
+            Extraia dados consolidados de desempenho, atrasos, não conformidades e auditorias.
           </DialogDescription>
         </DialogHeader>
         
@@ -104,6 +119,10 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="nc" id="scope-nc" />
                             <Label htmlFor="scope-nc" className="font-normal cursor-pointer text-slate-300">Apenas Não Conformidades (NC)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="audit" id="scope-audit" />
+                            <Label htmlFor="scope-audit" className="font-normal cursor-pointer text-slate-300">Apenas Auditorias (Checklist)</Label>
                         </div>
                     </RadioGroup>
 
@@ -201,7 +220,12 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                             {state.report.scope === 'general' && <ClipboardList className="h-5 w-5 text-sky-400" />}
                             {state.report.scope === 'delays' && <AlertTriangle className="h-5 w-5 text-red-400" />}
                             {state.report.scope === 'nc' && <AlertTriangle className="h-5 w-5 text-orange-400" />}
-                            Resultados: {state.report.scope === 'general' ? 'Resumo Geral' : state.report.scope === 'delays' ? 'Ocorrências de Atraso' : 'Não Conformidades'}
+                            {state.report.scope === 'audit' && <ShieldCheck className="h-5 w-5 text-emerald-400" />}
+                            Resultados: {
+                                state.report.scope === 'general' ? 'Resumo Geral' : 
+                                state.report.scope === 'delays' ? 'Ocorrências de Atraso' : 
+                                state.report.scope === 'nc' ? 'Não Conformidades' : 'Checklists de Auditoria'
+                            }
                         </h3>
                         {reportPeriodLabel && <p className="text-xs sm:text-sm text-muted-foreground capitalize">{reportPeriodLabel}</p>}
                     </div>
@@ -224,7 +248,16 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                                 <div className="flex justify-between"><span>Atrasados:</span> <span className="font-bold text-red-400">{(state.report.delayedPercent || 0).toFixed(1)}%</span></div>
                             </div>
                         </div>
-                    ) : (
+                    ) : state.report.scope === 'audit' && !state.report.details ? (
+                         <div className="grid grid-cols-1 gap-4 text-sm">
+                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm text-center">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-emerald-400">Conferências Realizadas</h4>
+                                <p className="text-3xl font-black text-white">{state.report.total || 0}</p>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {state.report.scope !== 'general' && (
                         <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900">
                             <div className="overflow-x-auto">
                                 <Table>
@@ -233,7 +266,9 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                                             <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Data</TableHead>
                                             <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Local</TableHead>
                                             <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Responsável</TableHead>
-                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">{state.report.scope === 'delays' ? 'Atraso' : 'Relato'}</TableHead>
+                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">
+                                                {state.report.scope === 'delays' ? 'Atraso' : state.report.scope === 'nc' ? 'Relato' : 'Status/Detalhes'}
+                                            </TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -244,10 +279,12 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                                                         {formatSafeDate(item.date || item.timestamp)}
                                                     </TableCell>
                                                     <TableCell className="font-bold whitespace-nowrap text-white">{item.locationName || 'N/A'}</TableCell>
-                                                    <TableCell className="whitespace-nowrap text-slate-300">{item.userName || 'N/A'}</TableCell>
+                                                    <TableCell className="whitespace-nowrap text-slate-300">{item.userName || item.auditorName || 'N/A'}</TableCell>
                                                     <TableCell className={cn("whitespace-nowrap", state.report.scope === 'delays' ? 'text-red-400 font-black' : 'text-[10px] sm:text-xs text-slate-400')}>
                                                         {state.report.scope === 'delays' 
-                                                            ? `${(item.actualDuration || 0) - (item.expectedDuration || 0)} min`
+                                                            ? `${(item.actualDuration || 0) - (item.expectedDuration || 0)} min` :
+                                                          state.report.scope === 'audit' 
+                                                            ? renderAuditDetails(item)
                                                             : (item.description ? (item.description.substring(0, 40) + (item.description.length > 40 ? '...' : '')) : 'Sem descrição')
                                                         }
                                                     </TableCell>

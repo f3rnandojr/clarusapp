@@ -994,6 +994,22 @@ export async function generateReport(prevState: any, formData: FormData) {
         };
     }
 
+    if (scope === 'audit') {
+        const audits = await db.collection('audit_records').find({
+            timestamp: { $gte: queryStartDate, $lte: queryEndDate }
+        }).sort({ timestamp: -1 }).toArray();
+
+        return {
+            success: true,
+            report: {
+                scope,
+                total: audits.length,
+                details: convertToPlainObject(audits) || [],
+                filters: validatedFields.data
+            }
+        };
+    }
+
     return { error: "Escopo de relatório inválido." };
 }
 
