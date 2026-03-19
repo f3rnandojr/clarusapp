@@ -1,16 +1,14 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence, User, AuditRecord, AuditRecordSchema } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence, User, AuditRecord, AuditRecordSchema, type LocationStatus } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
 import { convertToPlainObject } from './utils';
-import { DataTransformer, validateTransformationConfig, generateSampleTransformation } from './advanced-transformation';
-import { syncLogger } from './logger';
+import { DataTransformer } from './advanced-transformation';
 
 // --- Logger Action ---
 async function logAction(action: string, details: Record<string, any>) {
@@ -52,9 +50,7 @@ export async function login(prevState: any, formData: FormData) {
   if (user.login === 'admin' && user.perfil !== 'admin') {
     await db.collection('users').updateOne({ _id: user._id }, { $set: { perfil: 'admin' } });
     user.perfil = 'admin';
-    console.log("Perfil do administrador corrigido para 'admin' durante o login.");
   }
-
 
   const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
   const session = await encrypt({ user: { _id: user._id.toString(), name: user.name, login: user.login, perfil: user.perfil || 'usuario' }, expires });
@@ -74,13 +70,19 @@ export async function logout() {
 
 // --- Location and Active Cleaning Actions ---
 
-export async function getActiveCleanings() {
+export async function getActiveCleanings(): Promise<ActiveCleaning[]> {
+  try {
     const db = await dbConnect();
     const activeCleanings = await db.collection('active_cleanings').find().toArray();
-    return convertToPlainObject(activeCleanings);
+    return convertToPlainObject(activeCleanings) || [];
+  } catch (error) {
+    console.error("Error in getActiveCleanings:", error);
+    return [];
+  }
 }
 
 const getLocationById = async (id: string): Promise<Location | null> => {
+  try {
     if (!ObjectId.isValid(id)) {
         return null;
     }
@@ -106,98 +108,108 @@ const getLocationById = async (id: string): Promise<Location | null> => {
     };
 
     return convertToPlainObject(location);
+  } catch (error) {
+    console.error("Error in getLocationById:", error);
+    return null;
+  }
 };
 
 export async function getLocations(): Promise<Location[]> {
-  const db = await dbConnect();
+  try {
+    const db = await dbConnect();
 
-  const [leitos, areas, mappings, activeCleanings, scheduledRequests] = await Promise.all([
-      db.collection('locations').find().sort({ name: 1, number: 1 }).toArray(),
-      db.collection('areas').find({isActive: true}).sort({ setor: 1 }).toArray(),
-      db.collection('location_mappings').find({ isActive: true }).toArray(),
-      db.collection('active_cleanings').find().toArray(),
-      db.collection('scheduled_requests').find({ status: 'agendada' }).toArray()
-  ]);
+    const [leitos, areas, mappings, activeCleanings, scheduledRequests] = await Promise.all([
+        db.collection('locations').find().sort({ name: 1, number: 1 }).toArray(),
+        db.collection('areas').find({isActive: true}).sort({ setor: 1 }).toArray(),
+        db.collection('location_mappings').find({ isActive: true }).toArray(),
+        db.collection('active_cleanings').find().toArray(),
+        db.collection('scheduled_requests').find({ status: 'agendada' }).toArray()
+    ]);
 
-  const mappingsByExternalCode = mappings.reduce((acc, m) => {
-    acc[m.externalCode] = m;
-    return acc;
-  }, {} as Record<string, any>);
+    const mappingsByExternalCode = mappings.reduce((acc, m) => {
+      acc[m.externalCode] = m;
+      return acc;
+    }, {} as Record<string, any>);
 
-  const activeCleaningsByLocationId = activeCleanings.reduce((acc, ac) => {
-    acc[ac.locationId] = ac;
-    return acc;
-  }, {} as Record<string, ActiveCleaning>);
+    const activeCleaningsByLocationId = activeCleanings.reduce((acc, ac) => {
+      acc[ac.locationId] = ac;
+      return acc;
+    }, {} as Record<string, ActiveCleaning>);
 
-  const pendingRequestIds = new Set(scheduledRequests.map(sr => sr.locationId));
+    const pendingRequestIds = new Set(scheduledRequests.map(sr => sr.locationId));
 
-  const combinedLocations: Location[] = [];
+    const combinedLocations: Location[] = [];
 
-  leitos.forEach(leito => {
-    const mapping = mappingsByExternalCode[leito.externalCode];
-    const activeCleaning = activeCleaningsByLocationId[leito._id.toString()];
-    let status = activeCleaning ? 'in_cleaning' : leito.status;
+    leitos.forEach(leito => {
+      const mapping = mappingsByExternalCode[leito.externalCode];
+      const activeCleaning = activeCleaningsByLocationId[leito._id.toString()];
+      let status = activeCleaning ? 'in_cleaning' : leito.status;
 
-    combinedLocations.push({
-      _id: leito._id,
-      name: mapping ? mapping.internalName : leito.name,
-      number: mapping ? mapping.internalNumber : leito.number,
-      status: status as any,
-      currentCleaning: activeCleaning ? {
-          type: activeCleaning.cleaningType,
-          userId: activeCleaning.userId,
-          userName: activeCleaning.userName,
-          startTime: activeCleaning.startTime
-      } : null,
-      externalCode: leito.externalCode,
-      locationType: 'leito',
-      setor: mapping ? mapping.setor : 'Sem Setor',
-      createdAt: leito.createdAt,
-      updatedAt: leito.updatedAt,
-      isRequested: pendingRequestIds.has(leito._id.toString())
-    } as any);
-  });
+      combinedLocations.push({
+        _id: leito._id,
+        name: mapping ? mapping.internalName : leito.name,
+        number: mapping ? mapping.internalNumber : leito.number,
+        status: status as any,
+        currentCleaning: activeCleaning ? {
+            type: activeCleaning.cleaningType,
+            userId: activeCleaning.userId,
+            userName: activeCleaning.userName,
+            startTime: activeCleaning.startTime
+        } : null,
+        externalCode: leito.externalCode,
+        locationType: 'leito',
+        setor: mapping ? mapping.setor : 'Sem Setor',
+        createdAt: leito.createdAt,
+        updatedAt: leito.updatedAt,
+        isRequested: pendingRequestIds.has(leito._id.toString())
+      } as any);
+    });
 
-  areas.forEach(area => {
-    const activeCleaning = activeCleaningsByLocationId[area._id.toString()];
-    const status = activeCleaning ? 'in_cleaning' : (area.status || 'available');
-    
-    combinedLocations.push({
-      _id: area._id,
-      name: area.setor,
-      number: area.shortCode,
-      status: status as any,
-      currentCleaning: activeCleaning ? {
-          type: activeCleaning.cleaningType,
-          userId: activeCleaning.userId,
-          userName: activeCleaning.userName,
-          startTime: activeCleaning.startTime
-      } : null,
-      externalCode: area.locationId,
-      locationType: 'area',
-      setor: area.setor,
-      createdAt: area.createdAt,
-      updatedAt: area.updatedAt,
-      isRequested: pendingRequestIds.has(area._id.toString())
-    } as any);
-  });
+    areas.forEach(area => {
+      const activeCleaning = activeCleaningsByLocationId[area._id.toString()];
+      const status = activeCleaning ? 'in_cleaning' : (area.status || 'available');
+      
+      combinedLocations.push({
+        _id: area._id,
+        name: area.setor,
+        number: area.shortCode,
+        status: status as any,
+        currentCleaning: activeCleaning ? {
+            type: activeCleaning.cleaningType,
+            userId: activeCleaning.userId,
+            userName: activeCleaning.userName,
+            startTime: activeCleaning.startTime
+        } : null,
+        externalCode: area.locationId,
+        locationType: 'area',
+        setor: area.setor,
+        createdAt: area.createdAt,
+        updatedAt: area.updatedAt,
+        isRequested: pendingRequestIds.has(area._id.toString())
+      } as any);
+    });
 
-  combinedLocations.sort((a, b) => {
-    if (a.setor < b.setor) return -1;
-    if (a.setor > b.setor) return 1;
-    if (a.name < b.name) return -1;
-    if (a.name > b.name) return 1;
-    const numA = parseInt(a.number, 10) || a.number;
-    const numB = parseInt(b.number, 10) || b.number;
-    if (numA < numB) return -1;
-    if (numA > numB) return 1;
-    return 0;
-  });
+    combinedLocations.sort((a, b) => {
+      if (a.setor < b.setor) return -1;
+      if (a.setor > b.setor) return 1;
+      if (a.name < b.name) return -1;
+      if (a.name > b.name) return 1;
+      const numA = parseInt(a.number, 10) || a.number;
+      const numB = parseInt(b.number, 10) || b.number;
+      if (numA < numB) return -1;
+      if (numA > numB) return 1;
+      return 0;
+    });
 
-  return convertToPlainObject(combinedLocations);
+    return convertToPlainObject(combinedLocations) || [];
+  } catch (error) {
+    console.error("Error in getLocations:", error);
+    return [];
+  }
 }
 
 export async function getLocationByCode(code: string) {
+  try {
     const db = await dbConnect();
     
     let mapping = await db.collection('location_mappings').findOne({ locationId: code, isActive: true });
@@ -242,7 +254,7 @@ export async function getLocationByCode(code: string) {
     if (!item) return null;
 
     const isArea = !!item.setor; 
-    const locationId = isArea ? item._id.toString() : item._id.toString();
+    const locationId = item._id.toString();
     const activeCleaning = await db.collection('active_cleanings').findOne({ locationId: locationId });
     
     const status = activeCleaning ? 'in_cleaning' : item.status;
@@ -264,6 +276,10 @@ export async function getLocationByCode(code: string) {
             ...item, status, currentCleaning, locationType: 'leito',
         });
     }
+  } catch (error) {
+    console.error("Error in getLocationByCode:", error);
+    return null;
+  }
 }
 
 
@@ -360,78 +376,83 @@ export async function startCleaning(prevState: any, formData: FormData) {
 
 
 export async function finishCleaning(locationId: string) {
-  const db = await dbConnect();
-  
-  let activeCleaning: any = null;
-  let sourceType: 'active_cleanings' | 'scheduled_requests' | null = null;
-  
-  activeCleaning = await db.collection('active_cleanings').findOne({ locationId: locationId.toString() });
-  if (activeCleaning) {
-      sourceType = 'active_cleanings';
-  } 
-  else {
-      activeCleaning = await db.collection('scheduled_requests').findOne({ 
-          locationId: locationId.toString(),
-          status: 'em_andamento'
+  try {
+    const db = await dbConnect();
+    
+    let activeCleaning: any = null;
+    let sourceType: 'active_cleanings' | 'scheduled_requests' | null = null;
+    
+    activeCleaning = await db.collection('active_cleanings').findOne({ locationId: locationId.toString() });
+    if (activeCleaning) {
+        sourceType = 'active_cleanings';
+    } 
+    else {
+        activeCleaning = await db.collection('scheduled_requests').findOne({ 
+            locationId: locationId.toString(),
+            status: 'em_andamento'
+        });
+        if (activeCleaning) {
+            sourceType = 'scheduled_requests';
+        }
+    }
+
+    if (!activeCleaning || !sourceType) {
+      return { error: 'Higienização ativa não encontrada para este local.' };
+    }
+
+    const finishTime = new Date();
+    const startTime = new Date(activeCleaning.startTime || activeCleaning.startedAt); 
+    const actualDuration = Math.round((finishTime.getTime() - startTime.getTime()) / (1000 * 60));
+    const isDelayed = actualDuration > activeCleaning.expectedDuration;
+
+    if (isDelayed) {
+      await db.collection('cleaning_occurrences').insertOne({
+        locationName: activeCleaning.locationName,
+        cleaningType: activeCleaning.cleaningType,
+        userName: activeCleaning.userName || activeCleaning.assignedTo.userName,
+        delayInMinutes: actualDuration - activeCleaning.expectedDuration,
+        occurredAt: finishTime,
       });
-      if (activeCleaning) {
-          sourceType = 'scheduled_requests';
-      }
-  }
+    }
 
-  if (!activeCleaning || !sourceType) {
-    return { error: 'Higienização ativa não encontrada para este local.' };
-  }
-
-  const finishTime = new Date();
-  const startTime = new Date(activeCleaning.startTime || activeCleaning.startedAt); 
-  const actualDuration = Math.round((finishTime.getTime() - startTime.getTime()) / (1000 * 60));
-  const isDelayed = actualDuration > activeCleaning.expectedDuration;
-
-  if (isDelayed) {
-    await db.collection('cleaning_occurrences').insertOne({
+    const record: Omit<CleaningRecord, '_id'> = {
+      locationId: activeCleaning.locationId,
       locationName: activeCleaning.locationName,
-      cleaningType: activeCleaning.cleaningType,
+      locationType: activeCleaning.locationType as 'leito' | 'area',
+      cleaningType: activeCleaning.cleaningType as CleaningType,
+      userId: new ObjectId(activeCleaning.userId || activeCleaning.assignedTo.userId),
       userName: activeCleaning.userName || activeCleaning.assignedTo.userName,
-      delayInMinutes: actualDuration - activeCleaning.expectedDuration,
-      occurredAt: finishTime,
-    });
-  }
+      startTime: startTime,
+      finishTime: finishTime,
+      expectedDuration: activeCleaning.expectedDuration,
+      actualDuration: actualDuration,
+      status: 'completed',
+      delayed: isDelayed,
+      date: finishTime,
+    };
+    await db.collection('cleaning_records').insertOne(record);
 
-  const record: Omit<CleaningRecord, '_id'> = {
-    locationId: activeCleaning.locationId,
-    locationName: activeCleaning.locationName,
-    locationType: activeCleaning.locationType as 'leito' | 'area',
-    cleaningType: activeCleaning.cleaningType as CleaningType,
-    userId: new ObjectId(activeCleaning.userId || activeCleaning.assignedTo.userId),
-    userName: activeCleaning.userName || activeCleaning.assignedTo.userName,
-    startTime: startTime,
-    finishTime: finishTime,
-    expectedDuration: activeCleaning.expectedDuration,
-    actualDuration: actualDuration,
-    status: 'completed',
-    delayed: isDelayed,
-    date: finishTime,
-  };
-  await db.collection('cleaning_records').insertOne(record);
-
-  if (sourceType === 'active_cleanings') {
-    await db.collection('active_cleanings').deleteOne({ _id: activeCleaning._id });
-  } else if (sourceType === 'scheduled_requests') {
-     await db.collection('scheduled_requests').updateOne(
-        { _id: activeCleaning._id },
-        { $set: { status: 'concluida', completedAt: finishTime, timeToComplete: actualDuration, updatedAt: new Date() } }
+    if (sourceType === 'active_cleanings') {
+      await db.collection('active_cleanings').deleteOne({ _id: activeCleaning._id });
+    } else if (sourceType === 'scheduled_requests') {
+       await db.collection('scheduled_requests').updateOne(
+          { _id: activeCleaning._id },
+          { $set: { status: 'concluida', completedAt: finishTime, timeToComplete: actualDuration, updatedAt: new Date() } }
+      );
+    }
+    
+    const collectionName = activeCleaning.locationType === 'leito' ? 'locations' : 'areas';
+    await db.collection(collectionName).updateOne(
+        { _id: new ObjectId(locationId) }, 
+        { $set: { status: 'available', currentCleaning: null, updatedAt: new Date() }}
     );
-  }
-  
-  const collectionName = activeCleaning.locationType === 'leito' ? 'locations' : 'areas';
-  await db.collection(collectionName).updateOne(
-      { _id: new ObjectId(locationId) }, 
-      { $set: { status: 'available', currentCleaning: null, updatedAt: new Date() }}
-  );
 
-  revalidatePath('/dashboard');
-  return { success: true, message: 'Higienização finalizada com sucesso!' };
+    revalidatePath('/dashboard');
+    return { success: true, message: 'Higienização finalizada com sucesso!' };
+  } catch (error: any) {
+    console.error("Error in finishCleaning:", error);
+    return { error: 'Erro ao finalizar: ' + error.message };
+  }
 }
 
 // --- Audit Actions ---
@@ -462,7 +483,6 @@ export async function createAuditRecord(data: {
             timestamp: new Date(),
         };
 
-        // Validação adicional de schema antes da inserção
         const validation = AuditRecordSchema.safeParse({ ...newRecord, _id: new ObjectId() });
         if (!validation.success) {
             console.error("Erro de validação no schema de auditoria:", validation.error.flatten());
@@ -471,7 +491,6 @@ export async function createAuditRecord(data: {
 
         await db.collection('audit_records').insertOne(newRecord);
         
-        // Após gravar a auditoria, finaliza a tarefa de limpeza ativa do auditor
         const finishResult = await finishCleaning(data.locationId);
         
         if (finishResult.success) {
@@ -489,9 +508,14 @@ export async function createAuditRecord(data: {
 
 // --- Location Mappings Actions ---
 export async function getLocationMappings() {
+  try {
     const db = await dbConnect();
     const mappings = await db.collection('location_mappings').find().sort({ setor: 1, internalName: 1 }).toArray();
-    return convertToPlainObject(mappings);
+    return convertToPlainObject(mappings) || [];
+  } catch (error) {
+    console.error("Error in getLocationMappings:", error);
+    return [];
+  }
 }
 
 function generateCodes(data: { internalName: string, internalNumber: string }) {
@@ -584,12 +608,18 @@ export async function toggleLocationMappingActive(id: string, isActive: boolean)
 // --- ASG Actions ---
 
 export async function getAsgs() {
-  const db = await dbConnect();
-  const asgs = await db.collection('asgs').find().sort({ name: 1 }).toArray();
-  return convertToPlainObject(asgs);
+  try {
+    const db = await dbConnect();
+    const asgs = await db.collection('asgs').find().sort({ name: 1 }).toArray();
+    return convertToPlainObject(asgs) || [];
+  } catch (error) {
+    console.error("Error in getAsgs:", error);
+    return [];
+  }
 }
 
 export async function getNextAsgCode() {
+  try {
     const db = await dbConnect();
     const lastAsg = await db.collection('asgs').find().sort({ code: -1 }).limit(1).toArray();
     
@@ -601,6 +631,9 @@ export async function getNextAsgCode() {
     const lastNumber = parseInt(lastCode.replace('ASG', ''), 10);
     const nextNumber = lastNumber + 1;
     return `ASG${String(nextNumber).padStart(3, '0')}`;
+  } catch (error) {
+    return 'ASG001';
+  }
 }
 
 export async function createAsg(prevState: any, formData: FormData) {
@@ -676,9 +709,14 @@ export async function toggleAsgActive(id: string, active: boolean) {
 // --- Area (QR Code) Actions ---
 
 export async function getAreas() {
+  try {
     const db = await dbConnect();
     const areas = await db.collection('areas').find().sort({ setor: 1, locationId: 1 }).toArray();
-    return convertToPlainObject(areas);
+    return convertToPlainObject(areas) || [];
+  } catch (error) {
+    console.error("Error in getAreas:", error);
+    return [];
+  }
 }
 
 export async function createArea(prevState: any, formData: FormData) {
@@ -779,12 +817,15 @@ export async function toggleAreaActive(id: string, isActive: boolean) {
 // --- Settings Actions ---
 
 export async function getCleaningSettings() {
-  const db = await dbConnect();
-  const settings = await db.collection('system_settings').findOne({ _id: 'default' });
-  if (settings) {
-    // @ts-ignore
-    delete settings._id;
-    return settings;
+  try {
+    const db = await dbConnect();
+    const settings = await db.collection('system_settings').findOne({ _id: 'default' });
+    if (settings) {
+      const { _id, ...rest } = settings;
+      return rest;
+    }
+  } catch (error) {
+    console.error("Error in getCleaningSettings:", error);
   }
   return { concurrent: 30, terminal: 45 };
 }
@@ -816,9 +857,14 @@ export async function updateCleaningSettings(prevState: any, formData: FormData)
 // --- Occurrences Actions ---
 
 export async function getCleaningOccurrences(): Promise<CleaningOccurrence[]> {
+  try {
     const db = await dbConnect();
     const occurrences = await db.collection('cleaning_occurrences').find().sort({ occurredAt: -1 }).toArray();
-    return convertToPlainObject(occurrences);
+    return convertToPlainObject(occurrences) || [];
+  } catch (error) {
+    console.error("Error in getCleaningOccurrences:", error);
+    return [];
+  }
 }
 
 // --- Report Actions ---
@@ -951,105 +997,20 @@ export async function generateReport(prevState: any, formData: FormData) {
     return { error: "Escopo de relatório inválido." };
 }
 
-async function saveSyncHistory(historyItem: any) {
-  try {
-    const db = await dbConnect();
-    const collection = db.collection('sync_history');
-    await collection.insertOne(historyItem);
-  } catch (error: any) {
-    syncLogger.error('Erro ao salvar histórico de sync:', { error: error.message });
-  }
-}
-
-export async function getSyncStatistics() {
-  try {
-    const db = await dbConnect();
-    const collection = db.collection('sync_history');
-    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    const stats = await collection.aggregate([
-      { $match: { timestamp: { $gte: last24h } } },
-      {
-        $group: {
-          _id: '$success',
-          count: { $sum: 1 },
-          avgDuration: { $avg: '$duration' },
-          lastSync: { $max: '$timestamp' }
-        }
-      }
-    ]).toArray();
-
-    const successCount = stats.find(s => s._id === true)?.count || 0;
-    const errorCount = stats.find(s => s._id === false)?.count || 0;
-    const total = successCount + errorCount;
-    const successRate = total > 0 ? (successCount / total) * 100 : 0;
-
-    return {
-      successRate,
-      totalSyncs: total,
-      successfulSyncs: successCount,
-      failedSyncs: errorCount,
-      lastSync: stats[0]?.lastSync || null
-    };
-  } catch (error: any) {
-    syncLogger.error('Erro ao obter estatísticas de sync', { error: error.message });
-    return null;
-  }
-}
-
-export async function getSyncStatus() {
-  try {
-    const config = await getIntegrationConfig();
-    return {
-      lastSync: config.lastSync,
-      enabled: config.enabled,
-      syncInterval: config.syncInterval
-    };
-  } catch (error) {
-    return {
-      lastSync: null,
-      enabled: false,
-      syncInterval: 5
-    };
-  }
-}
-
-export async function testTransformation() {
-  try {
-    const config = await getIntegrationConfig();
-    const result = await generateSampleTransformation(config);
-    
-    return {
-      success: true,
-      sampleInput: [
-        { [config.fieldMappings.codeField]: "QTO101", [config.fieldMappings.statusField]: config.statusMappings.available },
-        { [config.fieldMappings.codeField]: "APTO202", [config.fieldMappings.statusField]: config.statusMappings.occupied },
-      ],
-      sampleOutput: result.data,
-      config: {
-        fieldMappings: config.fieldMappings,
-        statusMappings: config.statusMappings,
-        transformation: config.transformation
-      }
-    };
-  } catch (error: any) {
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-
 // --- Scheduled Requests ---
 
 export async function getPendingRequests(): Promise<ScheduledRequest[]> {
+  try {
     const db = await dbConnect();
     const requests = await db.collection('scheduled_requests')
         .find({ status: 'agendada' })
         .sort({ requestedAt: 1 })
         .toArray();
-    return convertToPlainObject(requests);
+    return convertToPlainObject(requests) || [];
+  } catch (error) {
+    console.error("Error in getPendingRequests:", error);
+    return [];
+  }
 }
 
 export async function acceptRequest(requestId: string) {
@@ -1163,17 +1124,27 @@ export async function createNonConformity(formData: FormData) {
 }
 
 export async function getNonConformities(): Promise<NonConformity[]> {
+  try {
     const db = await dbConnect();
     const ncs = await db.collection('non_conformities').find().sort({ timestamp: -1 }).toArray();
-    return convertToPlainObject(ncs);
+    return convertToPlainObject(ncs) || [];
+  } catch (error) {
+    console.error("Error in getNonConformities:", error);
+    return [];
+  }
 }
 
 // --- USER MANAGEMENT ACTIONS ---
 
 export async function getUsers(): Promise<User[]> {
-  const db = await dbConnect();
-  const users = await db.collection('users').find().sort({ name: 1 }).toArray();
-  return convertToPlainObject(users);
+  try {
+    const db = await dbConnect();
+    const users = await db.collection('users').find().sort({ name: 1 }).toArray();
+    return convertToPlainObject(users) || [];
+  } catch (error) {
+    console.error("Error in getUsers:", error);
+    return [];
+  }
 }
 
 export async function createUser(prevState: any, formData: FormData) {
@@ -1263,10 +1234,14 @@ export async function toggleUserActive(id: string, active: boolean) {
 // --- INTEGRATION ACTIONS ---
 
 export async function getIntegrationConfig(): Promise<IntegrationConfig> {
-  const db = await dbConnect();
-  const config = await db.collection('integration_settings').findOne({ _id: 'default' });
-  if (config) {
-    return convertToPlainObject(config);
+  try {
+    const db = await dbConnect();
+    const config = await db.collection('integration_settings').findOne({ _id: 'default' });
+    if (config) {
+      return convertToPlainObject(config);
+    }
+  } catch (error) {
+    console.error("Error in getIntegrationConfig:", error);
   }
   return {
     _id: 'default',
@@ -1337,14 +1312,20 @@ export async function runManualSync() {
 }
 
 export async function getLogs() {
-  const db = await dbConnect();
-  const logs = await db.collection('app_logs').find().sort({ timestamp: -1 }).limit(100).toArray();
-  return convertToPlainObject(logs);
+  try {
+    const db = await dbConnect();
+    const logs = await db.collection('app_logs').find().sort({ timestamp: -1 }).limit(100).toArray();
+    return convertToPlainObject(logs) || [];
+  } catch (error) {
+    console.error("Error in getLogs:", error);
+    return [];
+  }
 }
 
 // --- AUDIT ACTIONS ---
 
 export async function getLastCleaningRecord(locationId: string): Promise<CleaningRecord | null> {
+  try {
     const db = await dbConnect();
     const lastRecord = await db.collection('cleaning_records')
         .find({ locationId: locationId.toString(), status: 'completed' })
@@ -1354,4 +1335,8 @@ export async function getLastCleaningRecord(locationId: string): Promise<Cleanin
     
     if (lastRecord.length === 0) return null;
     return convertToPlainObject(lastRecord[0]);
+  } catch (error) {
+    console.error("Error in getLastCleaningRecord:", error);
+    return null;
+  }
 }

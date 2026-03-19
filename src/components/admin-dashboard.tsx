@@ -1,11 +1,9 @@
-
 "use client";
 
 import { useEffect, useState, useTransition, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, finishCleaning, getNonConformities, getPendingRequests } from "@/lib/actions";
 import Header from "@/components/header";
-import { Loader2 } from "lucide-react";
 import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area, NonConformity, ScheduledRequest } from "@/lib/schemas";
 import { StartCleaningDialog } from "@/components/start-cleaning-dialog";
 import { CleaningSections } from "@/components/cleaning-sections";
@@ -47,14 +45,11 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
   const { toast } = useToast();
   
   const [data, setData] = useState<DashboardData>(initialData);
-  const [isLoading, setIsLoading] = useState(false);
-
   const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isFinalizing, startFinalizingTransition] = useTransition();
 
   const loadDashboardData = async () => {
-    // Busca silenciosa se já houver dados
     try {
       const [
         locations,
@@ -79,15 +74,15 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
       ]);
       
       setData({ 
-        locations, 
-        asgs, 
-        users, 
-        nextAsgCode, 
-        cleaningSettings, 
-        occurrences, 
-        areas, 
-        nonConformities,
-        pendingRequests 
+        locations: locations || [], 
+        asgs: asgs || [], 
+        users: users || [], 
+        nextAsgCode: nextAsgCode || 'ASG001', 
+        cleaningSettings: cleaningSettings || { concurrent: 30, terminal: 45 }, 
+        occurrences: occurrences || [], 
+        areas: areas || [], 
+        nonConformities: nonConformities || [],
+        pendingRequests: pendingRequests || [] 
       });
 
     } catch (error) {
@@ -117,7 +112,6 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
     setIsDialogOpen(false);
     setCleaningLocation(null);
     if (wasSuccessful) {
-      // Refresh imediato e visual
       loadDashboardData();
     }
   };
@@ -134,7 +128,7 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
         } else {
             toast({
                 title: "Erro",
-                description: result.error,
+                description: result.error || "Não foi possível finalizar a limpeza.",
                 variant: "destructive",
             });
         }
@@ -142,9 +136,9 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
   };
 
   const setoresAgrupados: SetorGroup[] = useMemo(() => {
-    if (!data?.locations) return [];
+    const locations = data?.locations || [];
     
-    const grupos: Record<string, Location[]> = data.locations.reduce((acc, local) => {
+    const grupos: Record<string, Location[]> = locations.reduce((acc, local) => {
       const setor = local.setor || 'Sem Setor';
       if (!acc[setor]) {
         acc[setor] = [];
@@ -163,7 +157,16 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
     })).sort((a,b) => a.nome.localeCompare(b.nome));
   }, [data?.locations]);
 
-  const { locations, asgs, users, nextAsgCode, cleaningSettings, occurrences, areas, nonConformities, pendingRequests } = data;
+  const locations = data?.locations || [];
+  const asgs = data?.asgs || [];
+  const users = data?.users || [];
+  const nextAsgCode = data?.nextAsgCode || 'ASG001';
+  const cleaningSettings = data?.cleaningSettings || { concurrent: 30, terminal: 45 };
+  const occurrences = data?.occurrences || [];
+  const areas = data?.areas || [];
+  const nonConformities = data?.nonConformities || [];
+  const pendingRequests = data?.pendingRequests || [];
+
   const inCleaningLocations = locations.filter((l) => l.status === "in_cleaning");
   
   const handleLocationClick = (location: Location) => {

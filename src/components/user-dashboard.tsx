@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
@@ -7,7 +6,7 @@ import type { Location, LocationStatus, User, ScheduledRequest, CleaningSettings
 import { Button } from '@/components/ui/button';
 import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getCleaningSettings, getActiveCleanings, getLocationByCode } from '@/lib/actions';
+import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getLocationByCode } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
@@ -50,22 +49,26 @@ const profileLabels: Record<string, string> = {
 };
 
 interface UserDashboardProps {
-    locations: Location[];
+    locations?: Location[];
     user: User;
-    pendingRequests: ScheduledRequest[];
-    myActiveCleanings: ActiveCleaning[];
+    pendingRequests?: ScheduledRequest[];
+    myActiveCleanings?: ActiveCleaning[];
     cleaningSettings: CleaningSettings;
 }
 
-export function UserDashboard({ locations: initialLocations, user, pendingRequests: initialPendingRequests, myActiveCleanings: initialMyActiveCleanings, cleaningSettings }: UserDashboardProps) {
+export function UserDashboard({ 
+    locations: initialLocations = [], 
+    user, 
+    pendingRequests: initialPendingRequests = [], 
+    myActiveCleanings: initialMyActiveCleanings = [], 
+    cleaningSettings 
+}: UserDashboardProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
     const [allLocations, setAllLocations] = useState<Location[]>(initialLocations);
     const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
-    
-    const [isLoading, setIsLoading] = useState(false);
     
     const [isAccepting, startAcceptingTransition] = useTransition();
     const [isFinalizing, startFinalizingTransition] = useTransition();
@@ -74,25 +77,21 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-    // Sincronizar estado local com novas props quando o servidor revalidar (Ex: pós auditoria)
     useEffect(() => {
-        setAllLocations(initialLocations);
-        setPendingRequests(initialPendingRequests);
+        setAllLocations(initialLocations || []);
+        setPendingRequests(initialPendingRequests || []);
     }, [initialLocations, initialPendingRequests]);
 
     const refreshData = async () => {
-        setIsLoading(true);
         try {
             const [refreshedLocations, refreshedRequests] = await Promise.all([
                 getLocations(),
                 getPendingRequests(),
             ]);
-            setAllLocations(refreshedLocations);
-            setPendingRequests(refreshedRequests);
+            setAllLocations(refreshedLocations || []);
+            setPendingRequests(refreshedRequests || []);
         } catch (error) {
             toast({ title: 'Erro', description: 'Não foi possível atualizar os dados.', variant: 'destructive' });
-        } finally {
-            setIsLoading(false);
         }
     };
     
@@ -115,18 +114,20 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     }, [searchParams, router, toast]);
     
     const myCleaningJobs = useMemo(() => {
-      return allLocations.filter(loc => 
+      const locations = allLocations || [];
+      return locations.filter(loc => 
         loc.status === 'in_cleaning' && 
         loc.currentCleaning?.userId === user._id
       );
     }, [allLocations, user._id]);
 
     const filteredLocations = useMemo(() => {
+        const locations = allLocations || [];
         if (!searchTerm) {
-            return allLocations;
+            return locations;
         }
         const myJobIds = new Set(myCleaningJobs.map(job => job._id.toString()));
-        return allLocations.filter(loc => {
+        return locations.filter(loc => {
             const isMyJob = myJobIds.has(loc._id.toString());
             if(isMyJob) return false;
 
@@ -181,7 +182,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
                 toast({ title: 'Sucesso!', description: result.message });
                 await refreshData();
             } else {
-                toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+                toast({ title: 'Erro', description: result.error || "Não foi possível aceitar a solicitação.", variant: 'destructive' });
             }
         });
     };
@@ -198,7 +199,7 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
             } else {
                 toast({
                     title: "Erro",
-                    description: result.error,
+                    description: result.error || "Erro ao finalizar limpeza.",
                     variant: "destructive",
                 });
             }

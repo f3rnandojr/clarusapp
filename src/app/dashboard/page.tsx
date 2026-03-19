@@ -1,4 +1,3 @@
-
 "use server";
 
 import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getPendingRequests, getActiveCleanings, getNonConformities } from "@/lib/actions";
@@ -17,17 +16,18 @@ export default async function DashboardPage() {
   }
   
   // Carregar todos os dados necessários para qualquer perfil
+  // Adicionando tratamento defensivo para garantir que variáveis sejam arrays
   const [
-    locations,
-    asgs,
-    users,
-    nextAsgCode,
-    cleaningSettings,
-    occurrences,
-    areas,
-    pendingRequests,
-    activeCleanings,
-    nonConformities,
+    locationsResult,
+    asgsResult,
+    usersResult,
+    nextAsgCodeResult,
+    cleaningSettingsResult,
+    occurrencesResult,
+    areasResult,
+    pendingRequestsResult,
+    activeCleaningsResult,
+    nonConformitiesResult,
   ] = await Promise.all([
     getLocations(),
     getAsgs(),
@@ -40,6 +40,17 @@ export default async function DashboardPage() {
     getActiveCleanings(),
     getNonConformities(),
   ]);
+
+  const locations = locationsResult || [];
+  const asgs = asgsResult || [];
+  const users = usersResult || [];
+  const nextAsgCode = nextAsgCodeResult || 'ASG001';
+  const cleaningSettings = cleaningSettingsResult || { concurrent: 30, terminal: 45 };
+  const occurrences = occurrencesResult || [];
+  const areas = areasResult || [];
+  const pendingRequests = pendingRequestsResult || [];
+  const activeCleanings = activeCleaningsResult || [];
+  const nonConformities = nonConformitiesResult || [];
   
   const dashboardData = {
     locations,
@@ -50,11 +61,14 @@ export default async function DashboardPage() {
     occurrences,
     areas,
     nonConformities,
+    pendingRequests,
   };
 
   // Usuários comuns e Auditores veem a interface simplificada (Scanner + Status)
   if (user.perfil === 'usuario' || user.perfil === 'auditor') {
-    const myActiveCleanings = activeCleanings.filter(ac => ac.userId === user._id);
+    // Trava de segurança no filtro para evitar crash se activeCleanings for indefinido
+    const myActiveCleanings = (activeCleanings || []).filter(ac => ac.userId === user._id);
+    
     return (
       <UserDashboard 
         locations={locations} 
