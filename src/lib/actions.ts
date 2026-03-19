@@ -8,7 +8,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
 import { convertToPlainObject } from './utils';
-import { DataTransformer } from './advanced-transformation';
+import { DataTransformer, generateSampleTransformation } from './advanced-transformation';
 
 // --- Logger Action ---
 async function logAction(action: string, details: Record<string, any>) {
@@ -177,7 +177,7 @@ export async function getLocations(): Promise<Location[]> {
         currentCleaning: activeCleaning ? {
             type: activeCleaning.cleaningType,
             userId: activeCleaning.userId,
-            userName: activeCleaning.userName,
+            userName: area.userName || 'Auditor',
             startTime: activeCleaning.startTime
         } : null,
         externalCode: area.locationId,
@@ -197,7 +197,7 @@ export async function getLocations(): Promise<Location[]> {
       const numA = parseInt(a.number, 10) || a.number;
       const numB = parseInt(b.number, 10) || b.number;
       if (numA < numB) return -1;
-      if (numA > numB) return 1;
+      if (numB < numA) return 1;
       return 0;
     });
 
@@ -1308,6 +1308,31 @@ export async function runManualSync() {
     return { success: true, message: 'Sincronização concluída.', stats: { ...result.stats, updated: updatedCount } };
   } catch (error: any) {
     return { success: false, message: error.message };
+  }
+}
+
+export async function getSyncStatus() {
+  try {
+    const config = await getIntegrationConfig();
+    return {
+      enabled: config.enabled,
+      lastSync: config.lastSync || null,
+      syncInterval: config.syncInterval,
+    };
+  } catch (error) {
+    console.error("Error in getSyncStatus:", error);
+    return { enabled: false, lastSync: null, syncInterval: 0 };
+  }
+}
+
+export async function testTransformation() {
+  try {
+    const config = await getIntegrationConfig();
+    const result = await generateSampleTransformation(config);
+    return convertToPlainObject(result);
+  } catch (error: any) {
+    console.error("Error in testTransformation:", error);
+    throw new Error('Falha ao testar transformação: ' + error.message);
   }
 }
 
