@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useTransition, useEffect } from 'react';
@@ -72,6 +73,12 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isScannerOpen, setIsScannerOpen] = useState(false);
+
+    // Sincronizar estado local com novas props quando o servidor revalidar (Ex: pós auditoria)
+    useEffect(() => {
+        setAllLocations(initialLocations);
+        setPendingRequests(initialPendingRequests);
+    }, [initialLocations, initialPendingRequests]);
 
     const refreshData = async () => {
         setIsLoading(true);
@@ -180,24 +187,6 @@ export function UserDashboard({ locations: initialLocations, user, pendingReques
     };
 
     const handleFinalizeCleaning = async (locationId: string) => {
-        if (user.perfil === 'auditor') {
-            // Em vez de finalizar direto, abriremos o checklist na próxima etapa
-            toast({
-                title: "Iniciando Checkout",
-                description: "Por favor, preencha o checklist de validação.",
-            });
-            // Por enquanto, apenas para demonstrar o fluxo, chamaremos a finalização
-            // mas futuramente aqui abrirá o modal do checklist.
-            startFinalizingTransition(async () => {
-                const result = await finishCleaning(locationId);
-                if (result.success) {
-                    toast({ title: "Auditoria Concluída", description: result.success });
-                    await refreshData();
-                }
-            });
-            return;
-        }
-
         startFinalizingTransition(async () => {
             const result = await finishCleaning(locationId);
             if (result.success) {

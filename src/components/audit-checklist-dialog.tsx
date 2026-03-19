@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { ClipboardCheck, Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface AuditChecklistDialogProps {
   location: Location;
@@ -38,6 +39,7 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
   const [observations, setObservations] = useState("");
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const router = useRouter();
 
   // Validação rigorosa: todos os 8 itens devem estar no objeto de respostas
   const isChecklistComplete = CHECKLIST_ITEMS.every(item => 
@@ -71,10 +73,22 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
         });
 
         if (result.success) {
-          toast({ title: "Sucesso!", description: result.message });
-          setOpen(false);
+          // 1. Feedback Visual de Sucesso
+          toast({ 
+            title: "Auditoria finalizada com sucesso!", 
+            description: "A conferência foi registrada e o local liberado.",
+          });
+          
+          // 2. Reset de Estado Local (Limpeza de Cache)
           setAnswers({});
           setObservations("");
+          
+          // 3. Fechamento Imediato do Modal
+          setOpen(false);
+          
+          // 4. Redirecionamento e Refresh para atualizar a Home (Home = Dashboard)
+          router.push('/dashboard');
+          router.refresh();
         } else {
           toast({ 
             title: "Falha ao Salvar", 
@@ -93,8 +107,13 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
     });
   };
 
+  const onOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    // Nota: O reset de estado ocorre apenas no sucesso para não perder o preenchimento caso o auditor feche sem querer.
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] flex flex-col overflow-hidden bg-slate-900 border-slate-800 text-white p-0">
         <DialogHeader className="p-6 pb-2 shrink-0">
