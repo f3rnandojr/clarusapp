@@ -1,9 +1,10 @@
+
 "use client";
 
 import type { Location, CleaningSettings, LocationStatus, UserProfile } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2, AlertTriangle, ClipboardCheck } from "lucide-react";
+import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2, AlertTriangle, ClipboardCheck, Bell } from "lucide-react";
 import { StatusBadge } from "./status-badge";
 import { ElapsedTime } from "./elapsed-time";
 import { StartCleaningDialog } from "./start-cleaning-dialog";
@@ -14,9 +15,10 @@ import { AuditChecklistDialog } from "./audit-checklist-dialog";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { getLastCleaningRecord } from "@/lib/actions";
+import { Badge } from "./ui/badge";
 
 interface LocationCardProps {
-  location: Location;
+  location: Location & { isRequested?: boolean };
   cleaningSettings: CleaningSettings;
   onStartClick?: (location: Location) => void;
   onFinalizeClick?: (locationId: string) => void;
@@ -73,7 +75,17 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
         );
       default:
         return (
-            <p className="text-xs text-muted-foreground/60 italic mt-4 font-medium">Pronto para nova tarefa</p>
+            <div className="flex flex-col gap-2 mt-4">
+              {location.isRequested && (
+                <Badge variant="outline" className="w-fit bg-sky-500/10 border-sky-500/30 text-sky-400 animate-pulse flex gap-1.5 items-center py-1 px-3">
+                  <Bell className="h-3 w-3" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Solicitado</span>
+                </Badge>
+              )}
+              <p className="text-xs text-muted-foreground/60 italic font-medium">
+                {location.isRequested ? "Aguardando colaborador" : "Pronto para nova tarefa"}
+              </p>
+            </div>
         );
     }
   };
@@ -123,18 +135,18 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
     }
     
     if (userProfile === 'admin' || userProfile === 'gestor') {
-      const buttonText = "Solicitar Higienização";
+      const buttonText = location.isRequested ? "Reforçar Solicitação" : "Solicitar Higienização";
 
       switch (location.status) {
         case "available":
           return (
-            <StartCleaningDialog location={location} userProfile={userProfile} onCleaningStarted={() => {}}>
+            <StartCleaningDialog location={location} userProfile={userProfile} onCleaningStarted={() => handleDialogClose()}>
               <Button size="sm" className="w-full shadow-lg font-bold uppercase text-[10px] tracking-widest h-10 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-900" onClick={handleStartClick}>{buttonText}</Button>
             </StartCleaningDialog>
           );
         case "occupied":
           return (
-            <StartCleaningDialog location={location} userProfile={userProfile} onCleaningStarted={() => {}}>
+            <StartCleaningDialog location={location} userProfile={userProfile} onCleaningStarted={() => handleDialogClose()}>
               <Button size="sm" variant="outline" className="w-full shadow-sm font-bold uppercase text-[10px] tracking-widest h-10 rounded-lg border-sky-500/30 text-sky-400 hover:bg-sky-500/10" onClick={handleStartClick}>Limpeza Concorrente</Button>
             </StartCleaningDialog>
           );
@@ -144,6 +156,13 @@ export default function LocationCard({ location, cleaningSettings, onStartClick,
     }
     
     return null;
+  };
+
+  const handleDialogClose = () => {
+    // Gatilho para o pai atualizar os dados
+    if (onStartClick) {
+        onStartClick(location);
+    }
   };
 
   const Icon = location.locationType === 'leito' ? Bed : Building;

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
@@ -13,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { NonConformityDialog } from "./non-conformity-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface StartCleaningDialogProps {
   location: Location;
@@ -29,6 +31,7 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
   
   const isOccupied = location.status === 'occupied';
   const isAuditor = userProfile === 'auditor';
+  const isManager = userProfile === 'admin' || userProfile === 'gestor';
   
   const [cleaningType, setCleaningType] = useState<'concurrent' | 'terminal' | ''>(isOccupied ? 'concurrent' : '');
   const [lastCleaning, setLastCleaning] = useState<CleaningRecord | null>(null);
@@ -67,6 +70,7 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
           description: response.message,
         });
         
+        // Gatilho de reatividade: fecha o modal e atualiza a lista
         if (onCleaningStarted) {
           onCleaningStarted();
         }
@@ -92,11 +96,15 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
     }
   }, [location, isOccupied, open, isAuditor]);
 
+  const buttonLabel = isPending 
+    ? (isManager ? 'Solicitando...' : 'Iniciando...')
+    : (isAuditor ? 'Iniciar Auditoria / Checkout' : (isManager ? 'Solicitar Higienização' : 'Confirmar e Iniciar'));
+
   const dialogContent = (
     <DialogContent className="sm:max-w-[425px] w-[95vw] border-slate-800 bg-slate-900 text-white">
       <DialogHeader>
         <DialogTitle className="text-xl font-black tracking-tight text-white">
-            {isAuditor ? 'Confirmar Auditoria' : 'Iniciar Higienização'}
+            {isAuditor ? 'Confirmar Auditoria' : 'Configurar Higienização'}
         </DialogTitle>
         <DialogDescription className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">
           Local: {location.name} - {location.number}
@@ -178,11 +186,12 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
         <DialogFooter className="flex flex-col gap-2">
           <Button 
             type="submit" 
-            className="w-full h-14 bg-sky-500 hover:bg-sky-400 text-slate-900 font-black uppercase tracking-widest text-xs rounded-2xl shadow-lg shadow-sky-500/20 transition-all active:scale-95" 
+            className="w-full h-14 bg-sky-500 hover:bg-sky-400 text-slate-900 font-black uppercase tracking-widest text-xs rounded-2xl shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50" 
             disabled={isPending || !cleaningType}
           >
-            {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
-            {isAuditor ? 'Iniciar Auditoria / Checkout' : 'Confirmar e Iniciar'}
+            {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+            {!isPending && (isAuditor ? <UserIcon className="mr-2 h-5 w-5" /> : <Sparkles className="mr-2 h-5 w-5" />)}
+            {buttonLabel}
           </Button>
           <Button type="button" variant="ghost" className="w-full text-slate-500 hover:text-white font-bold uppercase text-[10px] tracking-widest" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>
         </DialogFooter>
@@ -205,9 +214,4 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
         {dialogContent}
     </Dialog>
   );
-}
-
-// Helper para classes condicionais
-function cn(...classes: any[]) {
-    return classes.filter(Boolean).join(' ');
 }

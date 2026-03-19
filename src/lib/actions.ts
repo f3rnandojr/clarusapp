@@ -111,11 +111,12 @@ const getLocationById = async (id: string): Promise<Location | null> => {
 export async function getLocations(): Promise<Location[]> {
   const db = await dbConnect();
 
-  const [leitos, areas, mappings, activeCleanings] = await Promise.all([
+  const [leitos, areas, mappings, activeCleanings, scheduledRequests] = await Promise.all([
       db.collection('locations').find().sort({ name: 1, number: 1 }).toArray(),
       db.collection('areas').find({isActive: true}).sort({ setor: 1 }).toArray(),
       db.collection('location_mappings').find({ isActive: true }).toArray(),
-      db.collection('active_cleanings').find().toArray()
+      db.collection('active_cleanings').find().toArray(),
+      db.collection('scheduled_requests').find({ status: 'agendada' }).toArray()
   ]);
 
   const mappingsByExternalCode = mappings.reduce((acc, m) => {
@@ -128,18 +129,20 @@ export async function getLocations(): Promise<Location[]> {
     return acc;
   }, {} as Record<string, ActiveCleaning>);
 
+  const pendingRequestIds = new Set(scheduledRequests.map(sr => sr.locationId));
+
   const combinedLocations: Location[] = [];
 
   leitos.forEach(leito => {
     const mapping = mappingsByExternalCode[leito.externalCode];
     const activeCleaning = activeCleaningsByLocationId[leito._id.toString()];
-    const status = activeCleaning ? 'in_cleaning' : leito.status;
+    let status = activeCleaning ? 'in_cleaning' : leito.status;
 
     combinedLocations.push({
       _id: leito._id,
       name: mapping ? mapping.internalName : leito.name,
       number: mapping ? mapping.internalNumber : leito.number,
-      status: status,
+      status: status as any,
       currentCleaning: activeCleaning ? {
           type: activeCleaning.cleaningType,
           userId: activeCleaning.userId,
@@ -151,7 +154,8 @@ export async function getLocations(): Promise<Location[]> {
       setor: mapping ? mapping.setor : 'Sem Setor',
       createdAt: leito.createdAt,
       updatedAt: leito.updatedAt,
-    });
+      isRequested: pendingRequestIds.has(leito._id.toString())
+    } as any);
   });
 
   areas.forEach(area => {
@@ -162,7 +166,7 @@ export async function getLocations(): Promise<Location[]> {
       _id: area._id,
       name: area.setor,
       number: area.shortCode,
-      status: status,
+      status: status as any,
       currentCleaning: activeCleaning ? {
           type: activeCleaning.cleaningType,
           userId: activeCleaning.userId,
@@ -174,7 +178,8 @@ export async function getLocations(): Promise<Location[]> {
       setor: area.setor,
       createdAt: area.createdAt,
       updatedAt: area.updatedAt,
-    });
+      isRequested: pendingRequestIds.has(area._id.toString())
+    } as any);
   });
 
   combinedLocations.sort((a, b) => {
