@@ -26,6 +26,28 @@ async function logAction(action: string, details: Record<string, any>) {
   }
 }
 
+// --- Webhook Private Helper ---
+async function sendWebhookNotification(event: keyof WebhookSettings['enabledEvents'], context: { local: string, tipo_limpeza?: string, prioridade?: string }) {
+  try {
+    const settings = await getWebhookSettings();
+    if (!settings.url || !settings.enabledEvents[event]) return;
+
+    let message = settings.template;
+    message = message.replace('{local}', context.local);
+    message = message.replace('{tipo_limpeza}', context.tipo_limpeza || 'N/A');
+    message = message.replace('{prioridade}', context.prioridade || 'Normal');
+    message = message.replace('{horario}', new Date().toLocaleTimeString('pt-BR'));
+
+    await fetch(settings.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    });
+  } catch (error) {
+    console.error(`Falha ao enviar notificação webhook para o evento ${event}:`, error);
+  }
+}
+
 // --- Auth Actions ---
 
 export async function login(prevState: any, formData: FormData) {
@@ -344,6 +366,13 @@ export async function startCleaning(prevState: any, formData: FormData) {
     };
     
     await db.collection('scheduled_requests').insertOne(newScheduledRequest);
+    
+    // Webhook: Nova Solicitação
+    await sendWebhookNotification('newRequest', { 
+      local: `${location.name} - ${location.number}`, 
+      tipo_limpeza: type === 'terminal' ? 'Terminal' : 'Concorrente' 
+    });
+
     revalidatePath('/dashboard');
     return { success: true, message: `Solicitação de higienização para ${location.name} - ${location.number} criada com sucesso!` };
   }
@@ -375,7 +404,7 @@ export async function startCleaning(prevState: any, formData: FormData) {
 }
 
 
-export async function finishCleaning(locationId: string) {
+export async function finishCleaning(locationId: string, isAudit: boolean = false) {
   try {
     const db = await dbConnect();
     
@@ -447,6 +476,14 @@ export async function finishCleaning(locationId: string) {
         { $set: { status: 'available', currentCleaning: null, updatedAt: new Date() }}
     );
 
+    // Webhook: Finalização de Higienização (apenas se não for audit)
+    if (!isAudit) {
+      await sendWebhookNotification('cleaningFinished', { 
+        local: activeCleaning.locationName, 
+        tipo_limpeza: activeCleaning.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente' 
+      });
+    }
+
     revalidatePath('/dashboard');
     return { success: true, message: 'Higienização finalizada com sucesso!' };
   } catch (error: any) {
@@ -491,10 +528,14 @@ export async function createAuditRecord(data: {
 
         await db.collection('audit_records').insertOne(newRecord);
         
-        const finishResult = await finishCleaning(data.locationId);
+        const finishResult = await finishCleaning(data.locationId, true);
         
         if (finishResult.success) {
             await logAction('audit_completed', { locationId: data.locationId, locationName: data.locationName });
+            
+            // Webhook: Finalização de Auditoria
+            await sendWebhookNotification('auditFinished', { local: data.locationName });
+
             return { success: true, message: "Auditoria finalizada e gravada com sucesso!" };
         } else {
             console.error("Auditoria gravada mas falhou ao finalizar limpeza:", finishResult.error);
@@ -1132,6 +1173,12 @@ export async function createNonConformity(formData: FormData) {
       locationName: validatedFields.data.locationName 
     });
 
+    // Webhook: Registro de NC
+    await sendWebhookNotification('ncRegistered', { 
+      local: validatedFields.data.locationName, 
+      prioridade: 'ALTA' 
+    });
+
     return { success: true, message: 'Não conformidade registrada com sucesso!' };
   } catch (error: any) {
     console.error('Erro ao registrar NC:', error);
@@ -1388,16 +1435,31 @@ export async function getWebhookSettings(): Promise<WebhookSettings> {
   try {
     const db = await dbConnect();
     const settings = await db.collection('system_settings').findOne({ _id: 'webhook' });
+    
     if (settings) {
       const { _id, ...rest } = settings;
-      return convertToPlainObject(rest);
+      return convertToPlainObject({
+        ...rest,
+        enabledEvents: rest.enabledEvents || {
+          newRequest: true,
+          cleaningFinished: false,
+          auditFinished: true,
+          ncRegistered: true,
+        }
+      });
     }
   } catch (error) {
     console.error("Error in getWebhookSettings:", error);
   }
   return { 
     url: '', 
-    template: '🔔 Nova solicitação: {local} | Tipo: {tipo_limpeza} | Horário: {horario}' 
+    template: '🔔 Nova solicitação: {local} | Tipo: {tipo_limpeza} | Horário: {horario}',
+    enabledEvents: {
+      newRequest: true,
+      cleaningFinished: false,
+      auditFinished: true,
+      ncRegistered: true,
+    }
   };
 }
 
