@@ -9,10 +9,11 @@ import { CleaningTimesDialog } from "./cleaning-times-dialog";
 import { ReportsDialog } from "./reports-dialog";
 import { IntegrationsDialog } from "./integrations-dialog";
 import { UserManagementDialog } from "./user-management-dialog";
-import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText, QrCode, Map } from "lucide-react";
+import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText, QrCode, Map, Bell } from "lucide-react";
 import { LogsDialog } from "./logs-dialog";
 import { AreaManagementDialog } from "./area-management-dialog";
 import { MappingManagementDialog } from "./mapping-management-dialog";
+import { WebhookSettingsDialog } from "./webhook-settings-dialog";
 
 interface SettingsDialogProps {
   allAsgs: Asg[];
@@ -74,10 +75,16 @@ export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, clean
                 Relatórios e Estatísticas
               </Button>
             </ReportsDialog>
+            <WebhookSettingsDialog>
+                <Button variant="outline" className="w-full justify-start">
+                    <Bell className="mr-2 h-4 w-4" />
+                    Notificações (Webhook)
+                </Button>
+            </WebhookSettingsDialog>
             <IntegrationsDialog open={integrationsOpen} onOpenChange={setIntegrationsOpen}>
                 <Button variant="outline" className="w-full justify-start" onClick={() => setIntegrationsOpen(true)}>
                     <LinkIcon className="mr-2 h-4 w-4" />
-                    Integrações
+                    Integrações de Dados
                 </Button>
             </IntegrationsDialog>
             <LogsDialog>

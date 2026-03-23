@@ -337,3 +337,10 @@ export const AuditRecordSchema = z.object({
   timestamp: z.union([z.string(), z.date()]),
 });
 export type AuditRecord = z.infer<typeof AuditRecordSchema>;
+
+// --- Webhook Settings ---
+export const WebhookSettingsSchema = z.object({
+  url: z.string().url("URL inválida").or(z.string().length(0)),
+  template: z.string().min(1, "O template é obrigatório."),
+});
+export type WebhookSettings = z.infer<typeof WebhookSettingsSchema>;

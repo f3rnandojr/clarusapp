@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { dbConnect } from './db';
-import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence, User, AuditRecord, AuditRecordSchema, type LocationStatus } from './schemas';
+import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleaningSettingsSchema, ReportFiltersSchema, type CleaningRecord, LoginSchema, CreateUserSchema, UpdateUserSchema, IntegrationConfigSchema, type IntegrationConfig, CreateAreaSchema, UpdateAreaSchema, LocationSchema, type Location, CreateLocationMappingSchema, UpdateLocationMappingSchema, ScheduledRequest, ScheduledRequestSchema, ActiveCleaningSchema, type ActiveCleaning, type UserProfile, type CleaningType, CreateNonConformitySchema, type NonConformity, type CleaningOccurrence, User, AuditRecord, AuditRecordSchema, type LocationStatus, WebhookSettingsSchema, type WebhookSettings } from './schemas';
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -1379,5 +1379,63 @@ export async function getLastCleaningRecord(locationId: string): Promise<Cleanin
   } catch (error) {
     console.error("Error in getLastCleaningRecord:", error);
     return null;
+  }
+}
+
+// --- WEBHOOK ACTIONS ---
+
+export async function getWebhookSettings(): Promise<WebhookSettings> {
+  try {
+    const db = await dbConnect();
+    const settings = await db.collection('system_settings').findOne({ _id: 'webhook' });
+    if (settings) {
+      const { _id, ...rest } = settings;
+      return convertToPlainObject(rest);
+    }
+  } catch (error) {
+    console.error("Error in getWebhookSettings:", error);
+  }
+  return { 
+    url: '', 
+    template: '🔔 Nova solicitação: {local} | Tipo: {tipo_limpeza} | Horário: {horario}' 
+  };
+}
+
+export async function saveWebhookSettings(settings: WebhookSettings) {
+  try {
+    const validated = WebhookSettingsSchema.safeParse(settings);
+    if (!validated.success) return { error: "Configurações inválidas." };
+
+    const db = await dbConnect();
+    await db.collection('system_settings').updateOne(
+      { _id: 'webhook' },
+      { $set: { ...validated.data, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    return { success: true, message: "Configurações de Webhook salvas!" };
+  } catch (error: any) {
+    return { error: "Erro ao salvar: " + error.message };
+  }
+}
+
+export async function testWebhookConnection(url: string) {
+  if (!url) return { error: "URL do Webhook é obrigatória." };
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: "✅ Conexão Basiclean estabelecida com sucesso! Este é um disparo de teste."
+      }),
+    });
+
+    if (response.ok) {
+      return { success: true, message: "Webhook validado com sucesso!" };
+    } else {
+      return { error: `Falha na conexão (Status: ${response.status}). Verifique a URL.` };
+    }
+  } catch (error: any) {
+    return { error: "Falha na conexão. Verifique a URL e a rede interna." };
   }
 }
