@@ -174,7 +174,7 @@ export function MappingManagementDialog({ children }: MappingManagementDialogPro
             </div>
           </TabsContent>
           <TabsContent value="add" className="mt-4">
-            <AreaForm onFinished={handleFormFinished} />
+            <LocationMappingForm onFinished={handleFormFinished} />
           </TabsContent>
           <TabsContent value="edit" className="mt-4">
              {selectedMapping && <LocationMappingForm mapping={selectedMapping} onFinished={handleFormFinished} />}
