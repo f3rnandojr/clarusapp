@@ -124,15 +124,16 @@ export class DataTransformer {
   private mapStatus(externalStatus: string): 'available' | 'occupied' | 'in_cleaning' | null {
     const { statusMappings } = this.config;
     
-    const normalizedStatus = (externalStatus || '').trim();
+    const normalizedStatus = (externalStatus || '').trim().toUpperCase();
 
-    if (normalizedStatus === statusMappings.available) {
-      return 'available';
-    } else if (normalizedStatus === statusMappings.occupied) {
-      return 'occupied';
-    } else if (statusMappings.in_cleaning && normalizedStatus === statusMappings.in_cleaning) {
-      return 'in_cleaning';
-    }
+    // Mapeamentos diretos
+    if (normalizedStatus === statusMappings.available?.toUpperCase()) return 'available';
+    if (normalizedStatus === statusMappings.occupied?.toUpperCase()) return 'occupied';
+    if (statusMappings.in_cleaning && normalizedStatus === statusMappings.in_cleaning?.toUpperCase()) return 'in_cleaning';
+
+    // Fallbacks comuns para hospitais
+    if (normalizedStatus === 'L' || normalizedStatus === 'VAGO' || normalizedStatus === 'DISPONÍVEL') return 'available';
+    if (normalizedStatus === '*' || normalizedStatus === '•' || normalizedStatus === 'OCUPADO' || normalizedStatus === 'BLOQUEADO') return 'occupied';
     
     console.warn(`Status não mapeado: "${normalizedStatus}"`);
     return null;

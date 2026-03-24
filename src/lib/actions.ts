@@ -1,3 +1,4 @@
+
 'use server';
 
 import { revalidatePath } from 'next/cache';
@@ -90,6 +91,15 @@ export async function logout() {
   redirect('/login');
 }
 
+// --- Status Normalization Helper ---
+const normalizeStatus = (status: string): LocationStatus => {
+  const s = (status || '').trim().toUpperCase();
+  if (s === 'AVAILABLE' || s === 'L' || s === 'DISPONÍVEL' || s === 'DISPONIVEL') return 'available';
+  if (s === 'OCCUPIED' || s === '*' || s === '•' || s === 'OCUPADO') return 'occupied';
+  if (s === 'IN_CLEANING' || s === 'LIMPANDO') return 'in_cleaning';
+  return 'available';
+};
+
 // --- Location and Active Cleaning Actions ---
 
 export async function getActiveCleanings(): Promise<ActiveCleaning[]> {
@@ -120,7 +130,7 @@ const getLocationById = async (id: string): Promise<Location | null> => {
         _id: item._id,
         name: isArea ? item.setor : item.name,
         number: isArea ? item.shortCode : item.number,
-        status: item.status,
+        status: normalizeStatus(item.status),
         currentCleaning: item.currentCleaning || null,
         externalCode: isArea ? item.locationId : item.externalCode,
         locationType: isArea ? 'area' : 'leito',
@@ -165,7 +175,7 @@ export async function getLocations(): Promise<Location[]> {
     (leitos || []).forEach(leito => {
       const mapping = mappingsByExternalCode[leito.externalCode];
       const activeCleaning = activeCleaningsByLocationId[leito._id.toString()];
-      let status = activeCleaning ? 'in_cleaning' : leito.status;
+      let status = activeCleaning ? 'in_cleaning' : normalizeStatus(leito.status);
 
       combinedLocations.push({
         _id: leito._id,
@@ -180,7 +190,7 @@ export async function getLocations(): Promise<Location[]> {
         } : null,
         externalCode: leito.externalCode,
         locationType: 'leito',
-        setor: mapping ? mapping.setor : 'Sem Setor',
+        setor: mapping ? mapping.setor : (leito.setor || 'Sem Setor'),
         createdAt: leito.createdAt,
         updatedAt: leito.updatedAt,
         isRequested: pendingRequestIds.has(leito._id.toString())
@@ -189,7 +199,7 @@ export async function getLocations(): Promise<Location[]> {
 
     (areas || []).forEach(area => {
       const activeCleaning = activeCleaningsByLocationId[area._id.toString()];
-      const status = activeCleaning ? 'in_cleaning' : (area.status || 'available');
+      const status = activeCleaning ? 'in_cleaning' : normalizeStatus(area.status || 'available');
       
       combinedLocations.push({
         _id: area._id,
@@ -267,7 +277,7 @@ export async function getLocationByCode(code: string) {
              } else {
                  originalItem = await db.collection('areas').findOne({_id: new ObjectId(locationData._id)})
              }
-             if(originalItem) locationData.status = originalItem.status;
+             if(originalItem) locationData.status = normalizeStatus(originalItem.status);
         }
         return convertToPlainObject(locationData);
     }
@@ -279,7 +289,7 @@ export async function getLocationByCode(code: string) {
     const locationId = item._id.toString();
     const activeCleaning = await db.collection('active_cleanings').findOne({ locationId: locationId });
     
-    const status = activeCleaning ? 'in_cleaning' : item.status;
+    const status = activeCleaning ? 'in_cleaning' : normalizeStatus(item.status);
     const currentCleaning = activeCleaning ? {
         type: activeCleaning.cleaningType,
         userId: activeCleaning.userId,

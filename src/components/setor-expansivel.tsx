@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Location, LocationStatus, UserProfile } from '@/lib/schemas';
+import type { Location, CleaningSettings, UserProfile } from '@/lib/schemas';
 import { ChevronDown, Hospital } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import LocationCard from './location-card';
@@ -21,9 +21,10 @@ interface SetorExpansivelProps {
   onLocationClick: (location: Location) => void;
   userProfile?: UserProfile;
   currentUserId?: string;
+  cleaningSettings: CleaningSettings;
 }
 
-export function SetorExpansivel({ setor, onLocationClick, userProfile = 'admin', currentUserId }: SetorExpansivelProps) {
+export function SetorExpansivel({ setor, onLocationClick, userProfile = 'admin', currentUserId, cleaningSettings }: SetorExpansivelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
@@ -61,8 +62,7 @@ export function SetorExpansivel({ setor, onLocationClick, userProfile = 'admin',
             <LocationCard 
               key={local._id.toString()}
               location={local}
-              // @ts-ignore
-              cleaningSettings={{}} 
+              cleaningSettings={cleaningSettings} 
               onStartClick={onLocationClick}
               userProfile={userProfile}
               currentUserId={currentUserId}

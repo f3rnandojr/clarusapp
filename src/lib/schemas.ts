@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 
 // --- AUTH ---
@@ -43,6 +44,7 @@ export const LocationSchema = z.object({
   externalCode: z.string().optional(),
   locationType: z.enum(['leito', 'area']),
   setor: z.string(), 
+  parentId: z.string().optional().nullable(),
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),
 });
@@ -60,6 +62,7 @@ export const LocationMappingSchema = z.object({
   shortCode: z.string(), 
   description: z.string().optional(),
   type: z.enum(['leito', 'area']),
+  parentId: z.string().optional().nullable(),
   isActive: z.boolean(),
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),

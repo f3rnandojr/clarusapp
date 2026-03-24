@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useTransition, useMemo } from "react";
@@ -228,7 +229,14 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
             <TabsContent value="overview">
               <div className="space-y-3">
                 {setoresAgrupados.map((setor) => (
-                  <SetorExpansivel key={setor.nome} setor={setor} onLocationClick={handleLocationClick} userProfile={user.perfil} currentUserId={user._id} />
+                  <SetorExpansivel 
+                    key={setor.nome} 
+                    setor={setor} 
+                    onLocationClick={handleLocationClick} 
+                    userProfile={user.perfil} 
+                    currentUserId={user._id}
+                    cleaningSettings={cleaningSettings}
+                  />
                 ))}
               </div>
             </TabsContent>
