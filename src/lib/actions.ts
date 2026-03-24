@@ -148,21 +148,21 @@ export async function getLocations(): Promise<Location[]> {
         db.collection('scheduled_requests').find({ status: 'agendada' }).toArray()
     ]);
 
-    const mappingsByExternalCode = mappings.reduce((acc, m) => {
+    const mappingsByExternalCode = (mappings || []).reduce((acc, m) => {
       acc[m.externalCode] = m;
       return acc;
     }, {} as Record<string, any>);
 
-    const activeCleaningsByLocationId = activeCleanings.reduce((acc, ac) => {
+    const activeCleaningsByLocationId = (activeCleanings || []).reduce((acc, ac) => {
       acc[ac.locationId] = ac;
       return acc;
     }, {} as Record<string, ActiveCleaning>);
 
-    const pendingRequestIds = new Set(scheduledRequests.map(sr => sr.locationId));
+    const pendingRequestIds = new Set((scheduledRequests || []).map(sr => sr.locationId));
 
     const combinedLocations: Location[] = [];
 
-    leitos.forEach(leito => {
+    (leitos || []).forEach(leito => {
       const mapping = mappingsByExternalCode[leito.externalCode];
       const activeCleaning = activeCleaningsByLocationId[leito._id.toString()];
       let status = activeCleaning ? 'in_cleaning' : leito.status;
@@ -187,7 +187,7 @@ export async function getLocations(): Promise<Location[]> {
       } as any);
     });
 
-    areas.forEach(area => {
+    (areas || []).forEach(area => {
       const activeCleaning = activeCleaningsByLocationId[area._id.toString()];
       const status = activeCleaning ? 'in_cleaning' : (area.status || 'available');
       
@@ -961,9 +961,9 @@ export async function generateReport(prevState: any, formData: FormData) {
             timestamp: { $gte: queryStartDate, $lte: queryEndDate }
         });
 
-        const total = cleaningRecords.length;
-        const concurrentRecords = cleaningRecords.filter(r => r.cleaningType === 'concurrent');
-        const terminalRecords = cleaningRecords.filter(r => r.cleaningType === 'terminal');
+        const total = (cleaningRecords || []).length;
+        const concurrentRecords = (cleaningRecords || []).filter(r => r.cleaningType === 'concurrent');
+        const terminalRecords = (cleaningRecords || []).filter(r => r.cleaningType === 'terminal');
         
         const concurrent = concurrentRecords.length;
         const terminal = terminalRecords.length;
@@ -974,7 +974,7 @@ export async function generateReport(prevState: any, formData: FormData) {
         const avgConcurrentTime = concurrent > 0 ? Math.round(totalConcurrentDuration / concurrent) : 0;
         const avgTerminalTime = terminal > 0 ? Math.round(totalTerminalDuration / terminal) : 0;
 
-        const delayed = cleaningRecords.filter(r => r.delayed).length;
+        const delayed = (cleaningRecords || []).filter(r => r.delayed).length;
         const onTime = total - delayed;
 
         return {
@@ -1007,7 +1007,7 @@ export async function generateReport(prevState: any, formData: FormData) {
             success: true,
             report: {
                 scope,
-                total: delayedRecords.length,
+                total: (delayedRecords || []).length,
                 details: convertToPlainObject(delayedRecords) || [],
                 filters: validatedFields.data
             }
@@ -1019,7 +1019,7 @@ export async function generateReport(prevState: any, formData: FormData) {
             timestamp: { $gte: queryStartDate, $lte: queryEndDate }
         }).sort({ timestamp: -1 }).toArray();
 
-        const ncDetails = ncs.map(nc => {
+        const ncDetails = (ncs || []).map(nc => {
             const { photoDataUri, ...rest } = nc;
             return rest;
         });
@@ -1044,7 +1044,7 @@ export async function generateReport(prevState: any, formData: FormData) {
             success: true,
             report: {
                 scope,
-                total: audits.length,
+                total: (audits || []).length,
                 details: convertToPlainObject(audits) || [],
                 filters: validatedFields.data
             }
@@ -1421,7 +1421,7 @@ export async function getLastCleaningRecord(locationId: string): Promise<Cleanin
         .limit(1)
         .toArray();
     
-    if (lastRecord.length === 0) return null;
+    if (!lastRecord || lastRecord.length === 0) return null;
     return convertToPlainObject(lastRecord[0]);
   } catch (error) {
     console.error("Error in getLastCleaningRecord:", error);

@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useCallback } from "react";
 import type { LocationMapping } from "@/lib/schemas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +26,19 @@ export function MappingManagementDialog({ children }: MappingManagementDialogPro
   const [mappings, setMappings] = useState<LocationMapping[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const refreshData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const refreshedMappings = await getLocationMappings();
+      setMappings(refreshedMappings || []);
+    } catch (error) {
+      console.error('Erro ao atualizar lista de mapeamentos:', error);
+      toast({ title: 'Erro', description: 'Não foi possível carregar os mapeamentos.', variant: 'destructive'});
+    } finally {
+        setIsLoading(false);
+    }
+  }, [toast]);
+
   const handleEditClick = (mapping: LocationMapping) => {
     setSelectedMapping(mapping);
     setActiveTab("edit");
@@ -45,24 +57,11 @@ export function MappingManagementDialog({ children }: MappingManagementDialogPro
     setActiveTab(value);
   }
   
-  const refreshData = async () => {
-    setIsLoading(true);
-    try {
-      const refreshedMappings = await getLocationMappings();
-      setMappings(refreshedMappings);
-    } catch (error) {
-      console.error('Erro ao atualizar lista de mapeamentos:', error);
-      toast({ title: 'Erro', description: 'Não foi possível carregar os mapeamentos.', variant: 'destructive'});
-    } finally {
-        setIsLoading(false);
-    }
-  };
-  
   useEffect(() => {
     if (open) {
       refreshData();
     }
-  }, [open]);
+  }, [open, refreshData]);
 
   const handleToggleActive = (id: string, currentIsActive: boolean) => {
     startTransition(async () => {
@@ -121,53 +120,61 @@ export function MappingManagementDialog({ children }: MappingManagementDialogPro
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mappings.map((mapping) => (
-                    <TableRow key={mapping._id.toString()}>
-                      <TableCell><Badge variant="secondary">{mapping.externalCode}</Badge></TableCell>
-                      <TableCell className="font-medium">{mapping.internalName}</TableCell>
-                      <TableCell>{mapping.internalNumber}</TableCell>
-                      <TableCell>{mapping.setor}</TableCell>
-                      <TableCell>{mapping.type}</TableCell>
-                      <TableCell>
-                         <Badge variant={mapping.isActive ? 'default' : 'outline'}>
-                          {mapping.isActive ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <QrCodeDialog
-                          item={{
-                            type: mapping.type,
-                            displayName: `${mapping.internalName} ${mapping.internalNumber}`,
-                            code: mapping.locationId,
-                            shortCode: mapping.shortCode
-                          }}
-                        >
-                          <Button variant="outline" size="sm">
-                            <QrCode className="mr-2 h-4 w-4" />
-                            QR / Link
+                  {mappings && mappings.length > 0 ? (
+                    mappings.map((mapping) => (
+                      <TableRow key={mapping._id?.toString() || Math.random()}>
+                        <TableCell><Badge variant="secondary">{mapping.externalCode}</Badge></TableCell>
+                        <TableCell className="font-medium">{mapping.internalName}</TableCell>
+                        <TableCell>{mapping.internalNumber}</TableCell>
+                        <TableCell>{mapping.setor}</TableCell>
+                        <TableCell>{mapping.type}</TableCell>
+                        <TableCell>
+                           <Badge variant={mapping.isActive ? 'default' : 'outline'}>
+                            {mapping.isActive ? 'Ativo' : 'Inativa'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <QrCodeDialog
+                            item={{
+                              type: mapping.type,
+                              displayName: `${mapping.internalName} ${mapping.internalNumber}`,
+                              code: mapping.locationId,
+                              shortCode: mapping.shortCode
+                            }}
+                          >
+                            <Button variant="outline" size="sm">
+                              <QrCode className="mr-2 h-4 w-4" />
+                              QR / Link
+                            </Button>
+                          </QrCodeDialog>
+                          <Button variant="ghost" size="icon" onClick={() => handleEditClick(mapping)}>
+                            <Pencil className="h-4 w-4" />
                           </Button>
-                        </QrCodeDialog>
-                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(mapping)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant={mapping.isActive ? 'destructive' : 'default'}
-                          size="sm"
-                          onClick={() => handleToggleActive(mapping._id.toString(), mapping.isActive)}
-                          disabled={isPending}
-                        >
-                           {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : (mapping.isActive ? 'Desativar' : 'Ativar')}
-                        </Button>
+                          <Button
+                            variant={mapping.isActive ? 'destructive' : 'default'}
+                            size="sm"
+                            onClick={() => handleToggleActive(mapping._id?.toString(), mapping.isActive)}
+                            disabled={isPending}
+                          >
+                             {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : (mapping.isActive ? 'Desativar' : 'Ativar')}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center text-muted-foreground italic">
+                        Nenhum mapeamento encontrado.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
               )}
             </div>
           </TabsContent>
           <TabsContent value="add" className="mt-4">
-            <LocationMappingForm onFinished={handleFormFinished} />
+            <AreaForm onFinished={handleFormFinished} />
           </TabsContent>
           <TabsContent value="edit" className="mt-4">
              {selectedMapping && <LocationMappingForm mapping={selectedMapping} onFinished={handleFormFinished} />}
