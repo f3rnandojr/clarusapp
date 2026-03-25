@@ -91,7 +91,7 @@ export class DataTransformer {
 
     const status = this.mapStatus(externalStatus);
     if (status === null) {
-      return null; // Pula item com status não mapeado
+      return null; // Pula item com status não mapeado silenciosamente
     }
     
     const mapping = await this.db.collection('location_mappings').findOne({ externalCode });
@@ -135,7 +135,7 @@ export class DataTransformer {
     if (normalizedStatus === 'L' || normalizedStatus === 'VAGO' || normalizedStatus === 'DISPONÍVEL') return 'available';
     if (normalizedStatus === '*' || normalizedStatus === '•' || normalizedStatus === 'OCUPADO' || normalizedStatus === 'BLOQUEADO') return 'occupied';
     
-    console.warn(`Status não mapeado: "${normalizedStatus}"`);
+    // Ignora silenciosamente status fora do padrão para evitar poluição de logs no sync automático
     return null;
   }
   

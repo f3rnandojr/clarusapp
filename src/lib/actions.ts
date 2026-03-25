@@ -557,6 +557,112 @@ export async function createAuditRecord(data: {
     }
 }
 
+// --- INTEGRATION ACTIONS ---
+
+export async function getIntegrationConfig(): Promise<IntegrationConfig> {
+  try {
+    const db = await dbConnect();
+    const config = await db.collection('integration_settings').findOne({ _id: 'default' });
+    if (config) {
+      return convertToPlainObject(config);
+    }
+  } catch (error) {
+    console.error("Error in getIntegrationConfig:", error);
+  }
+  return {
+    _id: 'default',
+    enabled: false,
+    host: '',
+    port: 5432,
+    database: '',
+    username: '',
+    password: '',
+    syncInterval: 5,
+    query: 'SELECT code1, tipobloq FROM cable1',
+    statusMappings: { available: 'L', occupied: '*' },
+    fieldMappings: { codeField: 'code1', statusField: 'tipobloq' },
+    transformation: { nameSeparator: ' ', customTransform: false },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+export async function saveIntegrationConfig(config: IntegrationConfig) {
+  const db = await dbConnect();
+  const { _id, ...data } = config;
+  await db.collection('integration_settings').updateOne(
+    { _id: 'default' },
+    { $set: { ...data, updatedAt: new Date() } },
+    { upsert: true }
+  );
+  revalidatePath('/dashboard');
+  return { success: true, message: 'Configurações de integração salvas com sucesso!' };
+}
+
+export async function testIntegrationConnection(config: IntegrationConfig) {
+  const { testExternalConnection } = await import('./external-db-connection');
+  return await testExternalConnection(config);
+}
+
+export async function runManualSync() {
+  const config = await getIntegrationConfig();
+  if (!config.enabled) return { success: false, message: 'Integração desativada.' };
+
+  const { fetchExternalData } = await import('./external-db-connection');
+  try {
+    const externalData = await fetchExternalData(config);
+    const transformer = new DataTransformer(config);
+    const result = await transformer.transform(externalData);
+
+    const db = await dbConnect();
+    let updatedCount = 0;
+
+    for (const item of result.data) {
+      const updateResult = await db.collection('locations').updateOne(
+        { externalCode: item.externalCode },
+        { $set: { status: item.status, updatedAt: new Date() } }
+      );
+      if (updateResult.modifiedCount > 0) updatedCount++;
+    }
+
+    await db.collection('integration_settings').updateOne(
+      { _id: 'default' },
+      { $set: { lastSync: new Date(), lastSyncStats: { ...result.stats, updated: updatedCount } } }
+    );
+
+    // revalidatePath não funciona em jobs de background (node-cron) por falta de store de geração estática.
+    // A atualização do dashboard ocorrerá no próximo carregamento do usuário ou via polling do cliente.
+    return { success: true, message: 'Sincronização concluída.', stats: { ...result.stats, updated: updatedCount } };
+  } catch (error: any) {
+    return { success: false, message: error.message };
+  }
+}
+
+export async function getSyncStatus() {
+  try {
+    const config = await getIntegrationConfig();
+    return {
+      enabled: config.enabled,
+      lastSync: config.lastSync || null,
+      syncInterval: config.syncInterval,
+    };
+  } catch (error) {
+    console.error("Error in getSyncStatus:", error);
+    return { enabled: false, lastSync: null, syncInterval: 0 };
+  }
+}
+
+export async function testTransformation() {
+  try {
+    const config = await getIntegrationConfig();
+    const result = await generateSampleTransformation(config);
+    return convertToPlainObject(result);
+  } catch (error: any) {
+    console.error("Error in testTransformation:", error);
+    throw new Error('Falha ao testar transformação: ' + error.message);
+  }
+}
+
 // --- Location Mappings Actions ---
 export async function getLocationMappings() {
   try {
@@ -1304,110 +1410,7 @@ export async function toggleUserActive(id: string, active: boolean) {
   return { success: true, message: `Usuário ${active ? 'ativado' : 'desativado'} com sucesso!` };
 }
 
-// --- INTEGRATION ACTIONS ---
-
-export async function getIntegrationConfig(): Promise<IntegrationConfig> {
-  try {
-    const db = await dbConnect();
-    const config = await db.collection('integration_settings').findOne({ _id: 'default' });
-    if (config) {
-      return convertToPlainObject(config);
-    }
-  } catch (error) {
-    console.error("Error in getIntegrationConfig:", error);
-  }
-  return {
-    _id: 'default',
-    enabled: false,
-    host: '',
-    port: 5432,
-    database: '',
-    username: '',
-    password: '',
-    syncInterval: 5,
-    query: 'SELECT code1, tipobloq FROM cable1',
-    statusMappings: { available: 'L', occupied: '*' },
-    fieldMappings: { codeField: 'code1', statusField: 'tipobloq' },
-    transformation: { nameSeparator: ' ', customTransform: false },
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-}
-
-export async function saveIntegrationConfig(config: IntegrationConfig) {
-  const db = await dbConnect();
-  const { _id, ...data } = config;
-  await db.collection('integration_settings').updateOne(
-    { _id: 'default' },
-    { $set: { ...data, updatedAt: new Date() } },
-    { upsert: true }
-  );
-  revalidatePath('/dashboard');
-  return { success: true, message: 'Configurações de integração salvas com sucesso!' };
-}
-
-export async function testIntegrationConnection(config: IntegrationConfig) {
-  const { testExternalConnection } = await import('./external-db-connection');
-  return await testExternalConnection(config);
-}
-
-export async function runManualSync() {
-  const config = await getIntegrationConfig();
-  if (!config.enabled) return { success: false, message: 'Integração desativada.' };
-
-  const { fetchExternalData } = await import('./external-db-connection');
-  try {
-    const externalData = await fetchExternalData(config);
-    const transformer = new DataTransformer(config);
-    const result = await transformer.transform(externalData);
-
-    const db = await dbConnect();
-    let updatedCount = 0;
-
-    for (const item of result.data) {
-      const updateResult = await db.collection('locations').updateOne(
-        { externalCode: item.externalCode },
-        { $set: { status: item.status, updatedAt: new Date() } }
-      );
-      if (updateResult.modifiedCount > 0) updatedCount++;
-    }
-
-    await db.collection('integration_settings').updateOne(
-      { _id: 'default' },
-      { $set: { lastSync: new Date(), lastSyncStats: { ...result.stats, updated: updatedCount } } }
-    );
-
-    revalidatePath('/dashboard');
-    return { success: true, message: 'Sincronização concluída.', stats: { ...result.stats, updated: updatedCount } };
-  } catch (error: any) {
-    return { success: false, message: error.message };
-  }
-}
-
-export async function getSyncStatus() {
-  try {
-    const config = await getIntegrationConfig();
-    return {
-      enabled: config.enabled,
-      lastSync: config.lastSync || null,
-      syncInterval: config.syncInterval,
-    };
-  } catch (error) {
-    console.error("Error in getSyncStatus:", error);
-    return { enabled: false, lastSync: null, syncInterval: 0 };
-  }
-}
-
-export async function testTransformation() {
-  try {
-    const config = await getIntegrationConfig();
-    const result = await generateSampleTransformation(config);
-    return convertToPlainObject(result);
-  } catch (error: any) {
-    console.error("Error in testTransformation:", error);
-    throw new Error('Falha ao testar transformação: ' + error.message);
-  }
-}
+// --- Logs and Contexts ---
 
 export async function getLogs() {
   try {
@@ -1419,8 +1422,6 @@ export async function getLogs() {
     return [];
   }
 }
-
-// --- AUDIT ACTIONS ---
 
 export async function getLastCleaningRecord(locationId: string): Promise<CleaningRecord | null> {
   try {
