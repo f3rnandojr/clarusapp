@@ -604,6 +604,46 @@ export async function testIntegrationConnection(config: IntegrationConfig) {
   return await testExternalConnection(config);
 }
 
+function resolveSetorByExternalCode(externalCode: string): string {
+  const code = externalCode.trim().toUpperCase();
+
+  // Sala de Estabilização - Oncologia
+  if (code === 'LTE-01' || code === 'LTE-02') {
+    return 'Sala de Estabilização - Oncologia';
+  }
+
+  // UTI: UTI-01 até UTI-10
+  const utiMatch = code.match(/^UTI-(\d+)$/);
+  if (utiMatch && parseInt(utiMatch[1], 10) >= 1 && parseInt(utiMatch[1], 10) <= 10) {
+    return 'UTI';
+  }
+
+  // Pronto Atendimento / Hospital Dia: LT-01 a LT-05 (sem sufixo de letra)
+  if (['LT-01', 'LT-02', 'LT-03', 'LT-04', 'LT-05'].includes(code)) {
+    return 'Pronto Atendimento / Hospital Dia';
+  }
+
+  // Ala de Internação 1 - Cuidados Paliativos Onc (lista explícita)
+  const ala1 = new Set([
+    'LT-01A', 'LT-02B',
+    'LT-03A', 'LT-03B',
+    'LT-04A', 'LT-04B', 'LT-04C',
+    'LT-05A', 'LT-05B', 'LT-05C',
+    'LT-06B',
+  ]);
+  if (ala1.has(code)) return 'Ala de Internação 1 - Cuidados Paliativos Onc';
+
+  // LT-XX[letra] — extrair número para Alas 3 e 4
+  const ltMatch = code.match(/^LT-(\d+)[A-Z]$/);
+  if (ltMatch) {
+    const num = parseInt(ltMatch[1], 10);
+    if (num >= 7 && num <= 23) return 'Ala de Internação 3 - Clínica Médica';
+    if (num >= 24 && num <= 38) return 'Ala de Internação 4 - Clínica Cirúrgica';
+  }
+
+  return '';
+}
+
 export async function runManualSync() {
   const config = await getIntegrationConfig();
   if (!config.enabled) return { success: false, message: 'Integração desativada.' };
@@ -627,19 +667,20 @@ export async function runManualSync() {
         updatedCount++;
       } else if (updateResult.matchedCount === 0) {
         // Leito não existe no MongoDB — criar automaticamente
+        const setor = resolveSetorByExternalCode(item.externalCode);
         await db.collection('locations').insertOne({
           externalCode: item.externalCode,
           name: item.externalCode,
           number: item.number,
           status: item.status,
           locationType: 'leito',
-          setor: 'Sem Setor',
+          setor,
           currentCleaning: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
         createdCount++;
-        console.log(`[SYNC] Leito criado: "${item.externalCode}" status="${item.status}"`);
+        console.log(`[SYNC] Leito criado: "${item.externalCode}" setor="${setor || '(sem setor)'}" status="${item.status}"`);
       }
     }
 
