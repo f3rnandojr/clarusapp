@@ -190,25 +190,25 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
       
       <main className="flex-1 p-2 md:p-4 pb-10">
         <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4 bg-slate-900/50 border border-slate-800 p-1 h-12 rounded-xl">
-                <TabsTrigger value="cleaning" className="rounded-lg data-[state=active]:bg-sky-500 data-[state=active]:text-slate-900 font-bold uppercase text-[10px] tracking-widest">
+            <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 border border-[#A0E9FF]/40 p-1 h-11 rounded-xl">
+                <TabsTrigger value="cleaning" className="rounded-lg data-[state=active]:bg-[#A0E9FF] data-[state=active]:text-[#0F4C5C] data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest text-gray-500">
                   <Sparkles className="mr-2 h-3.5 w-3.5" />Higienização ({inCleaningLocations.length})
                 </TabsTrigger>
-                <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-sky-500 data-[state=active]:text-slate-900 font-bold uppercase text-[10px] tracking-widest">
+                <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#A0E9FF] data-[state=active]:text-[#0F4C5C] data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest text-gray-500">
                   <Building className="mr-2 h-3.5 w-3.5" />Setores
                 </TabsTrigger>
             </TabsList>
             
             <TabsContent value="cleaning">
               {pendingRequests.length > 0 && (
-                <div className="mb-6 p-4 rounded-2xl bg-sky-500/5 border border-sky-500/10">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Bell className="h-4 w-4 text-sky-400" />
-                    <h3 className="text-xs font-black uppercase tracking-widest text-sky-400">Solicitações Pendentes ({pendingRequests.length})</h3>
+                <div className="mb-6 p-4 rounded-xl bg-[#A0E9FF]/10 border border-[#A0E9FF]/30">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Bell className="h-4 w-4 text-[#0F4C5C]" />
+                    <h3 className="text-xs font-black uppercase tracking-widest text-[#0F4C5C]">Solicitações Pendentes ({pendingRequests.length})</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {pendingRequests.map(req => (
-                      <Badge key={req._id.toString()} variant="outline" className="bg-sky-500/10 border-sky-500/20 text-sky-400 text-[10px] py-1 px-3">
+                      <Badge key={req._id.toString()} variant="outline" className="bg-[#A0E9FF]/20 border-[#A0E9FF]/50 text-[#0F4C5C] text-[10px] py-1 px-3">
                         {req.locationName} • {req.cleaningType === 'terminal' ? 'Terminal' : 'Conc.'}
                       </Badge>
                     ))}

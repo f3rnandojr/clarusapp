@@ -6,6 +6,17 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Basiclean",
   description: "Sistema de gestão de higienização de leitos e salas.",
+  icons: {
+    shortcut: '/favicon.ico',
+    icon: [
+      { url: '/icon.png',          sizes: '32x32',   type: 'image/png' },
+      { url: '/logo_192x192.png',  sizes: '192x192', type: 'image/png' },
+      { url: '/logo_512x512.png',  sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export const viewport: Viewport = {

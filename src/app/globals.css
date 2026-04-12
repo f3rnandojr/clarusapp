@@ -5,33 +5,33 @@
 
 @layer base {
   :root {
-    --background: 222 47% 11%; /* #0F172A */
-    --foreground: 213 27% 98%;
-    --card: 215 32% 17%; /* #1E293B */
-    --card-foreground: 213 27% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 213 27% 98%;
-    --primary: 199 89% 60%; /* #38BDF8 Neon Blue */
-    --primary-foreground: 222 47% 11%;
-    --secondary: 215 25% 27%; /* #334155 */
-    --secondary-foreground: 213 27% 98%;
-    --muted: 215 25% 27%;
-    --muted-foreground: 215 16% 62%; /* #94A3B8 */
-    --accent: 199 89% 60%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 72% 51%; /* #DC2626 */
-    --destructive-foreground: 210 40% 98%;
-    --border: 215 25% 27%;
-    --input: 215 25% 27%;
-    --ring: 199 89% 60%;
-    --radius: 1rem;
+    --background: 0 0% 100%;
+    --foreground: 194 72% 21%;           /* #0F4C5C */
+    --card: 0 0% 100%;
+    --card-foreground: 194 72% 21%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 194 72% 21%;
+    --primary: 194 100% 81%;             /* #A0E9FF */
+    --primary-foreground: 194 72% 21%;   /* #0F4C5C */
+    --secondary: 194 60% 95%;
+    --secondary-foreground: 194 72% 21%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 210 20% 55%;
+    --accent: 194 100% 81%;
+    --accent-foreground: 194 72% 21%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 194 50% 88%;
+    --input: 194 40% 94%;
+    --ring: 194 100% 81%;
+    --radius: 0.75rem;
 
-    --status-available-bg: 142 76% 10%;
-    --status-available-fg: 142 71% 45%;
-    --status-cleaning-bg: 199 89% 10%;
-    --status-cleaning-fg: 199 89% 60%;
-    --status-occupied-bg: 24 75% 10%;
-    --status-occupied-fg: 24 75% 50%;
+    --status-available-bg: 142 56% 94%;
+    --status-available-fg: 142 65% 30%;
+    --status-cleaning-bg: 194 80% 90%;
+    --status-cleaning-fg: 194 70% 32%;
+    --status-occupied-bg: 24 56% 94%;
+    --status-occupied-fg: 24 72% 38%;
   }
 }
 
@@ -43,10 +43,10 @@
     @apply h-auto min-h-screen bg-background text-foreground overflow-x-hidden;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .scroll-container {
-      scrollbar-width: thin;
-      scrollbar-color: hsl(var(--border)) hsl(var(--background));
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) hsl(var(--background));
   }
 
   .scroll-container::-webkit-scrollbar {

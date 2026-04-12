@@ -24,45 +24,66 @@ interface SetorExpansivelProps {
   cleaningSettings: CleaningSettings;
 }
 
-export function SetorExpansivel({ setor, onLocationClick, userProfile = 'admin', currentUserId, cleaningSettings }: SetorExpansivelProps) {
+export function SetorExpansivel({
+  setor,
+  onLocationClick,
+  userProfile = 'admin',
+  currentUserId,
+  cleaningSettings,
+}: SetorExpansivelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="border border-slate-800 rounded-3xl bg-slate-900/30 shadow-xl overflow-hidden transition-all duration-300">
-      <div 
-        className="flex justify-between items-center p-5 md:p-6 cursor-pointer hover:bg-slate-800/20 transition-colors"
+    <div className="border border-[#A0E9FF]/40 rounded-xl bg-white shadow-sm overflow-hidden transition-all duration-300">
+      {/* Header */}
+      <div
+        className="flex justify-between items-center px-4 py-3 cursor-pointer hover:bg-[#A0E9FF]/10 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-5">
-          <div className="bg-sky-500/10 p-3 rounded-2xl shadow-inner border border-sky-500/10">
-            <Hospital className="h-6 w-6 text-sky-400" />
+        <div className="flex items-center gap-3">
+          <div className="bg-[#A0E9FF]/25 p-1.5 rounded-lg flex-shrink-0">
+            <Hospital className="h-4 w-4 text-[#0F4C5C]" />
           </div>
           <div>
-            <h3 className="font-black text-xl text-white tracking-tight leading-none">{setor.nome}</h3>
-            <div className="hidden md:flex items-center gap-5 text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-2">
-              <div className='flex items-center gap-2'><div className='w-1.5 h-1.5 rounded-full bg-emerald-500'></div>{setor.disponiveis} LIVRES</div>
-              <div className='flex items-center gap-2'><div className='w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse'></div>{setor.emLimpeza} LIMPANDO</div>
-              <div className='flex items-center gap-2'><div className='w-1.5 h-1.5 rounded-full bg-orange-500'></div>{setor.ocupados} OCUPADOS</div>
+            <h3 className="font-bold text-[15px] text-[#0F4C5C] leading-tight">{setor.nome}</h3>
+            <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider mt-0.5">
+              <span className="flex items-center gap-1 text-emerald-600">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                {setor.disponiveis} livres
+              </span>
+              <span className="flex items-center gap-1 text-sky-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 inline-block animate-pulse" />
+                {setor.emLimpeza} limpando
+              </span>
+              <span className="flex items-center gap-1 text-orange-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
+                {setor.ocupados} ocupados
+              </span>
             </div>
           </div>
         </div>
-        
-        <div className="flex items-center gap-5">
-          <span className="bg-slate-800 text-sky-400 font-black text-[10px] px-4 py-1.5 rounded-full uppercase tracking-[0.2em] border border-slate-700">
-            {setor.total} UNID
+
+        <div className="flex items-center gap-2">
+          <span className="bg-[#A0E9FF]/20 text-[#0F4C5C] font-bold text-[10px] px-3 py-1 rounded-full uppercase tracking-widest">
+            {setor.total} unid
           </span>
-          
-          <ChevronDown className={cn('h-5 w-5 text-slate-600 transform transition-transform duration-500', isExpanded && 'rotate-180 text-sky-400')} />
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 text-gray-400 transform transition-transform duration-300',
+              isExpanded && 'rotate-180 text-[#0F4C5C]'
+            )}
+          />
         </div>
       </div>
 
+      {/* Cards grid */}
       {isExpanded && (
-        <div className="border-t border-slate-800/50 bg-slate-900/20 p-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+        <div className="border-t border-[#A0E9FF]/20 bg-gray-50/60 p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {setor.locais.map((local) => (
-            <LocationCard 
+            <LocationCard
               key={local._id.toString()}
               location={local}
-              cleaningSettings={cleaningSettings} 
+              cleaningSettings={cleaningSettings}
               onStartClick={onLocationClick}
               userProfile={userProfile}
               currentUserId={currentUserId}
