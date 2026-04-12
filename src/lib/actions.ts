@@ -617,12 +617,26 @@ export async function runManualSync() {
     const db = await dbConnect();
     let updatedCount = 0;
 
+    // DEBUG: verificar quantos leitos existem na coleção locations
+    const totalLocations = await db.collection('locations').countDocuments();
+    const sampleLocation = await db.collection('locations').findOne({});
+    console.log(`[SYNC DEBUG] Total de locations no MongoDB: ${totalLocations}`);
+    console.log(`[SYNC DEBUG] Exemplo de location:`, JSON.stringify({ externalCode: sampleLocation?.externalCode, name: sampleLocation?.name, status: sampleLocation?.status }));
+    console.log(`[SYNC DEBUG] Total de itens transformados para atualizar: ${result.data.length}`);
+    if (result.data.length > 0) {
+      console.log(`[SYNC DEBUG] Exemplo de item do SQL (após transform): externalCode="${result.data[0].externalCode}", status="${result.data[0].status}"`);
+    }
+
     for (const item of result.data) {
       const updateResult = await db.collection('locations').updateOne(
         { externalCode: item.externalCode },
         { $set: { status: item.status, updatedAt: new Date() } }
       );
-      if (updateResult.modifiedCount > 0) updatedCount++;
+      if (updateResult.modifiedCount > 0) {
+        updatedCount++;
+      } else if (updateResult.matchedCount === 0) {
+        console.warn(`[SYNC DEBUG] Nenhum leito encontrado para externalCode="${item.externalCode}"`);
+      }
     }
 
     await db.collection('integration_settings').updateOne(

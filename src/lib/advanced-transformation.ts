@@ -79,12 +79,12 @@ export class DataTransformer {
   }
 
   private async transformItem(item: ExternalLeito): Promise<any> {
-    const externalCode = item[this.config.fieldMappings.codeField];
+    const externalCode = (item[this.config.fieldMappings.codeField] ?? '').toString().trim();
     if (!externalCode) {
       throw new Error(`Campo código (${this.config.fieldMappings.codeField}) não encontrado`);
     }
 
-    const externalStatus = item[this.config.fieldMappings.statusField];
+    const externalStatus = (item[this.config.fieldMappings.statusField] ?? '').toString().trim();
     if (!externalStatus) {
       throw new Error(`Campo status (${this.config.fieldMappings.statusField}) não encontrado`);
     }

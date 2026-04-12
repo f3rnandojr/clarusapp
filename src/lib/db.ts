@@ -6,7 +6,7 @@ if (!MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
 }
 
-const DB_NAME = 'cleanflow';
+const DB_NAME = 'clarusdb';
 
 // @ts-ignore
 let cachedClient: MongoClient = global.mongoClient;
