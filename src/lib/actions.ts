@@ -616,16 +616,7 @@ export async function runManualSync() {
 
     const db = await dbConnect();
     let updatedCount = 0;
-
-    // DEBUG: verificar quantos leitos existem na coleção locations
-    const totalLocations = await db.collection('locations').countDocuments();
-    const sampleLocation = await db.collection('locations').findOne({});
-    console.log(`[SYNC DEBUG] Total de locations no MongoDB: ${totalLocations}`);
-    console.log(`[SYNC DEBUG] Exemplo de location:`, JSON.stringify({ externalCode: sampleLocation?.externalCode, name: sampleLocation?.name, status: sampleLocation?.status }));
-    console.log(`[SYNC DEBUG] Total de itens transformados para atualizar: ${result.data.length}`);
-    if (result.data.length > 0) {
-      console.log(`[SYNC DEBUG] Exemplo de item do SQL (após transform): externalCode="${result.data[0].externalCode}", status="${result.data[0].status}"`);
-    }
+    let createdCount = 0;
 
     for (const item of result.data) {
       const updateResult = await db.collection('locations').updateOne(
@@ -635,18 +626,31 @@ export async function runManualSync() {
       if (updateResult.modifiedCount > 0) {
         updatedCount++;
       } else if (updateResult.matchedCount === 0) {
-        console.warn(`[SYNC DEBUG] Nenhum leito encontrado para externalCode="${item.externalCode}"`);
+        // Leito não existe no MongoDB — criar automaticamente
+        await db.collection('locations').insertOne({
+          externalCode: item.externalCode,
+          name: item.externalCode,
+          number: item.number,
+          status: item.status,
+          locationType: 'leito',
+          setor: 'Sem Setor',
+          currentCleaning: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        createdCount++;
+        console.log(`[SYNC] Leito criado: "${item.externalCode}" status="${item.status}"`);
       }
     }
 
     await db.collection('integration_settings').updateOne(
       { _id: 'default' },
-      { $set: { lastSync: new Date(), lastSyncStats: { ...result.stats, updated: updatedCount } } }
+      { $set: { lastSync: new Date(), lastSyncStats: { ...result.stats, updated: updatedCount, created: createdCount } } }
     );
 
     // revalidatePath não funciona em jobs de background (node-cron) por falta de store de geração estática.
     // A atualização do dashboard ocorrerá no próximo carregamento do usuário ou via polling do cliente.
-    return { success: true, message: 'Sincronização concluída.', stats: { ...result.stats, updated: updatedCount } };
+    return { success: true, message: 'Sincronização concluída.', stats: { ...result.stats, updated: updatedCount, created: createdCount } };
   } catch (error: any) {
     return { success: false, message: error.message };
   }
