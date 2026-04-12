@@ -659,15 +659,18 @@ export async function runManualSync() {
     let createdCount = 0;
 
     for (const item of result.data) {
+      const setor = resolveSetorByExternalCode(item.externalCode);
+
+      // Atualiza locations — inclui setor para corrigir documentos criados antes do mapeamento existir
       const updateResult = await db.collection('locations').updateOne(
         { externalCode: item.externalCode },
-        { $set: { status: item.status, updatedAt: new Date() } }
+        { $set: { status: item.status, setor, updatedAt: new Date() } }
       );
+
       if (updateResult.modifiedCount > 0) {
         updatedCount++;
       } else if (updateResult.matchedCount === 0) {
         // Leito não existe no MongoDB — criar automaticamente
-        const setor = resolveSetorByExternalCode(item.externalCode);
         await db.collection('locations').insertOne({
           externalCode: item.externalCode,
           name: item.externalCode,
@@ -681,6 +684,14 @@ export async function runManualSync() {
         });
         createdCount++;
         console.log(`[SYNC] Leito criado: "${item.externalCode}" setor="${setor || '(sem setor)'}" status="${item.status}"`);
+      }
+
+      // getLocations() prefere location_mappings.setor — corrigir se estiver vazio ou 'Sem Setor'
+      if (setor) {
+        await db.collection('location_mappings').updateOne(
+          { externalCode: item.externalCode, setor: { $in: [null, '', 'Sem Setor'] } },
+          { $set: { setor, updatedAt: new Date() } }
+        );
       }
     }
 
