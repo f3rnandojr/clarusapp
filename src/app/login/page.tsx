@@ -43,12 +43,12 @@ export default function LoginPage() {
         <div className="flex flex-col items-center text-center mb-8">
           <Image
             src="/icon.png"
-            alt="Basiclean"
+            alt="Hygra"
             width={60}
             height={60}
             className="rounded-2xl mb-4 shadow-md"
           />
-          <h1 className="text-3xl font-black text-[#0F4C5C] tracking-tight mb-1">Basiclean</h1>
+          <h1 className="text-3xl font-black text-[#0F4C5C] tracking-tight mb-1">Hygra</h1>
           <p className="text-sm text-gray-400 font-medium">Gestão de Higienização</p>
         </div>
 

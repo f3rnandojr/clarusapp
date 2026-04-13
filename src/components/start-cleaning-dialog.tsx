@@ -7,8 +7,6 @@ import { startCleaning, getLastCleaningRecord } from "@/lib/actions";
 import type { Location, UserProfile, CleaningRecord } from "@/lib/schemas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Sparkles, Loader2, AlertTriangle, Info, Clock, User as UserIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { NonConformityDialog } from "./non-conformity-dialog";
@@ -29,11 +27,12 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
-  const isOccupied = location.status === 'occupied';
-  const isAuditor = userProfile === 'auditor';
-  const isManager = userProfile === 'admin' || userProfile === 'gestor';
-  
-  const [cleaningType, setCleaningType] = useState<'concurrent' | 'terminal' | ''>(isOccupied ? 'concurrent' : '');
+  const isOccupied  = location.status === 'occupied';
+  const isAvailable = location.status === 'available';
+  const isAuditor   = userProfile === 'auditor';
+  const isManager   = userProfile === 'admin' || userProfile === 'gestor';
+
+  const [cleaningType, setCleaningType] = useState<'concurrent' | 'terminal' | ''>(isOccupied ? 'concurrent' : 'terminal');
   const [lastCleaning, setLastCleaning] = useState<CleaningRecord | null>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(false);
 
@@ -92,7 +91,7 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
 
   useEffect(() => {
     if (!isAuditor) {
-        setCleaningType(isOccupied ? 'concurrent' : '');
+      setCleaningType(isOccupied ? 'concurrent' : 'terminal');
     }
   }, [location, isOccupied, open, isAuditor]);
 
@@ -142,32 +141,20 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
             </div>
         ) : (
             <>
-                {!isOccupied ? (
-                <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Tipo de Higienização</Label>
-                    <RadioGroup name="type" value={cleaningType} onValueChange={(value) => setCleaningType(value as any)} required className="grid grid-cols-1 gap-2">
-                    <div className={cn(
-                        "flex items-center space-x-3 border p-4 rounded-2xl cursor-pointer transition-all duration-300",
-                        cleaningType === 'concurrent' ? "bg-sky-500/10 border-sky-500 shadow-[0_0_15px_rgba(56,189,248,0.1)]" : "bg-slate-950 border-slate-800 hover:border-slate-700"
-                    )}>
-                        <RadioGroupItem value="concurrent" id="concurrent" disabled={isPending} className="border-sky-500 text-sky-500" />
-                        <Label htmlFor="concurrent" className="flex-1 cursor-pointer font-bold text-sm">Higienização Concorrente</Label>
-                    </div>
-                    <div className={cn(
-                        "flex items-center space-x-3 border p-4 rounded-2xl cursor-pointer transition-all duration-300",
-                        cleaningType === 'terminal' ? "bg-sky-500/10 border-sky-500 shadow-[0_0_15px_rgba(56,189,248,0.1)]" : "bg-slate-950 border-slate-800 hover:border-slate-700"
-                    )}>
-                        <RadioGroupItem value="terminal" id="terminal" disabled={isPending} className="border-sky-500 text-sky-500" />
-                        <Label htmlFor="terminal" className="flex-1 cursor-pointer font-bold text-sm">Higienização Terminal</Label>
-                    </div>
-                    </RadioGroup>
-                </div>
-                ) : (
+                {isOccupied ? (
                 <Alert className="bg-orange-500/5 border-orange-500/20 rounded-2xl">
                     <Sparkles className="h-4 w-4 text-orange-400" />
                     <AlertTitle className="text-orange-400 font-black uppercase text-[10px] tracking-widest mb-1">Local Ocupado</AlertTitle>
                     <AlertDescription className="text-xs text-slate-300">
                     Apenas a limpeza <span className="text-white font-bold">concorrente</span> pode ser realizada agora.
+                    </AlertDescription>
+                </Alert>
+                ) : (
+                <Alert className="bg-sky-500/5 border-sky-500/20 rounded-2xl">
+                    <Sparkles className="h-4 w-4 text-sky-400" />
+                    <AlertTitle className="text-sky-400 font-black uppercase text-[10px] tracking-widest mb-1">Leito Disponível</AlertTitle>
+                    <AlertDescription className="text-xs text-slate-300">
+                    Apenas a higienização <span className="text-white font-bold">terminal</span> está disponível para leitos livres.
                     </AlertDescription>
                 </Alert>
                 )}

@@ -9,11 +9,12 @@ import { CleaningTimesDialog } from "./cleaning-times-dialog";
 import { ReportsDialog } from "./reports-dialog";
 import { IntegrationsDialog } from "./integrations-dialog";
 import { UserManagementDialog } from "./user-management-dialog";
-import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText, QrCode, Map, Bell } from "lucide-react";
+import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText, QrCode, Map, Bell, Printer } from "lucide-react";
 import { LogsDialog } from "./logs-dialog";
 import { AreaManagementDialog } from "./area-management-dialog";
 import { MappingManagementDialog } from "./mapping-management-dialog";
 import { WebhookSettingsDialog } from "./webhook-settings-dialog";
+import { QrPrintDialog } from "./qr-print-dialog";
 
 interface SettingsDialogProps {
   allAsgs: Asg[];
@@ -63,6 +64,12 @@ export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, clean
                Gerenciar Áreas (QR Code)
              </Button>
            </AreaManagementDialog>
+           <QrPrintDialog>
+             <Button variant="outline" className="w-full justify-start">
+               <Printer className="mr-2 h-4 w-4" />
+               Impressão de QR Codes
+             </Button>
+           </QrPrintDialog>
           <CleaningTimesDialog settings={cleaningSettings}>
             <Button variant="outline" className="w-full justify-start">
               <Clock className="mr-2 h-4 w-4" />

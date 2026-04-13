@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Basiclean",
+  title: "Hygra",
   description: "Sistema de gestão de higienização de leitos e salas.",
   icons: {
     shortcut: '/favicon.ico',
