@@ -89,8 +89,8 @@ export default function LocationCard({
               item={{
                 type: location.locationType as 'leito' | 'area',
                 displayName: `${location.name} - ${location.number}`,
-                code: location.locationType === 'area' ? location.externalCode : location.number,
-                shortCode: location.locationType === 'area' ? location.number : location.externalCode,
+                code: location.externalCode,
+                shortCode: location.number,
               }}
             >
               <button className="text-gray-300 hover:text-[#0F4C5C] transition-colors">
