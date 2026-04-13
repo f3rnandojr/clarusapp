@@ -4,19 +4,19 @@ import { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Location, LocationStatus, User, ScheduledRequest, CleaningSettings, ActiveCleaning } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
-import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles } from 'lucide-react';
+import { QrCode, Hospital, LogOut, User as UserIcon, Bell, Loader2, CheckCircle, Sparkles, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logout, acceptRequest, finishCleaning, getLocations, getPendingRequests, getLocationByCode } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Separator } from './ui/separator';
 import LocationCard from './location-card';
 import { StartCleaningDialog } from './start-cleaning-dialog';
 import { QrScannerDialog } from './qr-scanner-dialog';
+import Image from 'next/image';
 
 type SetorGroup = {
   nome: string;
@@ -24,375 +24,410 @@ type SetorGroup = {
 };
 
 const statusIndicatorClasses: Record<LocationStatus, string> = {
-    available: 'bg-emerald-500',
-    in_cleaning: 'bg-sky-400 animate-pulse',
-    occupied: 'bg-orange-500',
+  available:   'bg-emerald-500',
+  in_cleaning: 'bg-sky-400 animate-pulse',
+  occupied:    'bg-orange-400',
 };
 
 const statusTextClasses: Record<LocationStatus, string> = {
-    available: 'bg-emerald-500/10 text-emerald-400',
-    in_cleaning: 'bg-sky-500/10 text-sky-400',
-    occupied: 'bg-orange-500/10 text-orange-400',
+  available:   'bg-emerald-50 text-emerald-700',
+  in_cleaning: 'bg-sky-50 text-sky-700',
+  occupied:    'bg-orange-50 text-orange-700',
 };
 
 const statusText: Record<LocationStatus, string> = {
-    available: 'Disponível',
-    in_cleaning: 'Em Higienização',
-    occupied: 'Ocupado'
-}
+  available:   'Disponível',
+  in_cleaning: 'Higienizando',
+  occupied:    'Ocupado',
+};
 
 const profileLabels: Record<string, string> = {
-    admin: 'Admin',
-    gestor: 'Gestor',
-    usuario: 'Usuário',
-    auditor: 'Auditor',
+  admin:   'Admin',
+  gestor:  'Gestor',
+  usuario: 'Usuário',
+  auditor: 'Auditor',
 };
 
 interface UserDashboardProps {
-    locations?: Location[];
-    user: User;
-    pendingRequests?: ScheduledRequest[];
-    myActiveCleanings?: ActiveCleaning[];
-    cleaningSettings: CleaningSettings;
+  locations?: Location[];
+  user: User;
+  pendingRequests?: ScheduledRequest[];
+  myActiveCleanings?: ActiveCleaning[];
+  cleaningSettings: CleaningSettings;
 }
 
-export function UserDashboard({ 
-    locations: initialLocations = [], 
-    user, 
-    pendingRequests: initialPendingRequests = [], 
-    myActiveCleanings: initialMyActiveCleanings = [], 
-    cleaningSettings 
+export function UserDashboard({
+  locations: initialLocations = [],
+  user,
+  pendingRequests: initialPendingRequests = [],
+  myActiveCleanings: initialMyActiveCleanings = [],
+  cleaningSettings,
 }: UserDashboardProps) {
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const { toast } = useToast();
-    const [searchTerm, setSearchTerm] = useState('');
-    const [allLocations, setAllLocations] = useState<Location[]>(initialLocations);
-    const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
-    
-    const [isAccepting, startAcceptingTransition] = useTransition();
-    const [isFinalizing, startFinalizingTransition] = useTransition();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
 
-    const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [searchTerm, setSearchTerm]           = useState('');
+  const [allLocations, setAllLocations]       = useState<Location[]>(initialLocations);
+  const [pendingRequests, setPendingRequests] = useState(initialPendingRequests);
+  const [expandedSetores, setExpandedSetores] = useState<Record<string, boolean>>({});
 
-    useEffect(() => {
-        setAllLocations(initialLocations || []);
-        setPendingRequests(initialPendingRequests || []);
-    }, [initialLocations, initialPendingRequests]);
+  const [isAccepting, startAcceptingTransition]   = useTransition();
+  const [isFinalizing, startFinalizingTransition] = useTransition();
+  const [cleaningLocation, setCleaningLocation]   = useState<Location | null>(null);
+  const [isDialogOpen, setIsDialogOpen]           = useState(false);
+  const [isScannerOpen, setIsScannerOpen]         = useState(false);
 
-    const refreshData = async () => {
-        try {
-            const [refreshedLocations, refreshedRequests] = await Promise.all([
-                getLocations(),
-                getPendingRequests(),
-            ]);
-            setAllLocations(refreshedLocations || []);
-            setPendingRequests(refreshedRequests || []);
-        } catch (error) {
-            toast({ title: 'Erro', description: 'Não foi possível atualizar os dados.', variant: 'destructive' });
-        }
+  useEffect(() => {
+    setAllLocations(initialLocations || []);
+    setPendingRequests(initialPendingRequests || []);
+  }, [initialLocations, initialPendingRequests]);
+
+  const refreshData = async () => {
+    try {
+      const [locs, reqs] = await Promise.all([getLocations(), getPendingRequests()]);
+      setAllLocations(locs || []);
+      setPendingRequests(reqs || []);
+    } catch {
+      toast({ title: 'Erro', description: 'Não foi possível atualizar os dados.', variant: 'destructive' });
+    }
+  };
+
+  useEffect(() => {
+    const handleStartByCode = async (code: string) => {
+      const location = await getLocationByCode(code);
+      if (location) { setCleaningLocation(location); setIsDialogOpen(true); }
+      else toast({ title: "Local não encontrado", description: `"${code}" não encontrado.`, variant: "destructive" });
     };
-    
-    useEffect(() => {
-        const handleStartCleaningByCode = async (code: string) => {
-            const location = await getLocationByCode(code);
-            if (location) {
-                setCleaningLocation(location);
-                setIsDialogOpen(true);
-            } else {
-                toast({ title: "Local não encontrado", description: `O código de local "${code}" não foi encontrado.`, variant: "destructive" });
-            }
-        };
+    const param = searchParams.get('startCleaning');
+    if (param) { handleStartByCode(param); router.replace('/dashboard', { scroll: false }); }
+  }, [searchParams, router, toast]);
 
-        const startCleaningParam = searchParams.get('startCleaning');
-        if (startCleaningParam) {
-            handleStartCleaningByCode(startCleaningParam);
-            router.replace('/dashboard', { scroll: false });
-        }
-    }, [searchParams, router, toast]);
-    
-    const myCleaningJobs = useMemo(() => {
-      const locations = allLocations || [];
-      return locations.filter(loc => 
-        loc.status === 'in_cleaning' && 
-        loc.currentCleaning?.userId === user._id
+  const myCleaningJobs = useMemo(() =>
+    (allLocations || []).filter(loc =>
+      loc.status === 'in_cleaning' && loc.currentCleaning?.userId === user._id
+    ), [allLocations, user._id]);
+
+  const filteredLocations = useMemo(() => {
+    const locs = allLocations || [];
+    if (!searchTerm) return locs;
+    const myIds = new Set(myCleaningJobs.map(j => j._id.toString()));
+    return locs.filter(loc => {
+      if (myIds.has(loc._id.toString())) return false;
+      return (
+        loc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        loc.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (loc.setor && loc.setor.toLowerCase().includes(searchTerm.toLowerCase()))
       );
-    }, [allLocations, user._id]);
+    });
+  }, [allLocations, searchTerm, myCleaningJobs]);
 
-    const filteredLocations = useMemo(() => {
-        const locations = allLocations || [];
-        if (!searchTerm) {
-            return locations;
-        }
-        const myJobIds = new Set(myCleaningJobs.map(job => job._id.toString()));
-        return locations.filter(loc => {
-            const isMyJob = myJobIds.has(loc._id.toString());
-            if(isMyJob) return false;
+  const setoresAgrupados: SetorGroup[] = useMemo(() => {
+    const grupos: Record<string, Location[]> = filteredLocations.reduce((acc, local) => {
+      const s = local.setor || 'Sem Setor';
+      if (!acc[s]) acc[s] = [];
+      acc[s].push(local);
+      return acc;
+    }, {} as Record<string, Location[]>);
+    return Object.entries(grupos).map(([nome, locais]) => ({ nome, locais }))
+      .sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [filteredLocations]);
 
-            return loc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            loc.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (loc.setor && loc.setor.toLowerCase().includes(searchTerm.toLowerCase()))
-        });
-    }, [allLocations, searchTerm, myCleaningJobs]);
+  // default expanded = true
+  const isSetorExpanded = (nome: string) => expandedSetores[nome] !== false;
+  const toggleSetor = (nome: string) =>
+    setExpandedSetores(prev => ({ ...prev, [nome]: !isSetorExpanded(nome) }));
 
-    const setoresAgrupados: SetorGroup[] = useMemo(() => {
-        const grupos: Record<string, Location[]> = filteredLocations.reduce((acc, local) => {
-          const setor = local.setor || 'Sem Setor';
-          if (!acc[setor]) {
-            acc[setor] = [];
-          }
-          acc[setor].push(local);
-          return acc;
-        }, {} as Record<string, Location[]>);
+  const handleScanSuccess = (decodedText: string) => {
+    let code = decodedText;
+    if (code.includes('/clean/')) code = code.split('/clean/').pop()!;
+    code = code.split('?')[0];
+    toast({ title: "QR Code Lido", description: `Código: ${code}` });
+    handleStartCleaningByCode(code);
+  };
 
-        return Object.entries(grupos).map(([nome, locais]) => ({
-          nome,
-          locais,
-        })).sort((a,b) => a.nome.localeCompare(b.nome));
-    }, [filteredLocations]);
+  const handleStartCleaningByCode = async (code: string) => {
+    const location = await getLocationByCode(code);
+    if (location) { setCleaningLocation(location); setIsDialogOpen(true); }
+    else toast({ title: "Erro", description: `Local "${code}" não encontrado.`, variant: "destructive" });
+  };
 
-    const handleScanSuccess = (decodedText: string) => {
-        let code = decodedText;
-        if (decodedText.includes('/clean/')) {
-            const parts = decodedText.split('/clean/');
-            code = parts[parts.length - 1];
-        }
-        code = code.split('?')[0];
-        
-        toast({ title: "QR Code Lido", description: `Local identificado: ${code}` });
-        handleStartCleaningByCode(code);
-    };
+  const handleAcceptRequest = async (requestId: string) => {
+    startAcceptingTransition(async () => {
+      const result = await acceptRequest(requestId);
+      if (result.success) { toast({ title: 'Sucesso!', description: result.message }); await refreshData(); }
+      else toast({ title: 'Erro', description: result.error || "Não foi possível aceitar.", variant: 'destructive' });
+    });
+  };
 
-    const handleStartCleaningByCode = async (code: string) => {
-        const location = await getLocationByCode(code);
-        if (location) {
-            setCleaningLocation(location);
-            setIsDialogOpen(true);
-        } else {
-            toast({ title: "Erro", description: `Local "${code}" não encontrado.`, variant: "destructive" });
-        }
-    };
-    
-    const handleAcceptRequest = async (requestId: string) => {
-        startAcceptingTransition(async () => {
-            const result = await acceptRequest(requestId);
-            if (result.success) {
-                toast({ title: 'Sucesso!', description: result.message });
-                await refreshData();
-            } else {
-                toast({ title: 'Erro', description: result.error || "Não foi possível aceitar a solicitação.", variant: 'destructive' });
-            }
-        });
-    };
+  const handleFinalizeCleaning = async (locationId: string) => {
+    startFinalizingTransition(async () => {
+      const result = await finishCleaning(locationId);
+      if (result.success) { toast({ title: "Sucesso!", description: result.success }); await refreshData(); }
+      else toast({ title: "Erro", description: result.error || "Erro ao finalizar.", variant: "destructive" });
+    });
+  };
 
-    const handleFinalizeCleaning = async (locationId: string) => {
-        startFinalizingTransition(async () => {
-            const result = await finishCleaning(locationId);
-            if (result.success) {
-                toast({
-                    title: "Sucesso!",
-                    description: result.success,
-                });
-                await refreshData();
-            } else {
-                toast({
-                    title: "Erro",
-                    description: result.error || "Erro ao finalizar limpeza.",
-                    variant: "destructive",
-                });
-            }
-        });
-    };
+  const handleDialogClose = () => { setIsDialogOpen(false); setCleaningLocation(null); refreshData(); };
 
-    const handleDialogClose = () => {
-        setIsDialogOpen(false);
-        setCleaningLocation(null);
-        refreshData();
-    };
+  return (
+    <div className="flex flex-col min-h-screen bg-white">
 
-    return (
-        <div className="flex flex-col min-h-screen bg-background">
-             <header className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur-md shadow-sm shrink-0 sticky top-0 z-50">
-                <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-black text-sky-400 tracking-tighter">Basiclean</h1>
-                </div>
-                 <div className='flex items-center gap-4'>
-                    <div className="relative">
-                        <Button variant="outline" size="icon" className="border-slate-700 bg-slate-800/50 hover:bg-slate-700">
-                            <Bell className="h-5 w-5 text-sky-400" />
-                        </Button>
-                        {pendingRequests.length > 0 && (
-                             <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white text-[10px] font-bold justify-center items-center">
-                                    {pendingRequests.length}
-                                </span>
-                            </span>
-                        )}
-                    </div>
-                    <div className="text-right hidden sm:block">
-                        <div className="font-bold text-sm text-white flex items-center gap-2">
-                           <UserIcon className="h-4 w-4 text-sky-400/60" />
-                           {user.name}
-                        </div>
-                        <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest border-sky-500/20 text-sky-400/60 mt-0.5 px-1.5 h-4">
-                           {profileLabels[user.perfil] || 'Usuário'}
-                        </Badge>
-                    </div>
-                    <form action={logout}>
-                        <Button variant="ghost" type="submit" size="sm" className="text-muted-foreground hover:text-white hover:bg-red-500/10">
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span className="hidden sm:inline font-bold">Sair</span>
-                        </Button>
-                    </form>
-                </div>
-            </header>
+      {/* ── Navbar ─────────────────────────────────────────────── */}
+      <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#A0E9FF]/50 bg-white shadow-sm shrink-0 sticky top-0 z-50">
+        <div className="flex items-center gap-2.5">
+          <Image src="/icon.png" alt="Basiclean" width={28} height={28} className="rounded-md" />
+          <h1 className="text-lg font-black text-[#0F4C5C] tracking-tight">Basiclean</h1>
+        </div>
 
-            <main className="flex-1 p-4 md:p-8 pb-20">
-                
-                <div className="flex justify-center px-4 pb-12 pt-4">
-                    <Button 
-                        onClick={() => setIsScannerOpen(true)}
-                        className="w-full max-w-[320px] h-16 bg-sky-500 hover:bg-sky-400 text-slate-900 rounded-2xl flex items-center justify-center gap-4 shadow-[0_8px_30px_rgb(56,189,248,0.3)] transition-all active:scale-95 group overflow-hidden relative"
+        <div className="flex items-center gap-2">
+          {/* Notification bell */}
+          <div className="relative">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 border-[#A0E9FF]/50 bg-white hover:bg-[#A0E9FF]/15 text-[#0F4C5C]"
+            >
+              <Bell className="h-4 w-4" />
+            </Button>
+            {pendingRequests.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 text-white text-[10px] font-bold justify-center items-center">
+                  {pendingRequests.length}
+                </span>
+              </span>
+            )}
+          </div>
+
+          {/* User info */}
+          <div className="text-right hidden sm:block">
+            <div className="font-semibold text-sm text-[#0F4C5C] flex items-center gap-1.5">
+              <UserIcon className="h-3.5 w-3.5 text-[#0F4C5C]/40" />
+              {user.name}
+            </div>
+            <Badge
+              variant="outline"
+              className="text-[10px] font-bold uppercase tracking-widest border-[#A0E9FF]/60 text-[#0F4C5C]/50 mt-0.5 px-1.5 h-4"
+            >
+              {profileLabels[user.perfil] || 'Usuário'}
+            </Badge>
+          </div>
+
+          <form action={logout}>
+            <Button
+              variant="ghost"
+              type="submit"
+              size="sm"
+              className="h-9 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50"
+            >
+              <LogOut className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline font-bold text-xs uppercase tracking-widest">Sair</span>
+            </Button>
+          </form>
+        </div>
+      </header>
+
+      <main className="flex-1 p-4 pb-20 max-w-2xl mx-auto w-full space-y-8">
+
+        {/* ── QR Code ─────────────────────────────────────────── */}
+        <div className="pt-4">
+          <Button
+            onClick={() => setIsScannerOpen(true)}
+            className="w-full h-14 bg-[#A0E9FF] hover:bg-[#7ed8f0] text-[#0F4C5C] font-black uppercase tracking-widest rounded-2xl shadow-md active:scale-[.98] transition-all flex items-center justify-center gap-3"
+          >
+            <QrCode className="h-6 w-6" />
+            Escanear QR Code
+          </Button>
+        </div>
+
+        {/* ── My active jobs ──────────────────────────────────── */}
+        {myCleaningJobs.length > 0 && (
+          <section>
+            <h2 className="text-xs font-black uppercase tracking-[0.25em] text-[#0F4C5C] flex items-center gap-2 mb-4">
+              <Sparkles className="h-4 w-4 text-[#A0E9FF]" />
+              {user.perfil === 'auditor' ? 'Minha Auditoria' : 'Minha Atividade'}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {myCleaningJobs.map(local => (
+                <LocationCard
+                  key={local._id.toString()}
+                  location={local}
+                  cleaningSettings={cleaningSettings}
+                  onFinalizeClick={handleFinalizeCleaning}
+                  isFinalizing={isFinalizing}
+                  userProfile={user.perfil}
+                  currentUserId={user._id}
+                />
+              ))}
+            </div>
+            <Separator className="mt-8 bg-gray-100" />
+          </section>
+        )}
+
+        {/* ── Solicitações ────────────────────────────────────── */}
+        <section>
+          <h2 className="text-xs font-black uppercase tracking-[0.25em] text-[#0F4C5C] flex items-center gap-2 mb-4">
+            <Bell className="h-4 w-4 text-[#A0E9FF]" />
+            Solicitações
+            {pendingRequests.length > 0 && (
+              <span className="ml-1 bg-red-100 text-red-600 text-[10px] font-black px-2 py-0.5 rounded-full">
+                {pendingRequests.length}
+              </span>
+            )}
+          </h2>
+
+          {pendingRequests.length > 0 ? (
+            <div className="space-y-3">
+              {pendingRequests.map(req => (
+                <div
+                  key={req._id.toString()}
+                  className="bg-white rounded-xl border border-gray-100 border-l-4 border-l-[#A0E9FF] shadow-sm p-4"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <span className="font-bold text-[#0F4C5C] text-base leading-tight">{req.locationName}</span>
+                    <Badge
+                      variant="outline"
+                      className="bg-[#A0E9FF]/15 border-[#A0E9FF]/50 text-[#0F4C5C] text-[9px] font-bold uppercase tracking-widest whitespace-nowrap flex-shrink-0"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <QrCode className="h-7 w-7 transition-transform group-hover:rotate-12" />
-                        <span className="font-black tracking-widest uppercase text-sm">Escanear QR Code</span>
-                    </Button>
-                </div>
-
-                {myCleaningJobs.length > 0 && (
-                  <div className="mb-12">
-                    <h2 className="font-black text-xs uppercase tracking-[0.3em] px-4 mb-6 text-sky-400 flex items-center gap-3">
-                        <Sparkles className="h-4 w-4" /> {user.perfil === 'auditor' ? 'Minha Auditoria' : 'Minha Atividade'}
-                    </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 px-4">
-                      {myCleaningJobs.map(local => (
-                        <LocationCard 
-                          key={local._id.toString()} 
-                          location={local} 
-                          cleaningSettings={cleaningSettings}
-                          onFinalizeClick={handleFinalizeCleaning}
-                          isFinalizing={isFinalizing}
-                          userProfile={user.perfil}
-                          currentUserId={user._id}
-                        />
-                      ))}
-                    </div>
-                    <Separator className="my-10 bg-slate-800/50" />
+                      {req.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente'}
+                    </Badge>
                   </div>
-                )}
+                  <p className="text-sm text-gray-500 flex items-center gap-1.5 mb-4">
+                    <UserIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                    {req.requestedBy.userName}
+                    <span className="text-xs text-gray-400">
+                      · há {formatDistanceToNowStrict(new Date(req.requestedAt), { locale: ptBR, addSuffix: false })}
+                    </span>
+                  </p>
+                  <Button
+                    className="w-full h-12 bg-[#A0E9FF] hover:bg-[#7ed8f0] text-[#0F4C5C] font-black uppercase tracking-widest rounded-xl shadow-sm active:scale-[.98] transition-all"
+                    onClick={() => handleAcceptRequest(req._id.toString())}
+                    disabled={isAccepting}
+                  >
+                    {isAccepting
+                      ? <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      : <CheckCircle className="mr-2 h-5 w-5" />}
+                    Aceitar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-gray-300 font-bold uppercase tracking-widest text-xs py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              Sem solicitações
+            </div>
+          )}
+        </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-                    <div className='flex flex-col gap-6'>
-                        <h2 className='font-black text-xs uppercase tracking-[0.3em] px-4 flex items-center gap-3 text-muted-foreground'>
-                            <Bell className="h-4 w-4" />
-                            Solicitações
-                        </h2>
-                         <div className="space-y-4 px-2">
-                             {pendingRequests.length > 0 ? (
-                                pendingRequests.map(req => (
-                                    <Card key={req._id.toString()} className="bg-slate-800/30 border-slate-800 shadow-md hover:border-sky-500/30 transition-colors">
-                                        <CardHeader className="p-5">
-                                            <CardTitle className="text-lg flex justify-between items-start">
-                                                <span className="font-black text-white tracking-tight">{req.locationName}</span>
-                                                 <Badge variant="outline" className="border-sky-500/20 text-sky-400 bg-sky-500/5 text-[10px] font-black uppercase tracking-widest h-5 px-2">
-                                                    {req.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente'}
-                                                </Badge>
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="p-5 pt-0 text-sm text-muted-foreground flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-                                            <div>
-                                                <p className="flex items-center gap-2 font-medium"><UserIcon className="h-3.5 w-3.5 text-sky-400/60" /> {req.requestedBy.userName}</p>
-                                                <p className="text-xs mt-1.5 font-bold text-sky-400/40 uppercase tracking-widest">Há {formatDistanceToNowStrict(new Date(req.requestedAt), { locale: ptBR, addSuffix: false })}</p>
-                                            </div>
-                                             <Button 
-                                                className="w-full sm:w-auto bg-slate-100 hover:bg-white text-slate-900 font-black uppercase tracking-widest text-xs h-10 rounded-xl transition-all shadow-lg active:scale-95"
-                                                size="sm" 
-                                                onClick={() => handleAcceptRequest(req._id.toString())}
-                                                disabled={isAccepting}
-                                            >
-                                                {isAccepting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4" />}
-                                                Aceitar
-                                            </Button>
-                                        </CardContent>
-                                    </Card>
-                                ))
-                             ) : (
-                                <div className="text-center text-muted-foreground/40 font-bold uppercase tracking-widest text-xs py-16 bg-slate-800/10 rounded-2xl border border-dashed border-slate-800">Sem solicitações</div>
-                             )}
+        {/* ── Status Geral ────────────────────────────────────── */}
+        <section>
+          <h2 className="text-xs font-black uppercase tracking-[0.25em] text-[#0F4C5C] flex items-center gap-2 mb-4">
+            <Hospital className="h-4 w-4 text-[#A0E9FF]" />
+            Status Geral
+          </h2>
+
+          <div className="mb-3">
+            <Input
+              placeholder="Localizar setor ou leito..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="bg-white border-[#A0E9FF]/60 h-11 rounded-xl focus:ring-[#A0E9FF]/30 text-[#0F4C5C] placeholder:text-gray-400"
+            />
+          </div>
+
+          {setoresAgrupados.length > 0 ? (
+            <div className="space-y-3">
+              {setoresAgrupados.map((setor) => {
+                const expanded = isSetorExpanded(setor.nome);
+                return (
+                  <div
+                    key={setor.nome}
+                    className="border border-[#A0E9FF]/40 rounded-xl bg-white shadow-sm overflow-hidden"
+                  >
+                    {/* Sector header */}
+                    <div
+                      className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-[#A0E9FF]/10 transition-colors"
+                      onClick={() => toggleSetor(setor.nome)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="bg-[#A0E9FF]/20 p-1.5 rounded-lg flex-shrink-0">
+                          <Hospital className="h-3.5 w-3.5 text-[#0F4C5C]" />
                         </div>
-                    </div>
-
-                     <div className='flex flex-col gap-6'>
-                        <h2 className='font-black text-xs uppercase tracking-[0.3em] px-4 flex items-center gap-3 text-muted-foreground'>
-                            <Hospital className="h-4 w-4" />
-                            Status Geral
-                        </h2>
-                          <div className="px-4">
-                              <Input 
-                                  placeholder="Localizar setor ou leito..."
-                                  value={searchTerm}
-                                  onChange={(e) => setSearchTerm(e.target.value)}
-                                  className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-600 h-12 rounded-xl focus:ring-sky-500/20"
-                              />
-                          </div>
-                          <div className="space-y-6 px-2">
-                          
-                          {setoresAgrupados.length > 0 ? setoresAgrupados.map((setor) => (
-                              <div key={setor.nome} className="border border-slate-800 bg-slate-900/30 rounded-2xl overflow-hidden shadow-sm">
-                                  <div className="bg-slate-800/40 p-4 border-b border-slate-800">
-                                      <div className="flex items-center gap-3">
-                                          <Hospital className="h-4 w-4 text-sky-400" />
-                                          <h3 className="font-black text-sm text-white uppercase tracking-wider">{setor.nome}</h3>
-                                      </div>
-                                  </div>
-                                  <div className="divide-y divide-slate-800/50">
-                                      {setor.locais.map((local) => (
-                                          <div
-                                          key={local._id.toString()}
-                                          className="flex items-center gap-4 p-4 hover:bg-slate-800/20 transition-colors"
-                                          >
-                                          <div className={cn('w-2 h-2 rounded-full flex-shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.5)]', statusIndicatorClasses[local.status])} />
-                                          
-                                          <div className="flex-1">
-                                              <div className="flex justify-between items-center gap-2">
-                                              <span className="font-bold text-sm text-slate-200">{local.name} - {local.number}</span>
-                                              <span className={cn('text-[9px] px-2 py-0.5 rounded-full font-black whitespace-nowrap uppercase tracking-widest', statusTextClasses[local.status])}>
-                                                  {statusText[local.status]}
-                                              </span>
-                                              </div>
-                                          </div>
-                                          </div>
-                                      ))}
-                                  </div>
-                              </div>
-                          )) : (
-                              <div className="text-center text-muted-foreground/40 font-bold uppercase tracking-widest text-xs py-16">Nenhum resultado</div>
+                        <span className="font-bold text-[14px] text-[#0F4C5C] truncate">{setor.nome}</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-[10px] font-bold text-[#0F4C5C]/50 uppercase tracking-widest">
+                          {setor.locais.length} unid
+                        </span>
+                        <ChevronDown
+                          className={cn(
+                            'h-4 w-4 text-gray-400 transform transition-transform duration-300',
+                            expanded && 'rotate-180 text-[#0F4C5C]'
                           )}
+                        />
                       </div>
                     </div>
-                </div>
 
-            </main>
-            
-            <QrScannerDialog 
-                open={isScannerOpen} 
-                onOpenChange={setIsScannerOpen} 
-                onScanSuccess={handleScanSuccess} 
-            />
+                    {/* Location rows */}
+                    {expanded && (
+                      <div className="border-t border-[#A0E9FF]/20 divide-y divide-gray-50">
+                        {setor.locais.map((local) => (
+                          <div
+                            key={local._id.toString()}
+                            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors"
+                          >
+                            <div
+                              className={cn(
+                                'w-2 h-2 rounded-full flex-shrink-0',
+                                statusIndicatorClasses[local.status]
+                              )}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="font-semibold text-sm text-gray-800">
+                                {local.name} — {local.number}
+                              </span>
+                            </div>
+                            <span
+                              className={cn(
+                                'text-[9px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap uppercase tracking-widest',
+                                statusTextClasses[local.status]
+                              )}
+                            >
+                              {statusText[local.status]}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center text-gray-300 font-bold uppercase tracking-widest text-xs py-10">
+              Nenhum resultado
+            </div>
+          )}
+        </section>
 
-            {cleaningLocation && (
-                <StartCleaningDialog
-                    location={cleaningLocation}
-                    userProfile={user.perfil}
-                    open={isDialogOpen}
-                    onOpenChange={setIsDialogOpen}
-                    onCleaningStarted={handleDialogClose}
-                />
-            )}
-        </div>
-    );
+      </main>
+
+      <QrScannerDialog
+        open={isScannerOpen}
+        onOpenChange={setIsScannerOpen}
+        onScanSuccess={handleScanSuccess}
+      />
+
+      {cleaningLocation && (
+        <StartCleaningDialog
+          location={cleaningLocation}
+          userProfile={user.perfil}
+          open={isDialogOpen}
+          onOpenChange={setIsDialogOpen}
+          onCleaningStarted={handleDialogClose}
+        />
+      )}
+    </div>
+  );
 }
