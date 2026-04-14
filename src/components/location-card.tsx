@@ -3,7 +3,12 @@
 
 import type { Location, CleaningSettings, LocationStatus, UserProfile } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
-import { Bed, Building, Clock, Sparkles, User, QrCode, Loader2, AlertTriangle, ClipboardCheck, Bell } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Bed, Building, Clock, User, QrCode, Loader2, AlertTriangle, ClipboardCheck, Bell, Check } from "lucide-react";
 import { ElapsedTime } from "./elapsed-time";
 import { StartCleaningDialog } from "./start-cleaning-dialog";
 import { ProgressBar } from "./progress-bar";
@@ -45,7 +50,8 @@ export default function LocationCard({
   userProfile = 'admin',
   currentUserId,
 }: LocationCardProps) {
-  const [lastCleaning, setLastCleaning] = useState<any>(null);
+  const [lastCleaning, setLastCleaning]     = useState<any>(null);
+  const [confirmOpen, setConfirmOpen]       = useState(false);
 
   useEffect(() => {
     if (userProfile === 'auditor' && location.status === 'in_cleaning') {
@@ -64,6 +70,7 @@ export default function LocationCard({
     : 30;
 
   return (
+    <>
     <div
       className={cn(
         "bg-white rounded-xl border border-gray-100 border-l-4 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col",
@@ -135,21 +142,26 @@ export default function LocationCard({
       {/* Footer */}
       <div className="px-3 pb-3 pt-2 mt-auto">
         {location.status === 'in_cleaning' ? (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
+            {/* Relatar Problema — bigger and more visible */}
             <NonConformityDialog
               locationId={location._id.toString()}
               locationName={`${location.name} - ${location.number}`}
             >
-              <button className="w-full text-[10px] text-orange-400 hover:text-orange-500 flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider transition-colors py-0.5">
-                <AlertTriangle className="h-3 w-3" /> Relatar Problema
-              </button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-8 text-xs font-bold border-orange-200 text-orange-500 hover:bg-orange-50 hover:border-orange-300 flex items-center justify-center gap-1.5"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" /> Relatar Problema
+              </Button>
             </NonConformityDialog>
 
             {userProfile === 'auditor' ? (
               <AuditChecklistDialog location={location} lastCleaning={lastCleaning}>
                 <Button
                   size="sm"
-                  className="w-full h-8 text-xs font-bold bg-[#A0E9FF] hover:bg-[#7ed8f0] text-[#0F4C5C] border-none shadow-sm"
+                  className="w-full h-9 text-xs font-bold bg-[#A0E9FF] hover:bg-[#7ed8f0] text-[#0F4C5C] border-none shadow-sm"
                 >
                   <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" /> Verificar
                 </Button>
@@ -158,16 +170,16 @@ export default function LocationCard({
               onFinalizeClick && (
                 <Button
                   size="sm"
-                  className="w-full h-8 text-xs font-bold bg-red-500 hover:bg-red-600 text-white border-none shadow-sm"
-                  onClick={() => onFinalizeClick(location._id.toString())}
+                  className="w-full h-9 text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white border-none shadow-sm"
+                  onClick={() => setConfirmOpen(true)}
                   disabled={isFinalizing}
                 >
                   {isFinalizing ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    <Check className="mr-1.5 h-3.5 w-3.5" />
                   )}
-                  Finalizar Limpeza
+                  Finalizar
                 </Button>
               )
             )}
@@ -196,5 +208,27 @@ export default function LocationCard({
         ) : null}
       </div>
     </div>
+
+    {/* Confirmation dialog for Finalizar */}
+    <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Finalizar limpeza?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Confirma a finalização da limpeza de <strong>{location.name} — {location.number}</strong>?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+            onClick={() => onFinalizeClick && onFinalizeClick(location._id.toString())}
+          >
+            <Check className="mr-1.5 h-4 w-4" /> Confirmar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

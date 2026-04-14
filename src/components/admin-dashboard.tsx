@@ -91,6 +91,13 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
     }
   };
 
+  // Polling automático a cada 5 segundos
+  useEffect(() => {
+    const interval = setInterval(loadDashboardData, 5000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const handleStartCleaningByCode = async (code: string) => {
         const location = await getLocationByCode(code);

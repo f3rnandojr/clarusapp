@@ -1,18 +1,123 @@
-
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { createAuditRecord } from "@/lib/actions";
+import { createAuditRecord, saveAuditDraft, getAuditDraft } from "@/lib/actions";
 import type { Location, CleaningRecord } from "@/lib/schemas";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogTrigger, DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardCheck, Loader2, ShieldCheck } from "lucide-react";
+import { ClipboardCheck, Loader2, ShieldCheck, ChevronDown, CheckCircle2, Circle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+
+// ─── Estrutura dos tópicos ───────────────────────────────────────────────────
+
+type Answer = "conforme" | "não_conforme" | "n/a";
+
+type Item = { id: string; label: string };
+type Topic = {
+  id: string;
+  titulo: string;
+  itens: Item[];
+  isConclusao?: boolean;
+};
+
+const TOPICS: Topic[] = [
+  {
+    id: "t1",
+    titulo: "1 · Verificação Geral do Ambiente",
+    itens: [
+      { id: "amb_limpo",        label: "Ambiente limpo e organizado" },
+      { id: "piso_limpo",       label: "Piso limpo e seco" },
+      { id: "paredes",          label: "Paredes, portas e rodapés higienizados" },
+      { id: "iluminacao",       label: "Iluminação adequada" },
+      { id: "ventilacao",       label: "Ventilação / Ar condicionado" },
+      { id: "janelas",          label: "Janelas limpas" },
+      { id: "barreira_janelas", label: "Barreira física nas janelas" },
+      { id: "odores",           label: "Ausência de odores" },
+    ],
+  },
+  {
+    id: "t2",
+    titulo: "2 · Leito / Mobília",
+    itens: [
+      { id: "cama_hosp",      label: "Cama hospitalar" },
+      { id: "colchao",        label: "Colchão / Travesseiro" },
+      { id: "grades",         label: "Grades da cama" },
+      { id: "mesa_ref",       label: "Mesa de refeição" },
+      { id: "criado",         label: "Criado-mudo" },
+      { id: "campainha",      label: "Campainha" },
+      { id: "lixeira_leito",  label: "Lixeira" },
+      { id: "persiana",       label: "Persiana" },
+      { id: "regua_gases",    label: "Régua de gases" },
+      { id: "escada",         label: "Escada beira leito" },
+      { id: "quadros",        label: "Quadros decorativos" },
+      { id: "disp_papel",     label: "Dispenser de papel toalha" },
+      { id: "disp_alcool",    label: "Dispenser de álcool / sabonete" },
+    ],
+  },
+  {
+    id: "t3",
+    titulo: "3 · Enxoval Hospitalar",
+    itens: [
+      { id: "lencol",      label: "Lençol de cama" },
+      { id: "fronha",      label: "Fronha" },
+      { id: "cobertor",    label: "Cobertor embalado" },
+      { id: "toalha",      label: "Toalha embalada" },
+      { id: "toalha_piso", label: "Toalha de piso" },
+    ],
+  },
+  {
+    id: "t4",
+    titulo: "4 · Banheiro",
+    itens: [
+      { id: "vaso",        label: "Vaso sanitário" },
+      { id: "pia",         label: "Pia / Torneira / Ralo" },
+      { id: "chuveiro",    label: "Chuveiro" },
+      { id: "espelho",     label: "Espelho" },
+      { id: "barras",      label: "Barras de apoio" },
+      { id: "lixeira_ban", label: "Lixeira" },
+      { id: "papel_ban",   label: "Dispenser papel toalha" },
+      { id: "sabonete_ban",label: "Dispenser sabonete" },
+      { id: "paredes_ban", label: "Paredes / Rejuntes" },
+      { id: "piso_ban",    label: "Piso" },
+      { id: "ralos",       label: "Ralos" },
+    ],
+  },
+  {
+    id: "t5",
+    titulo: "5 · Segurança do Paciente",
+    itens: [
+      { id: "riscos",    label: "Ambiente livre de riscos físicos" },
+      { id: "tomadas",   label: "Tomadas / Interruptores íntegros" },
+      { id: "pragas",    label: "Controle de pragas" },
+      { id: "mobiliario",label: "Mobiliário sem avaria" },
+    ],
+  },
+  {
+    id: "t6",
+    titulo: "6 · Conclusão",
+    isConclusao: true,
+    itens: [
+      { id: "conclusao", label: "Quarto / Leito APTO para ocupação" },
+    ],
+  },
+];
+
+// All required item IDs (excluding conclusao which is handled separately)
+const ALL_ITEM_IDS = TOPICS.flatMap(t => t.itens.map(i => i.id));
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function isTopicComplete(topic: Topic, answers: Record<string, Answer>): boolean {
+  return topic.itens.every(item => !!answers[item.id]);
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 interface AuditChecklistDialogProps {
   location: Location;
@@ -20,171 +125,298 @@ interface AuditChecklistDialogProps {
   children: React.ReactNode;
 }
 
-const CHECKLIST_ITEMS = [
-  { id: "ambiente", label: "Higiene do Ambiente Geral" },
-  { id: "piso", label: "Conservação e Limpeza do Piso" },
-  { id: "paredes", label: "Limpeza das Paredes e Cantos" },
-  { id: "mobiliario", label: "Desinfecção do Mobiliário" },
-  { id: "banheiro", label: "Higiene Completa do Banheiro" },
-  { id: "vidros", label: "Transparência de Vidros e Janelas" },
-  { id: "equipamentos", label: "Limpeza de Equipamentos" },
-  { id: "residuos", label: "Gestão de Resíduos (Lixeiras)" },
-];
-
-type Answer = "conforme" | "não_conforme" | "n/a";
-
 export function AuditChecklistDialog({ location, lastCleaning, children }: AuditChecklistDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [answers, setAnswers] = useState<Record<string, Answer>>({});
+  const [open, setOpen]                 = useState(false);
+  const [answers, setAnswers]           = useState<Record<string, Answer>>({});
   const [observations, setObservations] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [expanded, setExpanded]         = useState<Record<string, boolean>>({ t1: true });
+  const [isPending, startTransition]    = useTransition();
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const { toast } = useToast();
-  const router = useRouter();
+  const router    = useRouter();
 
-  // Validação rigorosa: todos os 8 itens devem estar no objeto de respostas
-  const isChecklistComplete = CHECKLIST_ITEMS.every(item => 
-    answers[item.id] !== undefined && answers[item.id] !== null && answers[item.id] !== ""
-  );
+  const locationId = location._id.toString();
 
-  const handleAnswerChange = (itemId: string, value: Answer) => {
-    setAnswers(prev => ({ ...prev, [itemId]: value }));
-  };
+  // Load draft on open
+  useEffect(() => {
+    if (!open) return;
+    getAuditDraft(locationId).then(draft => {
+      if (draft && Object.keys(draft).length > 0) {
+        setAnswers(draft as Record<string, Answer>);
+        toast({ title: "Rascunho carregado", description: "Preenchimento anterior restaurado." });
+      }
+    });
+  }, [open, locationId]);
+
+  // Auto-save draft whenever a topic is fully completed
+  const handleAnswerChange = useCallback(async (itemId: string, value: Answer) => {
+    const next = { ...answers, [itemId]: value };
+    setAnswers(next);
+
+    // Find which topic this item belongs to
+    const topic = TOPICS.find(t => t.itens.some(i => i.id === itemId));
+    if (topic && isTopicComplete(topic, next)) {
+      setIsSavingDraft(true);
+      await saveAuditDraft(locationId, next);
+      setIsSavingDraft(false);
+      // Auto-expand next topic
+      const idx = TOPICS.findIndex(t => t.id === topic.id);
+      if (idx < TOPICS.length - 1) {
+        const nextTopic = TOPICS[idx + 1];
+        setExpanded(prev => ({ ...prev, [nextTopic.id]: true }));
+      }
+    }
+  }, [answers, locationId]);
+
+  const completedTopics = TOPICS.filter(t => isTopicComplete(t, answers)).length;
+  const allComplete     = completedTopics === TOPICS.length;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!isChecklistComplete) {
-        toast({ title: "Atenção", description: "Por favor, responda todos os itens do checklist.", variant: "destructive" });
-        return;
+    if (!allComplete) {
+      toast({ title: "Atenção", description: "Preencha todos os tópicos antes de finalizar.", variant: "destructive" });
+      return;
     }
-
     startTransition(async () => {
       try {
-        // Garantir que os IDs sejam strings
-        const locId = typeof location._id === 'string' ? location._id : location._id?.toString();
-        const lastCleanId = lastCleaning ? (typeof lastCleaning._id === 'string' ? lastCleaning._id : lastCleaning._id?.toString()) : null;
-
-        const result = await createAuditRecord({
+        const locId    = typeof location._id === 'string' ? location._id : location._id?.toString();
+        const cleanId  = lastCleaning ? (typeof lastCleaning._id === 'string' ? lastCleaning._id : lastCleaning._id?.toString()) : null;
+        const result   = await createAuditRecord({
           locationId: locId,
           locationName: `${location.name} - ${location.number}`,
-          lastCleaningId: lastCleanId || null,
+          lastCleaningId: cleanId || null,
           checklistData: answers as any,
-          observations: observations,
+          observations,
         });
-
         if (result.success) {
-          // 1. Feedback Visual de Sucesso
-          toast({ 
-            title: "Auditoria finalizada com sucesso!", 
-            description: "A conferência foi registrada e o local liberado.",
-          });
-          
-          // 2. Reset de Estado Local (Limpeza de Cache)
+          toast({ title: "Auditoria finalizada!", description: "Conferência registrada e local liberado." });
           setAnswers({});
           setObservations("");
-          
-          // 3. Fechamento Imediato do Modal
           setOpen(false);
-          
-          // 4. Redirecionamento e Refresh para atualizar a Home (Home = Dashboard)
           router.push('/dashboard');
           router.refresh();
         } else {
-          toast({ 
-            title: "Falha ao Salvar", 
-            description: result.error || "Erro interno no servidor.", 
-            variant: "destructive" 
-          });
+          toast({ title: "Falha ao Salvar", description: result.error || "Erro interno.", variant: "destructive" });
         }
-      } catch (error: any) {
-        console.error("Erro no envio do checklist:", error);
-        toast({ 
-          title: "Erro Inesperado", 
-          description: "Não foi possível processar a gravação agora. Tente novamente.", 
-          variant: "destructive" 
-        });
+      } catch (err: any) {
+        toast({ title: "Erro Inesperado", description: "Tente novamente.", variant: "destructive" });
       }
     });
   };
 
-  const onOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
-    // Nota: O reset de estado ocorre apenas no sucesso para não perder o preenchimento caso o auditor feche sem querer.
-  }
+  const toggleTopic = (id: string) =>
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+
+  // ─── Answer button renderer ────────────────────────────────────────────────
+  const AnswerButtons = ({ itemId }: { itemId: string }) => {
+    const val = answers[itemId];
+    return (
+      <div className="flex gap-1.5 flex-shrink-0">
+        {(["conforme", "não_conforme", "n/a"] as const).map(opt => {
+          const active = val === opt;
+          const colors: Record<string, string> = {
+            conforme:      active ? "bg-emerald-500 text-white border-emerald-500" : "border-gray-200 text-gray-400 hover:border-emerald-400 hover:text-emerald-500",
+            "não_conforme": active ? "bg-red-500 text-white border-red-500"        : "border-gray-200 text-gray-400 hover:border-red-400 hover:text-red-500",
+            "n/a":         active ? "bg-gray-400 text-white border-gray-400"      : "border-gray-200 text-gray-400 hover:border-gray-400",
+          };
+          const labels: Record<string, string> = {
+            conforme: "C", "não_conforme": "NC", "n/a": "N/A",
+          };
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => handleAnswerChange(itemId, opt)}
+              className={cn(
+                "h-7 px-2 rounded-lg border text-[10px] font-black uppercase tracking-wide transition-all",
+                colors[opt]
+              )}
+            >
+              {labels[opt]}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] flex flex-col overflow-hidden bg-slate-900 border-slate-800 text-white p-0">
-        <DialogHeader className="p-6 pb-2 shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-xl font-black tracking-tight text-sky-400">
-            <ClipboardCheck className="h-6 w-6" />
-            Checklist de Validação
+      <DialogContent className="max-w-xl w-[95vw] max-h-[92vh] flex flex-col overflow-hidden bg-white border-[#A0E9FF]/40 p-0">
+
+        {/* Header */}
+        <DialogHeader className="px-5 pt-5 pb-3 shrink-0 border-b border-gray-100">
+          <DialogTitle className="flex items-center gap-2 text-lg font-black text-[#0F4C5C]">
+            <ClipboardCheck className="h-5 w-5 text-[#A0E9FF]" />
+            Checklist de Auditoria
           </DialogTitle>
-          <DialogDescription className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">
-            Local: {location.name} - {location.number}
+          <DialogDescription className="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+            {location.name} — {location.number}
           </DialogDescription>
         </DialogHeader>
 
-        <form 
-          id="audit-form" 
-          onSubmit={handleSubmit} 
-          className="flex-1 overflow-y-auto px-6 py-2 space-y-6 scroll-container"
-        >
-          <div className="space-y-4">
-            {CHECKLIST_ITEMS.map((item) => (
-              <div key={item.id} className="p-4 rounded-2xl bg-slate-800/40 border border-slate-800 space-y-3">
-                <Label className="text-sm font-bold text-slate-200">{item.label}</Label>
-                <RadioGroup 
-                  value={answers[item.id] || ""}
-                  onValueChange={(val) => handleAnswerChange(item.id, val as Answer)}
-                  className="flex flex-wrap gap-2 sm:gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="conforme" id={`${item.id}-c`} className="border-emerald-500 text-emerald-500" />
-                    <Label htmlFor={`${item.id}-c`} className="text-xs cursor-pointer text-emerald-400">Conforme</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="não_conforme" id={`${item.id}-nc`} className="border-red-500 text-red-500" />
-                    <Label htmlFor={`${item.id}-nc`} className="text-xs cursor-pointer text-red-400">Não Conforme</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="n/a" id={`${item.id}-na`} className="border-slate-500 text-slate-500" />
-                    <Label htmlFor={`${item.id}-na`} className="text-xs cursor-pointer text-slate-500">N/A</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            ))}
+        {/* Progress bar */}
+        <div className="px-5 py-3 shrink-0 bg-gray-50 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] font-black uppercase tracking-widest text-[#0F4C5C]/60">
+              Progresso
+            </span>
+            <div className="flex items-center gap-2">
+              {isSavingDraft && (
+                <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" /> salvando…
+                </span>
+              )}
+              <span className="text-xs font-black text-[#0F4C5C]">
+                {completedTopics}/{TOPICS.length} tópicos
+              </span>
+            </div>
+          </div>
+          <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-[#A0E9FF] transition-all duration-500"
+              style={{ width: `${(completedTopics / TOPICS.length) * 100}%` }}
+            />
+          </div>
+          <div className="flex gap-1 mt-2">
+            {TOPICS.map(t => {
+              const done = isTopicComplete(t, answers);
+              return (
+                <div
+                  key={t.id}
+                  className={cn(
+                    "flex-1 h-1 rounded-full transition-colors duration-300",
+                    done ? "bg-emerald-400" : "bg-gray-200"
+                  )}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Topics list */}
+        <form id="audit-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="divide-y divide-gray-100">
+            {TOPICS.map(topic => {
+              const done     = isTopicComplete(topic, answers);
+              const isOpen   = expanded[topic.id] ?? false;
+              const ncCount  = topic.itens.filter(i => answers[i.id] === 'não_conforme').length;
+
+              return (
+                <div key={topic.id} className="bg-white">
+                  {/* Topic header */}
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors"
+                    onClick={() => toggleTopic(topic.id)}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      {done
+                        ? <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500 flex-shrink-0 h-5 w-5" />
+                        : <Circle className="h-5 w-5 text-gray-300 flex-shrink-0" />
+                      }
+                      <span className={cn(
+                        "font-bold text-sm truncate",
+                        done ? "text-gray-700" : "text-[#0F4C5C]"
+                      )}>
+                        {topic.titulo}
+                      </span>
+                      {ncCount > 0 && (
+                        <span className="ml-1 text-[10px] bg-red-100 text-red-600 font-black px-1.5 py-0.5 rounded-full flex-shrink-0">
+                          {ncCount} NC
+                        </span>
+                      )}
+                    </div>
+                    <ChevronDown className={cn(
+                      "h-4 w-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ml-2",
+                      isOpen && "rotate-180"
+                    )} />
+                  </button>
+
+                  {/* Topic items */}
+                  {isOpen && (
+                    <div className="px-5 pb-4 space-y-2 bg-gray-50/60">
+                      {topic.isConclusao ? (
+                        /* Conclusão — APTO / NÃO APTO */
+                        <div className="pt-3 grid grid-cols-2 gap-3">
+                          {[
+                            { val: 'conforme' as Answer,       label: 'APTO',     cls: 'bg-emerald-500 hover:bg-emerald-600 text-white', sel: 'ring-2 ring-emerald-400 ring-offset-1' },
+                            { val: 'não_conforme' as Answer,   label: 'NÃO APTO', cls: 'bg-red-500 hover:bg-red-600 text-white',         sel: 'ring-2 ring-red-400 ring-offset-1'     },
+                          ].map(({ val, label, cls, sel }) => (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => handleAnswerChange('conclusao', val)}
+                              className={cn(
+                                "h-14 rounded-2xl font-black text-sm uppercase tracking-widest transition-all active:scale-95",
+                                cls,
+                                answers['conclusao'] === val ? sel : 'opacity-70'
+                              )}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        topic.itens.map(item => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between gap-2 bg-white rounded-xl px-3 py-2.5 border border-gray-100 shadow-sm"
+                          >
+                            <span className="text-xs font-medium text-gray-700 leading-tight flex-1 min-w-0 pr-2">
+                              {item.label}
+                            </span>
+                            <AnswerButtons itemId={item.id} />
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
-          <div className="space-y-2 pb-4">
-            <Label htmlFor="obs" className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Observações Adicionais</Label>
-            <Textarea 
-              id="obs"
-              placeholder="Descreva observações relevantes encontradas na auditoria..."
-              className="bg-slate-950 border-slate-800 min-h-[100px] rounded-xl focus:ring-sky-500/20 text-white"
+          {/* Observations */}
+          <div className="px-5 py-4 border-t border-gray-100">
+            <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5 block">
+              Observações Adicionais
+            </label>
+            <Textarea
+              placeholder="Descreva observações relevantes encontradas na auditoria…"
+              className="min-h-[80px] rounded-xl border-[#A0E9FF]/50 focus-visible:ring-[#A0E9FF]/40 text-[#0F4C5C] text-sm resize-none"
               value={observations}
-              onChange={(e) => setObservations(e.target.value)}
+              onChange={e => setObservations(e.target.value)}
             />
           </div>
         </form>
 
-        <DialogFooter className="p-6 pt-2 shrink-0 bg-slate-950/50 border-t border-slate-800">
-          <Button 
-            type="submit" 
+        {/* Footer */}
+        <div className="px-5 pb-5 pt-3 shrink-0 border-t border-gray-100 bg-white">
+          {!allComplete && (
+            <p className="text-[11px] text-center text-gray-400 mb-2">
+              {TOPICS.length - completedTopics} tópico(s) pendente(s)
+            </p>
+          )}
+          <Button
+            type="submit"
             form="audit-form"
+            disabled={!allComplete || isPending}
             className={cn(
-              "w-full h-14 font-black uppercase tracking-widest text-xs rounded-2xl transition-all shadow-lg",
-              isChecklistComplete 
-                ? "bg-sky-500 hover:bg-sky-400 text-slate-900 shadow-sky-500/20 opacity-100" 
-                : "bg-slate-800 text-slate-500 cursor-not-allowed opacity-50"
+              "w-full h-13 font-black uppercase tracking-widest text-xs rounded-2xl transition-all h-12",
+              allComplete
+                ? "bg-[#0F4C5C] hover:bg-[#0a3844] text-white shadow-lg"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
             )}
-            disabled={!isChecklistComplete || isPending}
           >
-            {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShieldCheck className="mr-2 h-5 w-5" />}
-            Finalizar Atividade
+            {isPending
+              ? <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              : <ShieldCheck className="mr-2 h-5 w-5" />
+            }
+            Finalizar Auditoria
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

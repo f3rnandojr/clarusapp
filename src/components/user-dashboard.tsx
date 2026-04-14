@@ -127,15 +127,16 @@ export function UserDashboard({
         <div className="w-full max-w-xs space-y-4">
           <button
             onClick={() => setIsScannerOpen(true)}
-            className="w-full h-52 bg-[#A0E9FF] hover:bg-[#8de0f7] active:scale-[.97] transition-all rounded-3xl shadow-2xl shadow-[#A0E9FF]/50 flex flex-col items-center justify-center gap-4 group"
+            style={{ boxShadow: '0 8px 32px 0 rgba(160,233,255,0.55), 0 2px 8px 0 rgba(15,76,92,0.10)' }}
+            className="w-full h-52 bg-[#A0E9FF] hover:bg-[#8de0f7] active:scale-[.97] transition-all rounded-3xl flex flex-col items-center justify-center gap-4 group"
           >
             <div className="w-24 h-24 rounded-2xl bg-white/35 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
               <QrCode className="h-12 w-12 text-[#0F4C5C]" strokeWidth={1.5} />
             </div>
-            <span className="text-[#0F4C5C] font-black text-base tracking-widest uppercase">Escanear QR Code</span>
+            <span className="text-[#0F4C5C] font-black text-base tracking-widest uppercase">QR Code</span>
           </button>
           <p className="text-center text-xs text-gray-400 font-medium">
-            Aponte a câmera para o QR Code do leito ou sala
+            Aponte a câmera para o código do leito ou sala
           </p>
         </div>
 

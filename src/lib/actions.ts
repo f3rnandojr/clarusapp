@@ -536,8 +536,11 @@ export async function createAuditRecord(data: {
             return { success: false, error: "Dados da auditoria inconsistentes. Verifique o preenchimento." };
         }
 
-        await db.collection('audit_records').insertOne(newRecord);
-        
+        const aptidao = data.checklistData['conclusao'] === 'conforme' ? 'apto' : 'nao_apto';
+        await db.collection('audit_records').insertOne({ ...newRecord, aptidao });
+        // Remove rascunho após gravação definitiva
+        await db.collection('audit_drafts').deleteOne({ locationId: data.locationId, auditorId: session.user._id });
+
         const finishResult = await finishCleaning(data.locationId, true);
         
         if (finishResult.success) {
@@ -555,6 +558,38 @@ export async function createAuditRecord(data: {
         console.error('Erro fatal ao gravar auditoria:', error);
         return { success: false, error: "Erro crítico de banco de dados: " + (error.message || "Tente novamente mais tarde.") };
     }
+}
+
+// --- Audit Draft Actions ---
+
+export async function saveAuditDraft(locationId: string, checklistData: Record<string, string>) {
+  const session = await getSession();
+  if (!session?.user) return;
+  try {
+    const db = await dbConnect();
+    await db.collection('audit_drafts').updateOne(
+      { locationId, auditorId: session.user._id },
+      { $set: { checklistData, auditorId: session.user._id, updatedAt: new Date() } },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('Error saving audit draft:', err);
+  }
+}
+
+export async function getAuditDraft(locationId: string): Promise<Record<string, string> | null> {
+  const session = await getSession();
+  if (!session?.user) return null;
+  try {
+    const db = await dbConnect();
+    const draft = await db.collection('audit_drafts').findOne({
+      locationId,
+      auditorId: session.user._id,
+    });
+    return draft ? (draft.checklistData as Record<string, string>) : null;
+  } catch {
+    return null;
+  }
 }
 
 // --- INTEGRATION ACTIONS ---
