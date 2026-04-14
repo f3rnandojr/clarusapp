@@ -69,15 +69,14 @@ export function QrPrintDialog({ children }: { children: React.ReactNode }) {
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #fff; padding: 8mm; }
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
     .label {
-      border: 1.5px dashed #bbb; border-radius: 10px; padding: 14px 10px 10px;
-      display: flex; flex-direction: column; align-items: center; gap: 7px;
+      border: 1.5px dashed #bbb; border-radius: 12px; padding: 16px 12px 12px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
       page-break-inside: avoid; background: #fff;
     }
-    .qr svg { display: block; width: 96px !important; height: 96px !important; }
-    .name   { font-size: 13px; font-weight: 700; color: #0F4C5C; text-align: center; line-height: 1.3; }
-    .number { font-size: 10px; font-weight: 600; color: #888; letter-spacing: 0.04em; }
+    .qr svg { display: block; width: 140px !important; height: 140px !important; }
+    .name   { font-size: 15px; font-weight: 800; color: #0F4C5C; text-align: center; line-height: 1.3; }
     .brand  { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
     .brand img { border-radius: 2px; }
     .brand span { font-size: 9px; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.1em; }
@@ -158,7 +157,7 @@ export function QrPrintDialog({ children }: { children: React.ReactNode }) {
                   {origin && loc.externalCode && (
                     <QRCode
                       value={`${origin}/clean/${loc.externalCode}`}
-                      size={96}
+                      size={140}
                       bgColor="#ffffff"
                       fgColor="#000000"
                       level="Q"

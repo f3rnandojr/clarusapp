@@ -1307,6 +1307,23 @@ export async function generateReport(prevState: any, formData: FormData) {
         };
     }
 
+    if (scope === 'history') {
+        const records = await db.collection('cleaning_records').find({
+            date: { $gte: queryStartDate, $lte: queryEndDate },
+            ...typeFilter
+        }).sort({ date: -1 }).toArray();
+
+        return {
+            success: true,
+            report: {
+                scope,
+                total: (records || []).length,
+                details: convertToPlainObject(records) || [],
+                filters: validatedFields.data
+            }
+        };
+    }
+
     return { error: "Escopo de relatório inválido." };
 }
 

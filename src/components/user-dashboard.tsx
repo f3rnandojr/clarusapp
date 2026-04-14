@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { Location, User, CleaningSettings } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
 import { QrCode, LogOut, User as UserIcon } from 'lucide-react';
+import { ThemeToggle } from './theme-toggle';
 import { logout, finishCleaning, getLocations, getLocationByCode } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from './ui/badge';
@@ -97,21 +98,22 @@ export function UserDashboard({
     <div className="flex flex-col min-h-screen bg-white">
 
       {/* Navbar */}
-      <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#A0E9FF]/50 bg-white shadow-sm shrink-0 sticky top-0 z-50">
+      <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#A0E9FF]/50 bg-white dark:bg-slate-900 dark:border-slate-700 shadow-sm shrink-0 sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
           <Image src="/logo_32x32.png" alt="Hygra" width={28} height={28} className="rounded-md" />
           <h1 className="text-lg font-black text-[#0F4C5C] tracking-tight">Hygra</h1>
         </div>
         <div className="flex items-center gap-2">
-          <div className="text-right hidden sm:block">
-            <div className="font-semibold text-sm text-[#0F4C5C] flex items-center gap-1.5">
-              <UserIcon className="h-3.5 w-3.5 text-[#0F4C5C]/40" />
-              {user.name}
+          <div className="text-right">
+            <div className="font-semibold text-sm text-[#0F4C5C] dark:text-[#A0E9FF] flex items-center gap-1.5">
+              <UserIcon className="h-3.5 w-3.5 text-[#0F4C5C]/40 dark:text-[#A0E9FF]/40 hidden sm:inline" />
+              <span className="max-w-[120px] sm:max-w-none truncate">{user.name}</span>
             </div>
-            <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-[#A0E9FF]/60 text-[#0F4C5C]/50 mt-0.5 px-1.5 h-4">
+            <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest border-[#A0E9FF]/60 text-[#0F4C5C]/50 dark:text-[#A0E9FF]/60 mt-0.5 px-1.5 h-4">
               {profileLabels[user.perfil] || 'Usuário'}
             </Badge>
           </div>
+          <ThemeToggle />
           <form action={logout}>
             <Button variant="ghost" type="submit" size="sm" className="h-9 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50">
               <LogOut className="h-4 w-4 sm:mr-1.5" />

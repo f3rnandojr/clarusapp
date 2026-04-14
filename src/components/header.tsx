@@ -1,6 +1,7 @@
 import type { Area, Asg, CleaningOccurrence, CleaningSettings, User, NonConformity } from '@/lib/schemas';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { OccurrencesDialog } from '@/components/occurrences-dialog';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Settings, ClipboardList, LogOut, User as UserIcon } from 'lucide-react';
 import { logout } from '@/lib/actions';
@@ -27,27 +28,28 @@ const profileLabels: Record<string, string> = {
 
 export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occurrences, nonConformities, allAreas, user }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#A0E9FF]/50 bg-white shadow-sm shrink-0 sticky top-0 z-50">
+    <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#A0E9FF]/50 bg-white dark:bg-slate-900 dark:border-slate-700 shadow-sm shrink-0 sticky top-0 z-50">
       <div className="flex items-center gap-2.5">
         <Image src="/logo_32x32.png" alt="Hygra" width={28} height={28} className="rounded-md" />
         <h1 className="text-lg font-black text-[#0F4C5C] tracking-tight">Hygra</h1>
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="text-right hidden sm:block">
-          <div className="font-semibold text-sm text-[#0F4C5C] flex items-center gap-1.5">
-            <UserIcon className="h-3.5 w-3.5 text-[#0F4C5C]/40" />
-            {user.name}
+        <div className="text-right">
+          <div className="font-semibold text-sm text-[#0F4C5C] dark:text-[#A0E9FF] flex items-center gap-1.5">
+            <UserIcon className="h-3.5 w-3.5 text-[#0F4C5C]/40 dark:text-[#A0E9FF]/40 hidden sm:inline" />
+            <span className="max-w-[120px] sm:max-w-none truncate">{user.name}</span>
           </div>
           <Badge
             variant="outline"
-            className="text-[10px] font-bold uppercase tracking-widest border-[#A0E9FF]/60 text-[#0F4C5C]/50 mt-0.5 px-1.5 h-4"
+            className="text-[10px] font-bold uppercase tracking-widest border-[#A0E9FF]/60 text-[#0F4C5C]/50 dark:text-[#A0E9FF]/60 mt-0.5 px-1.5 h-4"
           >
             {profileLabels[user.perfil] || 'Usuário'}
           </Badge>
         </div>
 
         <div className="flex items-center gap-1.5">
+          <ThemeToggle />
           <OccurrencesDialog occurrences={occurrences} nonConformities={nonConformities}>
             <Button
               variant="outline"

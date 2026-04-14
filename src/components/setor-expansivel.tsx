@@ -43,10 +43,10 @@ export function SetorExpansivel({
   const isViewOnly = viewMode === 'view_only';
 
   return (
-    <div className="border border-[#A0E9FF]/40 rounded-xl bg-white shadow-sm overflow-hidden transition-all duration-300">
+    <div className="border border-[#A0E9FF]/40 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 shadow-sm overflow-hidden transition-all duration-300">
       {/* Header */}
       <div
-        className="flex justify-between items-center px-4 py-3 cursor-pointer hover:bg-[#A0E9FF]/10 transition-colors"
+        className="flex justify-between items-center px-4 py-3 cursor-pointer hover:bg-[#A0E9FF]/10 dark:hover:bg-slate-700/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
@@ -54,7 +54,7 @@ export function SetorExpansivel({
             <Hospital className="h-4 w-4 text-[#0F4C5C]" />
           </div>
           <div>
-            <h3 className="font-bold text-[15px] text-[#0F4C5C] leading-tight">{setor.nome}</h3>
+            <h3 className="font-bold text-[15px] text-[#0F4C5C] dark:text-[#A0E9FF] leading-tight">{setor.nome}</h3>
             <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider mt-0.5">
               <span className="flex items-center gap-1 text-emerald-600">
                 <span className={cn('inline-block rounded-full bg-emerald-500', isViewOnly ? 'w-2 h-2' : 'w-1.5 h-1.5')} />
@@ -73,7 +73,7 @@ export function SetorExpansivel({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="bg-[#A0E9FF]/20 text-[#0F4C5C] font-bold text-[10px] px-3 py-1 rounded-full uppercase tracking-widest">
+          <span className="bg-[#A0E9FF]/20 dark:bg-[#A0E9FF]/10 text-[#0F4C5C] dark:text-[#A0E9FF] font-bold text-[10px] px-3 py-1 rounded-full uppercase tracking-widest">
             {setor.total} unid
           </span>
           <ChevronDown

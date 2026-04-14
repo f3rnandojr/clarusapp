@@ -230,7 +230,7 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
               type="button"
               onClick={() => handleAnswerChange(itemId, opt)}
               className={cn(
-                "h-8 px-3 rounded-lg border text-[11px] font-black uppercase tracking-wide transition-all",
+                "h-10 min-w-[46px] px-3 rounded-lg border text-xs font-black uppercase tracking-wide transition-all active:scale-95",
                 colors[opt]
               )}
             >

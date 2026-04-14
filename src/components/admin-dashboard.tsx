@@ -184,7 +184,7 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-slate-900 transition-colors">
       <Header 
         asgs={asgs} 
         users={users} 
@@ -198,7 +198,7 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
       
       <main className="flex-1 p-2 md:p-4 pb-10">
         <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 border border-[#A0E9FF]/40 p-1 h-11 rounded-xl">
+            <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 dark:bg-slate-800 border border-[#A0E9FF]/40 dark:border-slate-700 p-1 h-11 rounded-xl">
                 <TabsTrigger value="cleaning" className="rounded-lg data-[state=active]:bg-[#A0E9FF] data-[state=active]:text-[#0F4C5C] data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest text-gray-500">
                   <Sparkles className="mr-2 h-3.5 w-3.5" />Higienização ({inCleaningLocations.length})
                 </TabsTrigger>

@@ -1,6 +1,8 @@
 
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
+import { SessionTimeout } from "@/components/session-timeout";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -49,8 +51,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        {children}
-        <Toaster />
+        <ThemeProvider>
+          {children}
+          <SessionTimeout />
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

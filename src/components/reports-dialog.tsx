@@ -4,10 +4,14 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { useState, useMemo } from "react";
 import { generateReport } from "@/lib/actions";
+import {
+  exportGeneralReport, exportTableReport,
+  delaysColumns, ncColumns, auditColumns, historyColumns,
+} from "@/lib/pdf-export";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Download, Filter, Calendar as CalendarIcon, ClipboardList, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Loader2, Download, Filter, Calendar as CalendarIcon, ClipboardList, AlertTriangle, ShieldCheck, History } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import { Checkbox } from "./ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
@@ -44,7 +48,8 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
     const [state, formAction] = useActionState(generateReport, null);
     
     const [periodType, setPeriodType] = useState<'month' | 'range'>('month');
-    const [scope, setScope] = useState<'general' | 'delays' | 'nc' | 'audit'>('general');
+    const [scope, setScope] = useState<'general' | 'delays' | 'nc' | 'audit' | 'history'>('general');
+    const [exporting, setExporting] = useState(false);
 
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
@@ -68,6 +73,28 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
             return "Período selecionado";
         }
     }, [state?.report?.filters, currentMonth, currentYear]);
+
+    const handleExport = async () => {
+        if (!state?.success || !state.report) return;
+        setExporting(true);
+        try {
+            const period = reportPeriodLabel || "Período";
+            const sc = state.report.scope;
+            if (sc === 'general') {
+                await exportGeneralReport(state.report, period);
+            } else if (sc === 'delays') {
+                await exportTableReport(state.report, delaysColumns, "Ocorrências de Atraso", period);
+            } else if (sc === 'nc') {
+                await exportTableReport(state.report, ncColumns, "Não Conformidades", period);
+            } else if (sc === 'audit') {
+                await exportTableReport(state.report, auditColumns, "Auditorias", period);
+            } else if (sc === 'history') {
+                await exportTableReport(state.report, historyColumns, "Histórico de Higienizações", period);
+            }
+        } finally {
+            setExporting(false);
+        }
+    };
 
     const formatSafeDate = (dateStr?: string) => {
         if (!dateStr) return '--/-- --:--';
@@ -123,6 +150,10 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="audit" id="scope-audit" />
                             <Label htmlFor="scope-audit" className="font-normal cursor-pointer text-slate-300">Apenas Auditorias (Checklist)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="history" id="scope-history" />
+                            <Label htmlFor="scope-history" className="font-normal cursor-pointer text-slate-300">Histórico de Higienizações</Label>
                         </div>
                     </RadioGroup>
 
@@ -202,7 +233,19 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-                <Button variant="outline" type="button" disabled className="w-full sm:w-auto"><Download className="mr-2 h-4 w-4"/>Exportar</Button>
+                <Button
+                    variant="outline"
+                    type="button"
+                    onClick={handleExport}
+                    disabled={!state?.success || !state?.report || exporting}
+                    className="w-full sm:w-auto"
+                >
+                    {exporting
+                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        : <Download className="mr-2 h-4 w-4" />
+                    }
+                    Exportar PDF
+                </Button>
                 <SubmitButton />
             </div>
 
@@ -221,10 +264,13 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                             {state.report.scope === 'delays' && <AlertTriangle className="h-5 w-5 text-red-400" />}
                             {state.report.scope === 'nc' && <AlertTriangle className="h-5 w-5 text-orange-400" />}
                             {state.report.scope === 'audit' && <ShieldCheck className="h-5 w-5 text-emerald-400" />}
+                            {state.report.scope === 'history' && <History className="h-5 w-5 text-sky-400" />}
                             Resultados: {
-                                state.report.scope === 'general' ? 'Resumo Geral' : 
-                                state.report.scope === 'delays' ? 'Ocorrências de Atraso' : 
-                                state.report.scope === 'nc' ? 'Não Conformidades' : 'Checklists de Auditoria'
+                                state.report.scope === 'general' ? 'Resumo Geral' :
+                                state.report.scope === 'delays' ? 'Ocorrências de Atraso' :
+                                state.report.scope === 'nc' ? 'Não Conformidades' :
+                                state.report.scope === 'history' ? 'Histórico de Higienizações' :
+                                'Checklists de Auditoria'
                             }
                         </h3>
                         {reportPeriodLabel && <p className="text-xs sm:text-sm text-muted-foreground capitalize">{reportPeriodLabel}</p>}
@@ -262,7 +308,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                         </div>
                     ) : null}
 
-                    {state.report.scope !== 'general' && (
+                    {(state.report.scope === 'delays' || state.report.scope === 'nc' || state.report.scope === 'audit' || state.report.scope === 'history') && (
                         <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900">
                             <div className="overflow-x-auto">
                                 <Table>
@@ -272,8 +318,14 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                                             <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Local</TableHead>
                                             <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Responsável</TableHead>
                                             <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">
-                                                {state.report.scope === 'delays' ? 'Atraso' : state.report.scope === 'nc' ? 'Relato' : 'Status/Detalhes'}
+                                                {state.report.scope === 'delays' ? 'Atraso' :
+                                                 state.report.scope === 'nc' ? 'Relato' :
+                                                 state.report.scope === 'history' ? 'Duração' :
+                                                 'Status/Detalhes'}
                                             </TableHead>
+                                            {state.report.scope === 'history' && (
+                                                <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Tipo</TableHead>
+                                            )}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -286,13 +338,20 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                                                     <TableCell className="font-bold whitespace-nowrap text-white">{item.locationName || 'N/A'}</TableCell>
                                                     <TableCell className="whitespace-nowrap text-slate-300">{item.userName || item.auditorName || 'N/A'}</TableCell>
                                                     <TableCell className={cn("whitespace-nowrap", state.report.scope === 'delays' ? 'text-red-400 font-black' : 'text-[10px] sm:text-xs text-slate-400')}>
-                                                        {state.report.scope === 'delays' 
+                                                        {state.report.scope === 'delays'
                                                             ? `${(item.actualDuration || 0) - (item.expectedDuration || 0)} min` :
-                                                          state.report.scope === 'audit' 
-                                                            ? renderAuditDetails(item)
+                                                          state.report.scope === 'audit'
+                                                            ? renderAuditDetails(item) :
+                                                          state.report.scope === 'history'
+                                                            ? `${item.actualDuration || 0} min`
                                                             : (item.description ? (item.description.substring(0, 40) + (item.description.length > 40 ? '...' : '')) : 'Sem descrição')
                                                         }
                                                     </TableCell>
+                                                    {state.report.scope === 'history' && (
+                                                        <TableCell className="text-[10px] text-slate-400 whitespace-nowrap">
+                                                            {item.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente'}
+                                                        </TableCell>
+                                                    )}
                                                 </TableRow>
                                             ))
                                         ) : (
