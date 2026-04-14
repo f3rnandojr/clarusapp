@@ -29,7 +29,7 @@ export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occ
   return (
     <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#A0E9FF]/50 bg-white shadow-sm shrink-0 sticky top-0 z-50">
       <div className="flex items-center gap-2.5">
-        <Image src="/icon.png" alt="Hygra" width={28} height={28} className="rounded-md" />
+        <Image src="/logo_32x32.png" alt="Hygra" width={28} height={28} className="rounded-md" />
         <h1 className="text-lg font-black text-[#0F4C5C] tracking-tight">Hygra</h1>
       </div>
 

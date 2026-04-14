@@ -9,12 +9,14 @@ export const metadata: Metadata = {
   icons: {
     shortcut: '/favicon.ico',
     icon: [
-      { url: '/icon.png',          sizes: '32x32',   type: 'image/png' },
-      { url: '/logo_192x192.png',  sizes: '192x192', type: 'image/png' },
-      { url: '/logo_512x512.png',  sizes: '512x512', type: 'image/png' },
+      { url: '/logo_16x16.png',   sizes: '16x16',   type: 'image/png' },
+      { url: '/logo_32x32.png',   sizes: '32x32',   type: 'image/png' },
+      { url: '/logo_64x64.png',   sizes: '64x64',   type: 'image/png' },
+      { url: '/logo_192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/logo_512x512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/logo_180x180.png', sizes: '180x180', type: 'image/png' },
     ],
   },
 };

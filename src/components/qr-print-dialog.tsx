@@ -49,7 +49,7 @@ export function QrPrintDialog({ children }: { children: React.ReactNode }) {
           <div class="qr">${svgStr}</div>
           <span class="name">${loc.externalCode || loc.name}</span>
           <div class="brand">
-            <img src="${origin}/icon.png" width="14" height="14" alt="" />
+            <img src="${origin}/logo_32x32.png" width="14" height="14" alt="" />
             <span>Hygra</span>
           </div>
         </div>`;
@@ -167,7 +167,7 @@ export function QrPrintDialog({ children }: { children: React.ReactNode }) {
                   <span className="font-bold text-sm text-[#0F4C5C] text-center leading-tight">{loc.externalCode || loc.name}</span>
                   <div className="flex items-center gap-1 mt-0.5">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/icon.png" alt="" width={12} height={12} style={{ borderRadius: 2 }} />
+                    <img src="/logo_32x32.png" alt="" width={12} height={12} style={{ borderRadius: 2 }} />
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Hygra</span>
                   </div>
                 </div>

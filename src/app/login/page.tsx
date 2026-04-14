@@ -42,7 +42,7 @@ export default function LoginPage() {
         {/* Logo + brand */}
         <div className="flex flex-col items-center text-center mb-8">
           <Image
-            src="/icon.png"
+            src="/logo_180x180.png"
             alt="Hygra"
             width={60}
             height={60}
