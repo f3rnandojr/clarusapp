@@ -346,15 +346,17 @@ export const WebhookSettingsSchema = z.object({
   url: z.string().url("URL inválida").or(z.string().length(0)),
   template: z.string().min(1, "O template é obrigatório."),
   enabledEvents: z.object({
-    newRequest: z.boolean().default(true),
-    cleaningFinished: z.boolean().default(false),
-    auditFinished: z.boolean().default(true),
-    ncRegistered: z.boolean().default(true),
+    newRequest:        z.boolean().default(true),
+    cleaningFinished:  z.boolean().default(false),
+    auditFinished:     z.boolean().default(true),
+    checklistFinished: z.boolean().default(true),
+    ncRegistered:      z.boolean().default(true),
   }).default({
-    newRequest: true,
-    cleaningFinished: false,
-    auditFinished: true,
-    ncRegistered: true,
+    newRequest:        true,
+    cleaningFinished:  false,
+    auditFinished:     true,
+    checklistFinished: true,
+    ncRegistered:      true,
   }),
 });
 export type WebhookSettings = z.infer<typeof WebhookSettingsSchema>;

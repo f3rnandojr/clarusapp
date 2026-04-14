@@ -247,6 +247,11 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                                 <div className="flex justify-between border-b border-slate-800/50 pb-1"><span>No Prazo:</span> <span className="font-bold text-emerald-400">{(state.report.onTimePercent || 0).toFixed(1)}%</span></div>
                                 <div className="flex justify-between"><span>Atrasados:</span> <span className="font-bold text-red-400">{(state.report.delayedPercent || 0).toFixed(1)}%</span></div>
                             </div>
+                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm sm:col-span-2 lg:col-span-1">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-sky-400">Auditorias</h4>
+                                <div className="flex justify-between border-b border-slate-800/50 pb-1"><span>Leitos APTO:</span> <span className="font-bold text-emerald-400">{state.report.totalAuditAptos || 0}</span></div>
+                                <div className="flex justify-between"><span>Leitos NÃO APTO:</span> <span className="font-bold text-red-400">{state.report.totalAuditNaoApto || 0}</span></div>
+                            </div>
                         </div>
                     ) : state.report.scope === 'audit' && !state.report.details ? (
                          <div className="grid grid-cols-1 gap-4 text-sm">

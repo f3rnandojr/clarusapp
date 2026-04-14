@@ -65,6 +65,7 @@ export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occ
             nextAsgCode={nextAsgCode}
             cleaningSettings={cleaningSettings}
             allAreas={allAreas}
+            userProfile={user.perfil}
           >
             <Button
               variant="outline"

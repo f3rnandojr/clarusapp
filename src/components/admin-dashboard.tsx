@@ -38,9 +38,10 @@ type DashboardData = {
 interface AdminDashboardProps {
   initialData: DashboardData;
   user: User;
+  viewMode?: 'solicitation' | 'view_only';
 }
 
-export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
+export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }: AdminDashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -236,13 +237,14 @@ export function AdminDashboard({ initialData, user }: AdminDashboardProps) {
             <TabsContent value="overview">
               <div className="space-y-3">
                 {setoresAgrupados.map((setor) => (
-                  <SetorExpansivel 
-                    key={setor.nome} 
-                    setor={setor} 
-                    onLocationClick={handleLocationClick} 
-                    userProfile={user.perfil} 
+                  <SetorExpansivel
+                    key={setor.nome}
+                    setor={setor}
+                    onLocationClick={handleLocationClick}
+                    userProfile={user.perfil}
                     currentUserId={user._id}
                     cleaningSettings={cleaningSettings}
+                    viewMode={viewMode}
                   />
                 ))}
               </div>

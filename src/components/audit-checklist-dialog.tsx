@@ -184,6 +184,8 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
         const result   = await createAuditRecord({
           locationId: locId,
           locationName: `${location.name} - ${location.number}`,
+          locationCode: location.externalCode || location.number,
+          setor: location.setor,
           lastCleaningId: cleanId || null,
           checklistData: answers as any,
           observations,
@@ -228,7 +230,7 @@ export function AuditChecklistDialog({ location, lastCleaning, children }: Audit
               type="button"
               onClick={() => handleAnswerChange(itemId, opt)}
               className={cn(
-                "h-7 px-2 rounded-lg border text-[10px] font-black uppercase tracking-wide transition-all",
+                "h-8 px-3 rounded-lg border text-[11px] font-black uppercase tracking-wide transition-all",
                 colors[opt]
               )}
             >

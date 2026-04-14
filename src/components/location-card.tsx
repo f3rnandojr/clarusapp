@@ -215,7 +215,7 @@ export default function LocationCard({
         <AlertDialogHeader>
           <AlertDialogTitle>Finalizar limpeza?</AlertDialogTitle>
           <AlertDialogDescription>
-            Confirma a finalização da limpeza de <strong>{location.name} — {location.number}</strong>?
+            Confirma a finalização da limpeza de <strong>{location.externalCode || location.name}</strong>?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

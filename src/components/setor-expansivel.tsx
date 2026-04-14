@@ -22,7 +22,14 @@ interface SetorExpansivelProps {
   userProfile?: UserProfile;
   currentUserId?: string;
   cleaningSettings: CleaningSettings;
+  viewMode?: 'solicitation' | 'view_only';
 }
+
+const statusDot: Record<string, string> = {
+  available:   'w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block',
+  in_cleaning: 'w-2.5 h-2.5 rounded-full bg-sky-400 inline-block animate-pulse',
+  occupied:    'w-2.5 h-2.5 rounded-full bg-orange-400 inline-block',
+};
 
 export function SetorExpansivel({
   setor,
@@ -30,8 +37,10 @@ export function SetorExpansivel({
   userProfile = 'admin',
   currentUserId,
   cleaningSettings,
+  viewMode = 'solicitation',
 }: SetorExpansivelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const isViewOnly = viewMode === 'view_only';
 
   return (
     <div className="border border-[#A0E9FF]/40 rounded-xl bg-white shadow-sm overflow-hidden transition-all duration-300">
@@ -48,15 +57,15 @@ export function SetorExpansivel({
             <h3 className="font-bold text-[15px] text-[#0F4C5C] leading-tight">{setor.nome}</h3>
             <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider mt-0.5">
               <span className="flex items-center gap-1 text-emerald-600">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                <span className={cn('inline-block rounded-full bg-emerald-500', isViewOnly ? 'w-2 h-2' : 'w-1.5 h-1.5')} />
                 {setor.disponiveis} livres
               </span>
               <span className="flex items-center gap-1 text-sky-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 inline-block animate-pulse" />
+                <span className={cn('inline-block rounded-full bg-sky-400 animate-pulse', isViewOnly ? 'w-2 h-2' : 'w-1.5 h-1.5')} />
                 {setor.emLimpeza} limpando
               </span>
               <span className="flex items-center gap-1 text-orange-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />
+                <span className={cn('inline-block rounded-full bg-orange-400', isViewOnly ? 'w-2 h-2' : 'w-1.5 h-1.5')} />
                 {setor.ocupados} ocupados
               </span>
             </div>
@@ -78,18 +87,46 @@ export function SetorExpansivel({
 
       {/* Cards grid */}
       {isExpanded && (
-        <div className="border-t border-[#A0E9FF]/20 bg-gray-50/60 p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {setor.locais.map((local) => (
-            <LocationCard
-              key={local._id.toString()}
-              location={local}
-              cleaningSettings={cleaningSettings}
-              onStartClick={onLocationClick}
-              userProfile={userProfile}
-              currentUserId={currentUserId}
-            />
-          ))}
-        </div>
+        isViewOnly ? (
+          /* View-only: compact list with larger status indicators, no action buttons */
+          <div className="border-t border-[#A0E9FF]/20 bg-gray-50/40 divide-y divide-gray-100">
+            {setor.locais.map((local) => (
+              <div key={local._id.toString()} className="flex items-center gap-3 px-4 py-2.5">
+                <div className={cn(
+                  'w-3 h-3 rounded-full flex-shrink-0',
+                  local.status === 'available'   ? 'bg-emerald-500' :
+                  local.status === 'in_cleaning' ? 'bg-sky-400 animate-pulse' :
+                                                   'bg-orange-400'
+                )} />
+                <span className="text-sm font-semibold text-gray-800 flex-1 truncate">
+                  {local.externalCode || local.name}
+                </span>
+                <span className={cn(
+                  'text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full',
+                  local.status === 'available'   ? 'bg-emerald-50 text-emerald-700' :
+                  local.status === 'in_cleaning' ? 'bg-sky-50 text-sky-700' :
+                                                   'bg-orange-50 text-orange-700'
+                )}>
+                  {local.status === 'available' ? 'Livre' : local.status === 'in_cleaning' ? 'Limpando' : 'Ocupado'}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Normal grid with cards */
+          <div className="border-t border-[#A0E9FF]/20 bg-gray-50/60 p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+            {setor.locais.map((local) => (
+              <LocationCard
+                key={local._id.toString()}
+                location={local}
+                cleaningSettings={cleaningSettings}
+                onStartClick={onLocationClick}
+                userProfile={userProfile}
+                currentUserId={currentUserId}
+              />
+            ))}
+          </div>
+        )
       )}
     </div>
   );

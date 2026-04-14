@@ -26,10 +26,11 @@ const TEMPLATE_VARIABLES = [
 ];
 
 const EVENT_LABELS = [
-  { id: "newRequest", label: "Nova Solicitação de Higienização" },
-  { id: "cleaningFinished", label: "Finalização de Higienização (Usuário)" },
-  { id: "auditFinished", label: "Finalização de Auditoria (Auditor)" },
-  { id: "ncRegistered", label: "Registro de Não Conformidade (NC)" },
+  { id: "newRequest",        label: "Nova Solicitação de Higienização" },
+  { id: "cleaningFinished",  label: "Finalização de Higienização (Usuário)" },
+  { id: "auditFinished",     label: "Finalização de Auditoria (Auditor)" },
+  { id: "checklistFinished", label: "Conclusão de Checklist (APTO/NÃO APTO)" },
+  { id: "ncRegistered",      label: "Registro de Não Conformidade (NC)" },
 ];
 
 export function WebhookSettingsDialog({ children }: WebhookSettingsDialogProps) {
@@ -41,10 +42,11 @@ export function WebhookSettingsDialog({ children }: WebhookSettingsDialogProps) 
     url: '', 
     template: '',
     enabledEvents: {
-      newRequest: true,
-      cleaningFinished: false,
-      auditFinished: true,
-      ncRegistered: true,
+      newRequest:        true,
+      cleaningFinished:  false,
+      auditFinished:     true,
+      checklistFinished: true,
+      ncRegistered:      true,
     }
   });
   const { toast } = useToast();
@@ -104,10 +106,11 @@ export function WebhookSettingsDialog({ children }: WebhookSettingsDialogProps) 
     setSettings(prev => ({
       ...prev,
       enabledEvents: {
-        newRequest: true,
-        cleaningFinished: true,
-        auditFinished: true,
-        ncRegistered: true,
+        newRequest:        true,
+        cleaningFinished:  true,
+        auditFinished:     true,
+        checklistFinished: true,
+        ncRegistered:      true,
       }
     }));
   };

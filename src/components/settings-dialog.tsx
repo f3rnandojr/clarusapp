@@ -9,12 +9,13 @@ import { CleaningTimesDialog } from "./cleaning-times-dialog";
 import { ReportsDialog } from "./reports-dialog";
 import { IntegrationsDialog } from "./integrations-dialog";
 import { UserManagementDialog } from "./user-management-dialog";
-import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText, QrCode, Map, Bell, Printer } from "lucide-react";
+import { Users, BarChart, Info, Settings as SettingsIcon, Clock, Link as LinkIcon, FileText, QrCode, Map, Bell, Printer, Eye } from "lucide-react";
 import { LogsDialog } from "./logs-dialog";
 import { AreaManagementDialog } from "./area-management-dialog";
 import { MappingManagementDialog } from "./mapping-management-dialog";
 import { WebhookSettingsDialog } from "./webhook-settings-dialog";
 import { QrPrintDialog } from "./qr-print-dialog";
+import { ViewModeDialog } from "./view-mode-dialog";
 
 interface SettingsDialogProps {
   allAsgs: Asg[];
@@ -23,11 +24,13 @@ interface SettingsDialogProps {
   nextAsgCode: string;
   cleaningSettings: CleaningSettings;
   allAreas: Area[];
+  userProfile?: string;
 }
 
-export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, cleaningSettings, allAreas }: SettingsDialogProps) {
+export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, cleaningSettings, allAreas, userProfile = 'admin' }: SettingsDialogProps) {
   const [open, setOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
+  const isAdmin = userProfile === 'admin';
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -40,70 +43,93 @@ export function SettingsDialog({ allAsgs, allUsers, children, nextAsgCode, clean
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 gap-2 pt-4">
-          <MappingManagementDialog>
-             <Button variant="outline" className="w-full justify-start">
-               <Map className="mr-2 h-4 w-4" />
-               Mapeamento de Locais
-             </Button>
-          </MappingManagementDialog>
+
+          {/* Admin-only items */}
+          {isAdmin && (
+            <MappingManagementDialog>
+              <Button variant="outline" className="w-full justify-start">
+                <Map className="mr-2 h-4 w-4" /> Mapeamento de Locais
+              </Button>
+            </MappingManagementDialog>
+          )}
+
           <UserManagementDialog allUsers={allUsers}>
             <Button variant="outline" className="w-full justify-start">
-              <Users className="mr-2 h-4 w-4" />
-              Gerenciar Usuários
+              <Users className="mr-2 h-4 w-4" /> Gerenciar Usuários
             </Button>
           </UserManagementDialog>
-          <AsgManagementDialog allAsgs={allAsgs} nextAsgCode={nextAsgCode}>
+
+          {isAdmin && (
+            <AsgManagementDialog allAsgs={allAsgs} nextAsgCode={nextAsgCode}>
+              <Button variant="outline" className="w-full justify-start">
+                <Users className="mr-2 h-4 w-4" /> Gerenciar Colaboradores
+              </Button>
+            </AsgManagementDialog>
+          )}
+
+          {isAdmin && (
+            <AreaManagementDialog allAreas={allAreas}>
+              <Button variant="outline" className="w-full justify-start">
+                <QrCode className="mr-2 h-4 w-4" /> Gerenciar Áreas (QR Code)
+              </Button>
+            </AreaManagementDialog>
+          )}
+
+          <QrPrintDialog>
             <Button variant="outline" className="w-full justify-start">
-              <Users className="mr-2 h-4 w-4" />
-              Gerenciar Colaboradores
+              <Printer className="mr-2 h-4 w-4" /> Impressão de QR Codes
             </Button>
-          </AsgManagementDialog>
-           <AreaManagementDialog allAreas={allAreas}>
-             <Button variant="outline" className="w-full justify-start">
-               <QrCode className="mr-2 h-4 w-4" />
-               Gerenciar Áreas (QR Code)
-             </Button>
-           </AreaManagementDialog>
-           <QrPrintDialog>
-             <Button variant="outline" className="w-full justify-start">
-               <Printer className="mr-2 h-4 w-4" />
-               Impressão de QR Codes
-             </Button>
-           </QrPrintDialog>
+          </QrPrintDialog>
+
           <CleaningTimesDialog settings={cleaningSettings}>
             <Button variant="outline" className="w-full justify-start">
-              <Clock className="mr-2 h-4 w-4" />
-              Tempos de Limpeza
+              <Clock className="mr-2 h-4 w-4" /> Tempos de Limpeza
             </Button>
           </CleaningTimesDialog>
-           <ReportsDialog>
+
+          <ReportsDialog>
+            <Button variant="outline" className="w-full justify-start">
+              <BarChart className="mr-2 h-4 w-4" /> Relatórios e Estatísticas
+            </Button>
+          </ReportsDialog>
+
+          {isAdmin && (
+            <ViewModeDialog>
               <Button variant="outline" className="w-full justify-start">
-                <BarChart className="mr-2 h-4 w-4" />
-                Relatórios e Estatísticas
+                <Eye className="mr-2 h-4 w-4" /> Modo de Visualização
               </Button>
-            </ReportsDialog>
+            </ViewModeDialog>
+          )}
+
+          {isAdmin && (
             <WebhookSettingsDialog>
-                <Button variant="outline" className="w-full justify-start">
-                    <Bell className="mr-2 h-4 w-4" />
-                    Notificações (Webhook)
-                </Button>
+              <Button variant="outline" className="w-full justify-start">
+                <Bell className="mr-2 h-4 w-4" /> Notificações (Webhook)
+              </Button>
             </WebhookSettingsDialog>
+          )}
+
+          {isAdmin && (
             <IntegrationsDialog open={integrationsOpen} onOpenChange={setIntegrationsOpen}>
-                <Button variant="outline" className="w-full justify-start" onClick={() => setIntegrationsOpen(true)}>
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                    Integrações de Dados
-                </Button>
+              <Button variant="outline" className="w-full justify-start" onClick={() => setIntegrationsOpen(true)}>
+                <LinkIcon className="mr-2 h-4 w-4" /> Integrações de Dados
+              </Button>
             </IntegrationsDialog>
+          )}
+
+          {isAdmin && (
             <LogsDialog>
               <Button variant="outline" className="w-full justify-start">
-                <FileText className="mr-2 h-4 w-4" />
-                Logs da Aplicação
+                <FileText className="mr-2 h-4 w-4" /> Logs da Aplicação
               </Button>
             </LogsDialog>
+          )}
+
+          {isAdmin && (
             <Button variant="outline" className="w-full justify-start" disabled>
-              <Info className="mr-2 h-4 w-4" />
-              Sobre
+              <Info className="mr-2 h-4 w-4" /> Sobre
             </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

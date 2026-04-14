@@ -28,16 +28,35 @@ async function logAction(action: string, details: Record<string, any>) {
 }
 
 // --- Webhook Private Helper ---
-async function sendWebhookNotification(event: keyof WebhookSettings['enabledEvents'], context: { local: string, tipo_limpeza?: string, prioridade?: string }) {
+async function sendWebhookNotification(
+  event: keyof WebhookSettings['enabledEvents'],
+  context: {
+    local: string;
+    tipo_limpeza?: string;
+    prioridade?: string;
+    // checklist-specific
+    auditorName?: string;
+    locationCode?: string;
+    setor?: string;
+    aptidao?: string;
+    // override the template entirely
+    fixedMessage?: string;
+  }
+) {
   try {
     const settings = await getWebhookSettings();
-    if (!settings.url || !settings.enabledEvents[event]) return;
+    if (!settings.url || !(settings.enabledEvents as any)[event]) return;
 
-    let message = settings.template;
-    message = message.replace('{local}', context.local);
-    message = message.replace('{tipo_limpeza}', context.tipo_limpeza || 'N/A');
-    message = message.replace('{prioridade}', context.prioridade || 'Normal');
-    message = message.replace('{horario}', new Date().toLocaleTimeString('pt-BR'));
+    let message: string;
+    if (context.fixedMessage) {
+      message = context.fixedMessage;
+    } else {
+      message = settings.template;
+      message = message.replace('{local}', context.local);
+      message = message.replace('{tipo_limpeza}', context.tipo_limpeza || 'N/A');
+      message = message.replace('{prioridade}', context.prioridade || 'Normal');
+      message = message.replace('{horario}', new Date().toLocaleTimeString('pt-BR'));
+    }
 
     await fetch(settings.url, {
       method: 'POST',
@@ -507,6 +526,8 @@ export async function finishCleaning(locationId: string, isAudit: boolean = fals
 export async function createAuditRecord(data: {
     locationId: string;
     locationName: string;
+    locationCode?: string;
+    setor?: string;
     lastCleaningId: string | null;
     checklistData: Record<string, "conforme" | "não_conforme" | "n/a">;
     observations?: string;
@@ -546,8 +567,17 @@ export async function createAuditRecord(data: {
         if (finishResult.success) {
             await logAction('audit_completed', { locationId: data.locationId, locationName: data.locationName });
             
-            // Webhook: Finalização de Auditoria
+            // Webhook: Finalização de Auditoria (genérico)
             await sendWebhookNotification('auditFinished', { local: data.locationName });
+
+            // Webhook: Conclusão de Checklist (mensagem estruturada)
+            const aptidaoLabel = aptidao === 'apto' ? 'APTO' : 'NÃO APTO';
+            const setorLabel   = data.setor || 'Setor não informado';
+            const codeLabel    = data.locationCode || data.locationName;
+            await sendWebhookNotification('checklistFinished', {
+              local: data.locationName,
+              fixedMessage: `${session.user.name} finalizou o checklist do leito ${codeLabel} — ${setorLabel}. Status: ${aptidaoLabel} para ocupação.`,
+            });
 
             return { success: true, message: "Auditoria finalizada e gravada com sucesso!" };
         } else {
@@ -1182,6 +1212,9 @@ export async function generateReport(prevState: any, formData: FormData) {
             timestamp: { $gte: queryStartDate, $lte: queryEndDate }
         });
 
+        const totalAuditAptos   = await db.collection('audit_records').countDocuments({ timestamp: { $gte: queryStartDate, $lte: queryEndDate }, aptidao: 'apto' });
+        const totalAuditNaoApto = await db.collection('audit_records').countDocuments({ timestamp: { $gte: queryStartDate, $lte: queryEndDate }, aptidao: 'nao_apto' });
+
         const total = (cleaningRecords || []).length;
         const concurrentRecords = (cleaningRecords || []).filter(r => r.cleaningType === 'concurrent');
         const terminalRecords = (cleaningRecords || []).filter(r => r.cleaningType === 'terminal');
@@ -1204,6 +1237,8 @@ export async function generateReport(prevState: any, formData: FormData) {
                 scope,
                 total,
                 totalNCs,
+                totalAuditAptos,
+                totalAuditNaoApto,
                 concurrent,
                 terminal,
                 avgConcurrentTime,
@@ -1557,24 +1592,26 @@ export async function getWebhookSettings(): Promise<WebhookSettings> {
       return convertToPlainObject({
         ...rest,
         enabledEvents: rest.enabledEvents || {
-          newRequest: true,
-          cleaningFinished: false,
-          auditFinished: true,
-          ncRegistered: true,
+          newRequest:        true,
+          cleaningFinished:  false,
+          auditFinished:     true,
+          checklistFinished: true,
+          ncRegistered:      true,
         }
       });
     }
   } catch (error) {
     console.error("Error in getWebhookSettings:", error);
   }
-  return { 
-    url: '', 
+  return {
+    url: '',
     template: '🔔 Nova solicitação: {local} | Tipo: {tipo_limpeza} | Horário: {horario}',
     enabledEvents: {
-      newRequest: true,
-      cleaningFinished: false,
-      auditFinished: true,
-      ncRegistered: true,
+      newRequest:        true,
+      cleaningFinished:  false,
+      auditFinished:     true,
+      checklistFinished: true,
+      ncRegistered:      true,
     }
   };
 }
@@ -1615,5 +1652,38 @@ export async function testWebhookConnection(url: string) {
     }
   } catch (error: any) {
     return { error: "Falha na conexão. Verifique a URL e a rede interna." };
+  }
+}
+
+// --- VIEW MODE ACTIONS ---
+
+export type ViewMode = 'solicitation' | 'view_only';
+
+export async function getViewMode(): Promise<ViewMode> {
+  try {
+    const db = await dbConnect();
+    const doc = await db.collection('system_settings').findOne({ _id: 'viewMode' });
+    return (doc?.value as ViewMode) || 'solicitation';
+  } catch {
+    return 'solicitation';
+  }
+}
+
+export async function saveViewMode(mode: ViewMode) {
+  try {
+    const session = await getSession();
+    if (!session?.user || session.user.perfil !== 'admin') {
+      return { error: 'Acesso negado.' };
+    }
+    const db = await dbConnect();
+    await db.collection('system_settings').updateOne(
+      { _id: 'viewMode' },
+      { $set: { value: mode, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message };
   }
 }
