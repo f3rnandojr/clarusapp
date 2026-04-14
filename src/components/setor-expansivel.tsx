@@ -88,29 +88,54 @@ export function SetorExpansivel({
       {/* Cards grid */}
       {isExpanded && (
         isViewOnly ? (
-          /* View-only: compact list with larger status indicators, no action buttons */
-          <div className="border-t border-[#A0E9FF]/20 bg-gray-50/40 divide-y divide-gray-100">
-            {setor.locais.map((local) => (
-              <div key={local._id.toString()} className="flex items-center gap-3 px-4 py-2.5">
-                <div className={cn(
-                  'w-3 h-3 rounded-full flex-shrink-0',
-                  local.status === 'available'   ? 'bg-emerald-500' :
-                  local.status === 'in_cleaning' ? 'bg-sky-400 animate-pulse' :
-                                                   'bg-orange-400'
-                )} />
-                <span className="text-sm font-semibold text-gray-800 flex-1 truncate">
-                  {local.externalCode || local.name}
-                </span>
-                <span className={cn(
-                  'text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full',
-                  local.status === 'available'   ? 'bg-emerald-50 text-emerald-700' :
-                  local.status === 'in_cleaning' ? 'bg-sky-50 text-sky-700' :
-                                                   'bg-orange-50 text-orange-700'
-                )}>
-                  {local.status === 'available' ? 'Livre' : local.status === 'in_cleaning' ? 'Limpando' : 'Ocupado'}
-                </span>
-              </div>
-            ))}
+          /* View-only: compact seat-map grid */
+          <div className="border-t border-[#A0E9FF]/20 bg-gray-50/60 p-3">
+            <div className="flex flex-wrap gap-2">
+              {setor.locais.map((local) => {
+                const statusLabel =
+                  local.status === 'available'   ? 'Livre' :
+                  local.status === 'in_cleaning' ? 'Limpando' : 'Ocupado';
+                const bgColor =
+                  local.status === 'available'   ? '#1D9E75' :
+                  local.status === 'in_cleaning' ? '#378ADD' : '#EF9F27';
+                const isPulsing = local.status === 'in_cleaning';
+                const displayCode = local.externalCode || local.name;
+
+                return (
+                  <div
+                    key={local._id.toString()}
+                    title={`${displayCode} — ${statusLabel}`}
+                    className={cn(
+                      'relative group flex flex-col items-center justify-center rounded-lg cursor-default select-none transition-transform duration-150 hover:scale-110 active:scale-95',
+                      isPulsing && 'animate-pulse'
+                    )}
+                    style={{
+                      width: 72,
+                      height: 72,
+                      backgroundColor: bgColor,
+                      boxShadow: `0 2px 8px 0 ${bgColor}55`,
+                    }}
+                  >
+                    <span className="text-white font-black text-[11px] leading-tight text-center px-1 break-all">
+                      {displayCode}
+                    </span>
+
+                    {/* Tooltip */}
+                    <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      <div className="bg-gray-900 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap shadow-xl">
+                        {displayCode}
+                        <span className="mx-1.5 text-gray-400">·</span>
+                        <span className={cn(
+                          local.status === 'available'   ? 'text-emerald-400' :
+                          local.status === 'in_cleaning' ? 'text-sky-400' : 'text-orange-400'
+                        )}>{statusLabel}</span>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : (
           /* Normal grid with cards */
