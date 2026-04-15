@@ -184,7 +184,7 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white dark:bg-slate-900 transition-colors">
+    <div className="flex flex-col min-h-screen bg-[#F5F0E8] dark:bg-slate-900 transition-colors">
       <Header 
         asgs={asgs} 
         users={users} 

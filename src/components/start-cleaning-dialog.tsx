@@ -32,7 +32,10 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
   const isAuditor   = userProfile === 'auditor';
   const isManager   = userProfile === 'admin' || userProfile === 'gestor';
 
-  const [cleaningType, setCleaningType] = useState<'concurrent' | 'terminal' | ''>(isOccupied ? 'concurrent' : 'terminal');
+  const isUsuarioOccupied = userProfile === 'usuario' && isOccupied;
+  const [cleaningType, setCleaningType] = useState<'concurrent' | 'terminal' | ''>(
+    isUsuarioOccupied ? '' : isOccupied ? 'concurrent' : 'terminal'
+  );
   const [lastCleaning, setLastCleaning] = useState<CleaningRecord | null>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(false);
 
@@ -91,9 +94,13 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
 
   useEffect(() => {
     if (!isAuditor) {
-      setCleaningType(isOccupied ? 'concurrent' : 'terminal');
+      if (userProfile === 'usuario' && isOccupied) {
+        setCleaningType('');
+      } else {
+        setCleaningType(isOccupied ? 'concurrent' : 'terminal');
+      }
     }
-  }, [location, isOccupied, open, isAuditor]);
+  }, [location, isOccupied, open, isAuditor, userProfile]);
 
   const buttonLabel = isPending 
     ? (isManager ? 'Solicitando...' : 'Iniciando...')
@@ -141,7 +148,34 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
             </div>
         ) : (
             <>
-                {isOccupied ? (
+                {isOccupied && userProfile === 'usuario' ? (
+                /* usuario + occupied: choice between concurrent and terminal */
+                <div className="space-y-3">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo de Higienização</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        {[
+                            { val: 'concurrent' as const, label: 'Concorrente', sub: 'Leito ocupado', color: 'orange' },
+                            { val: 'terminal'   as const, label: 'Terminal',    sub: 'Limpeza completa', color: 'sky' },
+                        ].map(({ val, label, sub, color }) => (
+                            <button
+                                key={val}
+                                type="button"
+                                onClick={() => setCleaningType(val)}
+                                className={`rounded-2xl border-2 p-3 text-left transition-all active:scale-95 ${
+                                    cleaningType === val
+                                        ? color === 'orange'
+                                            ? 'border-orange-400 bg-orange-500/10'
+                                            : 'border-sky-400 bg-sky-500/10'
+                                        : 'border-slate-700 hover:border-slate-500'
+                                }`}
+                            >
+                                <p className={`font-black text-sm ${cleaningType === val ? (color === 'orange' ? 'text-orange-300' : 'text-sky-300') : 'text-white'}`}>{label}</p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">{sub}</p>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                ) : isOccupied ? (
                 <Alert className="bg-orange-500/5 border-orange-500/20 rounded-2xl">
                     <Sparkles className="h-4 w-4 text-orange-400" />
                     <AlertTitle className="text-orange-400 font-black uppercase text-[10px] tracking-widest mb-1">Local Ocupado</AlertTitle>

@@ -1658,7 +1658,7 @@ export async function testWebhookConnection(url: string) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        message: "✅ Conexão Hygra estabelecida com sucesso! Este é um disparo de teste."
+        message: "✅ Conexão NAVI estabelecida com sucesso! Este é um disparo de teste."
       }),
     });
 

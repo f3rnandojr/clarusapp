@@ -95,13 +95,13 @@ export function UserDashboard({
   const handleDialogClose = () => { setIsDialogOpen(false); setCleaningLocation(null); refreshData(); };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-[#F5F0E8] dark:bg-slate-900">
 
       {/* Navbar */}
       <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#A0E9FF]/50 bg-white dark:bg-slate-900 dark:border-slate-700 shadow-sm shrink-0 sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
-          <Image src="/logo_32x32.png" alt="Hygra" width={28} height={28} className="rounded-md" />
-          <h1 className="text-lg font-black text-[#0F4C5C] tracking-tight">Hygra</h1>
+          <Image src="/logo_32x32.png" alt="NAVI" width={28} height={28} className="rounded-md" />
+          <h1 className="text-lg font-black text-[#0F4C5C] tracking-tight">NAVI</h1>
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right">

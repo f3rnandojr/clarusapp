@@ -36,19 +36,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white p-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#F5F0E8] p-4">
       <div className="w-full max-w-sm rounded-2xl border border-[#A0E9FF]/50 bg-white p-6 shadow-lg sm:p-8">
 
         {/* Logo + brand */}
         <div className="flex flex-col items-center text-center mb-8">
           <Image
             src="/logo_180x180.png"
-            alt="Hygra"
+            alt="NAVI"
             width={60}
             height={60}
             className="rounded-2xl mb-4 shadow-md"
           />
-          <h1 className="text-3xl font-black text-[#0F4C5C] tracking-tight mb-1">Hygra</h1>
+          <h1 className="text-3xl font-black text-[#0F4C5C] tracking-tight mb-1">NAVI</h1>
           <p className="text-sm text-gray-400 font-medium">Gestão de Higienização</p>
         </div>
 

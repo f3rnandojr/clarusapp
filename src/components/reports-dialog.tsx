@@ -201,7 +201,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                             <div className="space-y-1">
                                 <Label htmlFor="month" className="text-xs">Mês</Label>
                                 <Select name="month" defaultValue={String(currentMonth)}>
-                                    <SelectTrigger className="h-8 bg-slate-800 border-slate-700"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-8 bg-white border-gray-200 text-gray-800"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
                                     </SelectContent>
@@ -210,7 +210,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                             <div className="space-y-1">
                                 <Label htmlFor="year" className="text-xs">Ano</Label>
                                 <Select name="year" defaultValue={String(currentYear)}>
-                                    <SelectTrigger className="h-8 bg-slate-800 border-slate-700"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-8 bg-white border-gray-200 text-gray-800"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
                                     </SelectContent>
@@ -221,11 +221,11 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <Label htmlFor="startDate" className="text-xs">Início</Label>
-                                <Input id="startDate" name="startDate" type="date" className="h-8 bg-slate-800 border-slate-700" required={periodType === 'range'} />
+                                <Input id="startDate" name="startDate" type="date" className="h-8 bg-white border-gray-200 text-gray-800" required={periodType === 'range'} />
                             </div>
                             <div className="space-y-1">
                                 <Label htmlFor="endDate" className="text-xs">Fim</Label>
-                                <Input id="endDate" name="endDate" type="date" className="h-8 bg-slate-800 border-slate-700" required={periodType === 'range'} />
+                                <Input id="endDate" name="endDate" type="date" className="h-8 bg-white border-gray-200 text-gray-800" required={periodType === 'range'} />
                             </div>
                         </div>
                     )}

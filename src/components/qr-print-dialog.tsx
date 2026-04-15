@@ -50,7 +50,7 @@ export function QrPrintDialog({ children }: { children: React.ReactNode }) {
           <span class="name">${loc.externalCode || loc.name}</span>
           <div class="brand">
             <img src="${origin}/logo_32x32.png" width="14" height="14" alt="" />
-            <span>Hygra</span>
+            <span>NAVI</span>
           </div>
         </div>`;
     }).join('');
@@ -65,7 +65,7 @@ export function QrPrintDialog({ children }: { children: React.ReactNode }) {
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8"/>
-  <title>Hygra — QR Codes</title>
+  <title>NAVI — QR Codes</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; background: #fff; padding: 8mm; }
@@ -167,7 +167,7 @@ export function QrPrintDialog({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center gap-1 mt-0.5">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src="/logo_32x32.png" alt="" width={12} height={12} style={{ borderRadius: 2 }} />
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Hygra</span>
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">NAVI</span>
                   </div>
                 </div>
               ))}

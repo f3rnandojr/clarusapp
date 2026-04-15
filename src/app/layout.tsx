@@ -6,7 +6,7 @@ import { SessionTimeout } from "@/components/session-timeout";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hygra",
+  title: "NAVI",
   description: "Sistema de gestão de higienização de leitos e salas.",
   icons: {
     shortcut: '/favicon.ico',

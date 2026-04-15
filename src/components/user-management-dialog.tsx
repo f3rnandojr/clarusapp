@@ -19,20 +19,27 @@ interface UserManagementDialogProps {
 }
 
 const profileLabels: Record<string, string> = {
-    admin: 'Administrador',
-    gestor: 'Gestor',
-    usuario: 'Usuário',
-    auditor: 'Auditor',
+  admin:   'Administrador',
+  gestor:  'Gestor',
+  usuario: 'Usuário',
+  auditor: 'Auditor',
+};
+
+const profileColors: Record<string, string> = {
+  admin:   'border-[#0F4C5C]/30 text-[#0F4C5C] bg-[#A0E9FF]/20',
+  gestor:  'border-violet-300 text-violet-700 bg-violet-50',
+  usuario: 'border-emerald-300 text-emerald-700 bg-emerald-50',
+  auditor: 'border-amber-300 text-amber-700 bg-amber-50',
 };
 
 export function UserManagementDialog({ allUsers: initialUsers, children }: UserManagementDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]             = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState("list");
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const router = useRouter();
-  const [users, setUsers] = useState(initialUsers);
+  const [activeTab, setActiveTab]   = useState("list");
+  const { toast }                   = useToast();
+  const [isPending, startTransition]= useTransition();
+  const router                      = useRouter();
+  const [users, setUsers]           = useState(initialUsers);
 
   const handleEditClick = (user: User) => {
     setSelectedUser(user);
@@ -40,26 +47,16 @@ export function UserManagementDialog({ allUsers: initialUsers, children }: UserM
   };
 
   const handleTabChange = (value: string) => {
-    if (value !== 'edit') {
-      setSelectedUser(null);
-    }
+    if (value !== 'edit') setSelectedUser(null);
     setActiveTab(value);
-  }
+  };
 
   const handleFormFinished = () => {
     setSelectedUser(null);
     setActiveTab('list');
-    
-    const refreshData = async () => {
-      try {
-        const refreshedUsers = await getUsers();
-        setUsers(refreshedUsers);
-      } catch (error) {
-        console.error('Erro ao atualizar lista de usuários:', error);
-        toast({ title: 'Erro', description: 'Não foi possível atualizar a lista de usuários.', variant: 'destructive'});
-      }
-    };
-    refreshData();
+    getUsers().then(setUsers).catch(() =>
+      toast({ title: 'Erro', description: 'Não foi possível atualizar a lista.', variant: 'destructive' })
+    );
   };
 
   const handleToggleActive = (id: string, currentActiveState: boolean) => {
@@ -67,76 +64,114 @@ export function UserManagementDialog({ allUsers: initialUsers, children }: UserM
       const result = await toggleUserActive(id, !currentActiveState);
       if (result.success) {
         toast({ title: 'Sucesso', description: result.success });
-        const refreshedUsers = await getUsers();
-        setUsers(refreshedUsers);
+        const refreshed = await getUsers();
+        setUsers(refreshed);
       } else {
         toast({ title: 'Erro', description: result.error, variant: 'destructive' });
       }
     });
   };
-  
+
   const onOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (!isOpen) {
       setSelectedUser(null);
       setActiveTab('list');
-      setUsers(initialUsers); // Reseta a lista ao fechar
+      setUsers(initialUsers);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-4xl bg-slate-900 border-slate-800 text-white">
+      <DialogContent className="max-w-4xl bg-white border-gray-200 text-gray-900">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black text-sky-400 uppercase tracking-tighter">Gerenciamento de Usuários</DialogTitle>
+          <DialogTitle className="text-xl font-black text-[#0F4C5C] uppercase tracking-tight">
+            Gerenciamento de Usuários
+          </DialogTitle>
         </DialogHeader>
+
         <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-4">
-          <TabsList className="grid w-full grid-cols-3 bg-slate-950 border border-slate-800 p-1">
-            <TabsTrigger value="list" className="data-[state=active]:bg-sky-500 data-[state=active]:text-slate-900 font-bold uppercase text-[10px] tracking-widest"><List className="mr-2 h-4 w-4" />Listar</TabsTrigger>
-            <TabsTrigger value="add" className="data-[state=active]:bg-sky-500 data-[state=active]:text-slate-900 font-bold uppercase text-[10px] tracking-widest"><UserPlus className="mr-2 h-4 w-4" />Adicionar Novo</TabsTrigger>
-            <TabsTrigger value="edit" disabled={!selectedUser} className="data-[state=active]:bg-sky-500 data-[state=active]:text-slate-900 font-bold uppercase text-[10px] tracking-widest"><Pencil className="mr-2 h-4 w-4" />Editar</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 bg-gray-100 border border-gray-200 p-1 rounded-xl">
+            <TabsTrigger
+              value="list"
+              className="rounded-lg data-[state=active]:bg-[#A0E9FF] data-[state=active]:text-[#0F4C5C] data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest text-gray-500"
+            >
+              <List className="mr-2 h-4 w-4" />Listar
+            </TabsTrigger>
+            <TabsTrigger
+              value="add"
+              className="rounded-lg data-[state=active]:bg-[#A0E9FF] data-[state=active]:text-[#0F4C5C] data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest text-gray-500"
+            >
+              <UserPlus className="mr-2 h-4 w-4" />Adicionar Novo
+            </TabsTrigger>
+            <TabsTrigger
+              value="edit"
+              disabled={!selectedUser}
+              className="rounded-lg data-[state=active]:bg-[#A0E9FF] data-[state=active]:text-[#0F4C5C] data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest text-gray-500 disabled:opacity-40"
+            >
+              <Pencil className="mr-2 h-4 w-4" />Editar
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="list" className="mt-4">
-            <div className="max-h-[60vh] overflow-y-auto pr-2 scroll-container">
+            <div className="max-h-[60vh] overflow-y-auto pr-1 scroll-container">
               <Table>
-                <TableHeader className="bg-slate-950 sticky top-0 z-10">
-                  <TableRow className="border-slate-800 hover:bg-transparent">
-                    <TableHead className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Nome</TableHead>
-                    <TableHead className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Login</TableHead>
-                    <TableHead className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Perfil</TableHead>
-                    <TableHead className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Status</TableHead>
-                    <TableHead className="text-right text-slate-400 font-black uppercase text-[10px] tracking-widest">Ações</TableHead>
+                <TableHeader className="sticky top-0 z-10 bg-white">
+                  <TableRow className="border-gray-100 hover:bg-transparent">
+                    <TableHead className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Nome</TableHead>
+                    <TableHead className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Login</TableHead>
+                    <TableHead className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Perfil</TableHead>
+                    <TableHead className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Status</TableHead>
+                    <TableHead className="text-right text-gray-400 font-black uppercase text-[10px] tracking-widest">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
-                    <TableRow key={user._id.toString()} className="border-slate-800/50 hover:bg-slate-800/20">
-                      <TableCell className="font-bold text-white text-sm">{user.name}</TableCell>
-                      <TableCell className="text-slate-400 text-sm font-mono">{user.login}</TableCell>
+                    <TableRow key={user._id.toString()} className="border-gray-100 hover:bg-gray-50/60">
+                      <TableCell className="font-bold text-gray-900 text-sm">{user.name}</TableCell>
+                      <TableCell className="text-gray-500 text-sm font-mono">{user.login}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="border-sky-500/20 text-sky-400 text-[10px] font-black uppercase tracking-widest h-5">
-                            {profileLabels[user.perfil] || 'Usuário'}
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] font-black uppercase tracking-widest h-5 ${profileColors[user.perfil] || profileColors.usuario}`}
+                        >
+                          {profileLabels[user.perfil] || 'Usuário'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                         <Badge variant={user.active ? 'default' : 'outline'} className={user.active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'border-slate-700 text-slate-500'}>
+                        <Badge
+                          variant="outline"
+                          className={user.active
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-black uppercase tracking-widest'
+                            : 'bg-gray-50 text-gray-400 border-gray-200 text-[10px] font-black uppercase tracking-widest'
+                          }
+                        >
                           {user.active ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-white" onClick={() => handleEditClick(user)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-400 hover:text-[#0F4C5C] hover:bg-[#A0E9FF]/20"
+                          onClick={() => handleEditClick(user)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant={user.active ? 'destructive' : 'default'}
                           size="sm"
-                          className={user.active ? "bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white" : "bg-emerald-500 hover:bg-emerald-400 text-slate-900"}
+                          className={user.active
+                            ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors"
+                            : "bg-emerald-500 hover:bg-emerald-400 text-white border-0"
+                          }
                           onClick={() => handleToggleActive(user._id.toString(), user.active)}
                           disabled={isPending || user.login === 'admin'}
                         >
-                           {isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : (user.active ? 'Desativar' : 'Ativar')}
+                          {isPending
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : (user.active ? 'Desativar' : 'Ativar')
+                          }
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -145,11 +180,13 @@ export function UserManagementDialog({ allUsers: initialUsers, children }: UserM
               </Table>
             </div>
           </TabsContent>
+
           <TabsContent value="add" className="mt-4">
             <UserForm onFinished={handleFormFinished} />
           </TabsContent>
+
           <TabsContent value="edit" className="mt-4">
-             {selectedUser && <UserForm user={selectedUser} onFinished={handleFormFinished} />}
+            {selectedUser && <UserForm user={selectedUser} onFinished={handleFormFinished} />}
           </TabsContent>
         </Tabs>
       </DialogContent>

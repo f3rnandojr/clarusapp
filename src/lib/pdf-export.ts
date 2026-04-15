@@ -7,7 +7,7 @@ import { ptBR } from "date-fns/locale";
 
 // ── Paleta ──────────────────────────────────────────────────────────────────
 const BRAND_DARK  = [15,  76,  92];  // #0F4C5C
-const BRAND_CYAN  = [160, 233, 255]; // #A0E9FF
+const BRAND_LINE  = [21, 101, 192];  // #1565C0 — azul NAVI
 const ROW_ALT     = [245, 249, 250];
 const GRAY_BORDER = [210, 220, 225];
 
@@ -57,16 +57,16 @@ function addHeaderAndFooter(
 
     // ── Cabeçalho ──
     if (logoB64) {
-      doc.addImage(logoB64, "PNG", 14, 10, 10, 10);
+      doc.addImage(logoB64, "PNG", 14, 11, 7, 7);
     }
-    doc.setFontSize(11).setFont("helvetica", "bold").setTextColor(...BRAND_DARK);
-    doc.text("Hygra", logoB64 ? 26 : 14, 17);
+    doc.setFontSize(10).setFont("helvetica", "bold").setTextColor(...BRAND_DARK);
+    doc.text("NAVI", logoB64 ? 23 : 14, 16);
 
     doc.setFontSize(14).setFont("helvetica", "bold").setTextColor(...BRAND_DARK);
     doc.text(title, pw / 2, 17, { align: "center" });
 
-    // Linha ciano
-    doc.setDrawColor(...BRAND_CYAN);
+    // Linha azul NAVI
+    doc.setDrawColor(...BRAND_LINE);
     doc.setLineWidth(0.8);
     doc.line(14, 23, pw - 14, 23);
 
@@ -80,7 +80,7 @@ function addHeaderAndFooter(
     doc.setLineWidth(0.3);
     doc.line(14, ph - 12, pw - 14, ph - 12);
     doc.setFontSize(7).setFont("helvetica", "normal").setTextColor(120, 140, 150);
-    doc.text("Hygra — Gestão de Higienização Hospitalar", 14, ph - 7);
+    doc.text("NAVI — Gestão de Higienização Hospitalar", 14, ph - 7);
     doc.text(`Pág. ${i} / ${pageCount}  |  ${generatedAt}`, pw - 14, ph - 7, { align: "right" });
   }
 }
@@ -115,7 +115,7 @@ export async function exportGeneralReport(report: any, periodLabel: string) {
   });
 
   addHeaderAndFooter(doc, "Relatório Consolidado", `Período: ${periodLabel}`, logoB64, now);
-  doc.save(`Hygra_Consolidado_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`);
+  doc.save(`NAVI_Consolidado_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`);
 }
 
 export async function exportTableReport(
@@ -143,7 +143,7 @@ export async function exportTableReport(
   });
 
   addHeaderAndFooter(doc, title, `Período: ${periodLabel}  |  Total: ${report.total || 0} registros`, logoB64, now);
-  doc.save(`Hygra_${title.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`);
+  doc.save(`NAVI_${title.replace(/\s+/g, "_")}_${format(new Date(), "yyyyMMdd_HHmm")}.pdf`);
 }
 
 // ── Helpers de colunas por escopo ─────────────────────────────────────────────
