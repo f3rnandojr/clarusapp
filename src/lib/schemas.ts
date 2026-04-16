@@ -1,0 +1,362 @@
+
+import { z } from "zod";
+
+// --- AUTH ---
+export const LoginSchema = z.object({
+  login: z.string().min(1, "Login é obrigatório."),
+  password: z.string().min(1, "Senha é obrigatória."),
+});
+
+// --- CORE ---
+
+export const LocationStatusEnum = z.enum(["available", "in_cleaning", "occupied"]);
+export type LocationStatus = z.infer<typeof LocationStatusEnum>;
+
+export const CleaningTypeEnum = z.enum(["concurrent", "terminal"]);
+export type CleaningType = z.infer<typeof CleaningTypeEnum>;
+
+export const AsgStatusEnum = z.enum(["available", "busy"]);
+
+export const AsgSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
+  code: z.string().min(3, { message: "O código deve ter pelo menos 3 caracteres." }),
+  status: AsgStatusEnum,
+  active: z.boolean(),
+  createdAt: z.union([z.string(), z.date()]),
+});
+export type Asg = z.infer<typeof AsgSchema>;
+
+export const CurrentCleaningSchema = z.object({
+    type: CleaningTypeEnum,
+    userId: z.union([z.string(), z.any()]),
+    userName: z.string(),
+    startTime: z.union([z.string(), z.date()]),
+  }).nullable();
+
+
+export const LocationSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  name: z.string(),
+  number: z.string(),
+  status: LocationStatusEnum,
+  currentCleaning: CurrentCleaningSchema,
+  externalCode: z.string().optional(),
+  locationType: z.enum(['leito', 'area']),
+  setor: z.string(), 
+  parentId: z.string().optional().nullable(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
+});
+export type Location = z.infer<typeof LocationSchema>;
+
+// --- Location Mappings ---
+export const LocationMappingSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  externalCode: z.string().min(1, "O código externo é obrigatório."),
+  internalName: z.string().min(1, "O nome interno é obrigatório."),
+  internalNumber: z.string().min(1, "O número interno é obrigatório."),
+  setor: z.string().min(1, "O setor é obrigatório."),
+  locationId: z.string(), 
+  qrCodeUrl: z.string(), 
+  shortCode: z.string(), 
+  description: z.string().optional(),
+  type: z.enum(['leito', 'area']),
+  parentId: z.string().optional().nullable(),
+  isActive: z.boolean(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
+});
+export type LocationMapping = z.infer<typeof LocationMappingSchema>;
+
+export const CreateLocationMappingSchema = LocationMappingSchema.pick({
+  externalCode: true,
+  internalName: true,
+  internalNumber: true,
+  setor: true,
+  description: true,
+  type: true,
+});
+
+export const UpdateLocationMappingSchema = CreateLocationMappingSchema.omit({ externalCode: true }).extend({
+    internalName: z.string().min(1, "O nome interno é obrigatório."),
+    internalNumber: z.string().min(1, "O número interno é obrigatório."),
+    setor: z.string().min(1, "O setor é obrigatório."),
+    description: z.string().optional(),
+    type: z.enum(['leito', 'area']),
+});
+
+
+// --- Areas (QR Code) ---
+export const AreaSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  setor: z.string().min(3, "Setor é obrigatório e deve ter no mínimo 3 caracteres."),
+  locationId: z.string().min(3, "ID da Localização é obrigatório e deve ter no mínimo 3 caracteres.").regex(/^[a-z0-9-]+$/, "ID da Localização deve conter apenas letras minúsculas, números e hífens."),
+  description: z.string().optional(),
+  qrCodeUrl: z.string(),
+  shortCode: z.string(),
+  isActive: z.boolean(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
+});
+export type Area = z.infer<typeof AreaSchema>;
+
+export const CreateAreaSchema = AreaSchema.pick({
+  setor: true,
+  locationId: true,
+  description: true,
+});
+
+export const UpdateAreaSchema = AreaSchema.pick({
+  setor: true,
+  description: true,
+});
+
+
+export const CreateAsgSchema = AsgSchema.pick({
+  name: true,
+  code: true, 
+}).extend({
+  code: z.string().min(3, "Código é obrigatório")
+});
+
+export const UpdateAsgSchema = AsgSchema.pick({
+  name: true,
+  code: true,
+  active: true,
+});
+
+export const StartCleaningFormSchema = z.object({
+  locationId: z.string(),
+  type: CleaningTypeEnum,
+});
+
+// --- Scheduled Requests ---
+export const ScheduledRequestStatusEnum = z.enum(["agendada", "em_andamento", "concluida", "cancelada"]);
+export type ScheduledRequestStatus = z.infer<typeof ScheduledRequestStatusEnum>;
+
+export const PriorityEnum = z.enum(["baixa", "normal", "alta", "urgente"]);
+export type Priority = z.infer<typeof PriorityEnum>;
+
+export const ScheduledRequestSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  locationId: z.string(),
+  locationName: z.string(),
+  locationType: z.string(),
+  cleaningType: CleaningTypeEnum,
+  requestedBy: z.object({
+    userId: z.string(),
+    userName: z.string(),
+    userProfile: z.string(),
+  }),
+  requestedAt: z.union([z.string(), z.date()]),
+  assignedAt: z.union([z.string(), z.date()]).nullable(),
+  startedAt: z.union([z.string(), z.date()]).nullable(),
+  completedAt: z.union([z.string(), z.date()]).nullable(),
+  assignedTo: z.object({
+    userId: z.string().nullable(),
+    userName: z.string().nullable(),
+  }),
+  expectedDuration: z.number(),
+  status: ScheduledRequestStatusEnum,
+  priority: PriorityEnum.default("normal"),
+  timeToAssign: z.number().nullable(),
+  timeToComplete: z.number().nullable(),
+  assignedDuration: z.number().nullable(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
+});
+export type ScheduledRequest = z.infer<typeof ScheduledRequestSchema>;
+
+// --- Active Cleaning ---
+export const ActiveCleaningSchema = z.object({
+    _id: z.union([z.string(), z.any()]),
+    locationId: z.string(),
+    locationName: z.string(),
+    locationType: z.enum(['leito', 'area']),
+    cleaningType: CleaningTypeEnum,
+    userId: z.union([z.string(), z.any()]),
+    userName: z.string(),
+    startTime: z.union([z.string(), z.date()]),
+    status: z.literal('in_progress'),
+    expectedDuration: z.number()
+});
+export type ActiveCleaning = z.infer<typeof ActiveCleaningSchema>;
+
+
+export const CleaningSettingsSchema = z.object({
+  concurrent: z.number().min(1, 'Deve ser maior que 0'),
+  terminal: z.number().min(1, 'Deve ser maior que 0'),
+});
+export type CleaningSettings = z.infer<typeof CleaningSettingsSchema>;
+
+export const UpdateCleaningSettingsSchema = CleaningSettingsSchema.pick({
+  concurrent: true,
+  terminal: true
+});
+
+export const CleaningOccurrenceSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  locationName: z.string(),
+  cleaningType: CleaningTypeEnum,
+  userName: z.string(), 
+  delayInMinutes: z.number(),
+  occurredAt: z.union([z.string(), z.date()]),
+});
+export type CleaningOccurrence = z.infer<typeof CleaningOccurrenceSchema>;
+
+export const CleaningRecordSchema = z.object({
+    _id: z.union([z.string(), z.any()]),
+    locationId: z.string(),
+    locationName: z.string(),
+    locationType: z.enum(['area', 'leito']),
+    cleaningType: CleaningTypeEnum,
+    userId: z.union([z.string(), z.any()]),
+    userName: z.string(),
+    startTime: z.union([z.string(), z.date()]),
+    finishTime: z.union([z.string(), z.date()]),
+    expectedDuration: z.number(),
+    actualDuration: z.number(),
+    status: z.enum(['in_progress', 'completed']),
+    delayed: z.boolean(),
+    date: z.union([z.string(), z.date()]),
+});
+export type CleaningRecord = z.infer<typeof CleaningRecordSchema>;
+
+export const ReportFiltersSchema = z.object({
+    scope: z.enum(['general', 'delays', 'nc', 'audit', 'history']).default('general'),
+    periodType: z.enum(['month', 'range']).default('month'),
+    month: z.string().optional().nullable(),
+    year: z.string().optional().nullable(),
+    startDate: z.string().optional().nullable(),
+    endDate: z.string().optional().nullable(),
+    cleaningTypes: z.array(CleaningTypeEnum).optional().nullable(),
+});
+
+export type ReportFilters = z.infer<typeof ReportFiltersSchema>;
+
+const UserProfileEnum = z.enum(['admin', 'gestor', 'usuario', 'auditor']);
+export type UserProfile = z.infer<typeof UserProfileEnum>;
+
+export const UserSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres."),
+  login: z.string().min(3, "Login deve ter pelo menos 3 caracteres."),
+  password: z.string().min(4, "Senha deve ter pelo menos 4 caracteres."),
+  perfil: UserProfileEnum.default('usuario'),
+  active: z.boolean(),
+  createdAt: z.union([z.string(), z.date()]),
+});
+export type User = z.infer<typeof UserSchema>;
+
+export const CreateUserSchema = UserSchema.pick({
+    name: true,
+    login: true,
+    password: true,
+    perfil: true,
+});
+
+export const UpdateUserSchema = UserSchema.pick({
+    name: true,
+    login: true,
+    active: true,
+    perfil: true,
+}).extend({
+    password: z.string().optional(),
+});
+
+
+export const IntegrationConfigSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  enabled: z.boolean().default(false),
+  host: z.string(),
+  port: z.number().default(5432),
+  database: z.string(),
+  username: z.string(),
+  password: z.string(),
+  syncInterval: z.number().default(5),
+  query: z.string().default("SELECT code1, tipobloq FROM cable1"),
+  statusMappings: z.object({
+    available: z.string().default("L"),
+    occupied: z.string().default("*"),
+    in_cleaning: z.string().optional(), 
+  }),
+  fieldMappings: z.object({
+    codeField: z.string().default("code1"),
+    statusField: z.string().default("tipobloq"),
+    nameField: z.string().optional(), 
+    numberField: z.string().optional(), 
+  }),
+  transformation: z.object({
+    nameSeparator: z.string().default(" "), 
+    namePattern: z.string().optional(), 
+    numberPattern: z.string().optional(), 
+    customTransform: z.boolean().default(false), 
+  }),
+  lastSync: z.union([z.string(), z.date()]).optional(),
+  lastSyncStats: z.object({
+    total: z.number().default(0),
+    updated: z.number().default(0),
+    created: z.number().default(0),
+    skipped: z.number().default(0),
+    errors: z.number().default(0),
+  }).optional(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]),
+});
+
+export type IntegrationConfig = z.infer<typeof IntegrationConfigSchema>;
+
+// --- Non Conformities ---
+export const NonConformitySchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  locationId: z.string(),
+  locationName: z.string(),
+  userId: z.union([z.string(), z.any()]),
+  userName: z.string(),
+  photoDataUri: z.string().optional(),
+  description: z.string().min(1, "A descrição é obrigatória."),
+  timestamp: z.union([z.string(), z.date()]),
+});
+export type NonConformity = z.infer<typeof NonConformitySchema>;
+
+export const CreateNonConformitySchema = NonConformitySchema.pick({
+  locationId: true,
+  locationName: true,
+  photoDataUri: true,
+  description: true,
+});
+
+// --- Audit Records ---
+export const AuditRecordSchema = z.object({
+  _id: z.union([z.string(), z.any()]),
+  locationId: z.string(),
+  locationName: z.string(),
+  auditorId: z.union([z.string(), z.any()]),
+  auditorName: z.string(),
+  lastCleaningId: z.string().nullable(), // ID do último registro de limpeza finalizado
+  checklistData: z.record(z.string(), z.enum(["conforme", "não_conforme", "n/a"])),
+  observations: z.string().optional(),
+  timestamp: z.union([z.string(), z.date()]),
+});
+export type AuditRecord = z.infer<typeof AuditRecordSchema>;
+
+// --- Webhook Settings ---
+export const WebhookSettingsSchema = z.object({
+  url: z.string().url("URL inválida").or(z.string().length(0)),
+  template: z.string().min(1, "O template é obrigatório."),
+  enabledEvents: z.object({
+    newRequest:        z.boolean().default(true),
+    cleaningFinished:  z.boolean().default(false),
+    auditFinished:     z.boolean().default(true),
+    checklistFinished: z.boolean().default(true),
+    ncRegistered:      z.boolean().default(true),
+  }).default({
+    newRequest:        true,
+    cleaningFinished:  false,
+    auditFinished:     true,
+    checklistFinished: true,
+    ncRegistered:      true,
+  }),
+});
+export type WebhookSettings = z.infer<typeof WebhookSettingsSchema>;

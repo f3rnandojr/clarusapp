@@ -1,0 +1,100 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 37 39% 94%;            /* #F5F0E8 — bege suave */
+    --foreground: 194 72% 21%;           /* #0F4C5C */
+    --card: 0 0% 100%;
+    --card-foreground: 194 72% 21%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 194 72% 21%;
+    --primary: 194 100% 81%;             /* #A0E9FF */
+    --primary-foreground: 194 72% 21%;   /* #0F4C5C */
+    --secondary: 194 60% 95%;
+    --secondary-foreground: 194 72% 21%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 210 20% 55%;
+    --accent: 194 100% 81%;
+    --accent-foreground: 194 72% 21%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 194 50% 88%;
+    --input: 194 40% 94%;
+    --ring: 194 100% 81%;
+    --radius: 0.75rem;
+
+    --status-available-bg: 142 56% 94%;
+    --status-available-fg: 142 65% 30%;
+    --status-cleaning-bg: 194 80% 90%;
+    --status-cleaning-fg: 194 70% 32%;
+    --status-occupied-bg: 24 56% 94%;
+    --status-occupied-fg: 24 72% 38%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;           /* #0F172A */
+    --foreground: 210 40% 96%;
+    --card: 218 41% 16%;                 /* #1E293B */
+    --card-foreground: 210 40% 96%;
+    --popover: 218 41% 16%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 194 100% 81%;             /* #A0E9FF — mantém acento ciano */
+    --primary-foreground: 194 72% 21%;
+    --secondary: 218 35% 20%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 218 35% 20%;
+    --muted-foreground: 210 20% 65%;
+    --accent: 194 100% 81%;
+    --accent-foreground: 194 72% 21%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 30% 26%;
+    --input: 218 35% 20%;
+    --ring: 194 100% 81%;
+
+    --status-available-bg: 142 40% 15%;
+    --status-available-fg: 142 65% 60%;
+    --status-cleaning-bg: 194 60% 14%;
+    --status-cleaning-fg: 194 70% 72%;
+    --status-occupied-bg: 24 40% 15%;
+    --status-occupied-fg: 24 72% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body {
+    @apply h-auto min-h-screen bg-background text-foreground overflow-x-hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scroll-container {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) hsl(var(--background));
+  }
+
+  .scroll-container::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scroll-container::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+    border-radius: 4px;
+  }
+
+  .scroll-container::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+    transition: background 0.2s ease-in-out;
+  }
+
+  .scroll-container::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--accent));
+  }
+}
