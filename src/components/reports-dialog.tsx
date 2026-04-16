@@ -110,9 +110,9 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
         
         return (
             <div className="flex flex-col gap-1 max-w-[200px]">
-                {ncItems && <span className="text-red-400 font-bold text-[10px]">NC: {ncItems}</span>}
-                {item.observations && <span className="text-slate-400 italic text-[10px] truncate">Obs: {item.observations}</span>}
-                {!ncItems && !item.observations && <span className="text-emerald-400 text-[10px]">Conforme</span>}
+                {ncItems && <span className="text-red-500 font-bold text-[10px]">NC: {ncItems}</span>}
+                {item.observations && <span className="text-gray-400 italic text-[10px] truncate">Obs: {item.observations}</span>}
+                {!ncItems && !item.observations && <span className="text-emerald-600 text-[10px]">Conforme</span>}
             </div>
         );
     };
@@ -137,23 +137,23 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                     <RadioGroup name="scope" value={scope} onValueChange={(v: any) => setScope(v)} className="grid grid-cols-1 gap-2">
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="general" id="scope-general" />
-                            <Label htmlFor="scope-general" className="font-normal cursor-pointer text-slate-300">Geral (Consolidado)</Label>
+                            <Label htmlFor="scope-general" className="font-normal cursor-pointer text-gray-700">Geral (Consolidado)</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="delays" id="scope-delays" />
-                            <Label htmlFor="scope-delays" className="font-normal cursor-pointer text-slate-300">Apenas Ocorrências de Atraso</Label>
+                            <Label htmlFor="scope-delays" className="font-normal cursor-pointer text-gray-700">Apenas Ocorrências de Atraso</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="nc" id="scope-nc" />
-                            <Label htmlFor="scope-nc" className="font-normal cursor-pointer text-slate-300">Apenas Não Conformidades (NC)</Label>
+                            <Label htmlFor="scope-nc" className="font-normal cursor-pointer text-gray-700">Apenas Não Conformidades (NC)</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="audit" id="scope-audit" />
-                            <Label htmlFor="scope-audit" className="font-normal cursor-pointer text-slate-300">Apenas Auditorias (Checklist)</Label>
+                            <Label htmlFor="scope-audit" className="font-normal cursor-pointer text-gray-700">Apenas Auditorias (Checklist)</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="history" id="scope-history" />
-                            <Label htmlFor="scope-history" className="font-normal cursor-pointer text-slate-300">Histórico de Higienizações</Label>
+                            <Label htmlFor="scope-history" className="font-normal cursor-pointer text-gray-700">Histórico de Higienizações</Label>
                         </div>
                     </RadioGroup>
 
@@ -163,11 +163,11 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
                                     <Checkbox id="rep-concurrent" name="cleaningTypes" value="concurrent" defaultChecked />
-                                    <Label htmlFor="rep-concurrent" className="text-xs font-normal cursor-pointer text-slate-400">Concorrente</Label>
+                                    <Label htmlFor="rep-concurrent" className="text-xs font-normal cursor-pointer text-gray-600">Concorrente</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <Checkbox id="rep-terminal" name="cleaningTypes" value="terminal" defaultChecked />
-                                    <Label htmlFor="rep-terminal" className="text-xs font-normal cursor-pointer text-slate-400">Terminal</Label>
+                                    <Label htmlFor="rep-terminal" className="text-xs font-normal cursor-pointer text-gray-600">Terminal</Label>
                                 </div>
                             </div>
                         </div>
@@ -257,9 +257,9 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
 
             {state?.success && state.report && (
                 <div className="mt-2 space-y-6 pb-6">
-                    <Separator className="bg-slate-800" />
+                    <Separator className="bg-gray-100" />
                     <div className="text-center">
-                        <h3 className="font-semibold text-base sm:text-lg flex items-center justify-center gap-2 text-white">
+                        <h3 className="font-semibold text-base sm:text-lg flex items-center justify-center gap-2 text-gray-900">
                             {state.report.scope === 'general' && <ClipboardList className="h-5 w-5 text-sky-400" />}
                             {state.report.scope === 'delays' && <AlertTriangle className="h-5 w-5 text-red-400" />}
                             {state.report.scope === 'nc' && <AlertTriangle className="h-5 w-5 text-orange-400" />}
@@ -278,66 +278,66 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                     
                     {state.report.scope === 'general' ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm">
-                                <h4 className="font-black text-xs uppercase tracking-widest text-sky-400">Volumetria</h4>
-                                <div className="flex justify-between border-b border-slate-800/50 pb-1"><span>Higienizações:</span> <span className="font-bold text-white">{state.report.total || 0}</span></div>
-                                <div className="flex justify-between"><span>Não Conformidades:</span> <span className="font-bold text-red-400">{state.report.totalNCs || 0}</span></div>
+                            <div className="rounded-xl border border-gray-200 p-4 space-y-2 bg-white shadow-sm">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-[#0F4C5C]">Volumetria</h4>
+                                <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-600">Higienizações:</span> <span className="font-bold text-gray-900">{state.report.total || 0}</span></div>
+                                <div className="flex justify-between"><span className="text-gray-600">Não Conformidades:</span> <span className="font-bold text-red-500">{state.report.totalNCs || 0}</span></div>
                             </div>
-                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm">
-                                <h4 className="font-black text-xs uppercase tracking-widest text-sky-400">Detalhamento</h4>
-                                <div className="flex justify-between border-b border-slate-800/50 pb-1"><span>Concorrente:</span> <span className="font-bold text-white">{state.report.concurrent || 0} (Média {state.report.avgConcurrentTime || 0}m)</span></div>
-                                <div className="flex justify-between"><span>Terminal:</span> <span className="font-bold text-white">{state.report.terminal || 0} (Média {state.report.avgTerminalTime || 0}m)</span></div>
+                            <div className="rounded-xl border border-gray-200 p-4 space-y-2 bg-white shadow-sm">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-[#0F4C5C]">Detalhamento</h4>
+                                <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-600">Concorrente:</span> <span className="font-bold text-gray-900">{state.report.concurrent || 0} (Média {state.report.avgConcurrentTime || 0}m)</span></div>
+                                <div className="flex justify-between"><span className="text-gray-600">Terminal:</span> <span className="font-bold text-gray-900">{state.report.terminal || 0} (Média {state.report.avgTerminalTime || 0}m)</span></div>
                             </div>
-                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm sm:col-span-2 lg:col-span-1">
-                                <h4 className="font-black text-xs uppercase tracking-widest text-sky-400">SLA e Prazos</h4>
-                                <div className="flex justify-between border-b border-slate-800/50 pb-1"><span>No Prazo:</span> <span className="font-bold text-emerald-400">{(state.report.onTimePercent || 0).toFixed(1)}%</span></div>
-                                <div className="flex justify-between"><span>Atrasados:</span> <span className="font-bold text-red-400">{(state.report.delayedPercent || 0).toFixed(1)}%</span></div>
+                            <div className="rounded-xl border border-gray-200 p-4 space-y-2 bg-white shadow-sm sm:col-span-2 lg:col-span-1">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-[#0F4C5C]">SLA e Prazos</h4>
+                                <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-600">No Prazo:</span> <span className="font-bold text-emerald-600">{(state.report.onTimePercent || 0).toFixed(1)}%</span></div>
+                                <div className="flex justify-between"><span className="text-gray-600">Atrasados:</span> <span className="font-bold text-red-500">{(state.report.delayedPercent || 0).toFixed(1)}%</span></div>
                             </div>
-                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm sm:col-span-2 lg:col-span-1">
-                                <h4 className="font-black text-xs uppercase tracking-widest text-sky-400">Auditorias</h4>
-                                <div className="flex justify-between border-b border-slate-800/50 pb-1"><span>Leitos APTO:</span> <span className="font-bold text-emerald-400">{state.report.totalAuditAptos || 0}</span></div>
-                                <div className="flex justify-between"><span>Leitos NÃO APTO:</span> <span className="font-bold text-red-400">{state.report.totalAuditNaoApto || 0}</span></div>
+                            <div className="rounded-xl border border-gray-200 p-4 space-y-2 bg-white shadow-sm sm:col-span-2 lg:col-span-1">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-[#0F4C5C]">Auditorias</h4>
+                                <div className="flex justify-between border-b border-gray-100 pb-1"><span className="text-gray-600">Leitos APTO:</span> <span className="font-bold text-emerald-600">{state.report.totalAuditAptos || 0}</span></div>
+                                <div className="flex justify-between"><span className="text-gray-600">Leitos NÃO APTO:</span> <span className="font-bold text-red-500">{state.report.totalAuditNaoApto || 0}</span></div>
                             </div>
                         </div>
                     ) : state.report.scope === 'audit' && !state.report.details ? (
                          <div className="grid grid-cols-1 gap-4 text-sm">
-                            <div className="rounded-xl border border-slate-800 p-4 space-y-2 bg-slate-900 shadow-sm text-center">
-                                <h4 className="font-black text-xs uppercase tracking-widest text-emerald-400">Conferências Realizadas</h4>
-                                <p className="text-3xl font-black text-white">{state.report.total || 0}</p>
+                            <div className="rounded-xl border border-gray-200 p-4 space-y-2 bg-white shadow-sm text-center">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-emerald-600">Conferências Realizadas</h4>
+                                <p className="text-3xl font-black text-gray-900">{state.report.total || 0}</p>
                             </div>
                         </div>
                     ) : null}
 
                     {(state.report.scope === 'delays' || state.report.scope === 'nc' || state.report.scope === 'audit' || state.report.scope === 'history') && (
-                        <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-900">
+                        <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
                             <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow className="bg-slate-800/50 border-slate-800">
-                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Data</TableHead>
-                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Local</TableHead>
-                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Responsável</TableHead>
-                                            <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">
+                                        <TableRow className="bg-gray-50 border-gray-100">
+                                            <TableHead className="whitespace-nowrap text-gray-400 uppercase text-[10px] font-black tracking-widest">Data</TableHead>
+                                            <TableHead className="whitespace-nowrap text-gray-400 uppercase text-[10px] font-black tracking-widest">Local</TableHead>
+                                            <TableHead className="whitespace-nowrap text-gray-400 uppercase text-[10px] font-black tracking-widest">Responsável</TableHead>
+                                            <TableHead className="whitespace-nowrap text-gray-400 uppercase text-[10px] font-black tracking-widest">
                                                 {state.report.scope === 'delays' ? 'Atraso' :
                                                  state.report.scope === 'nc' ? 'Relato' :
                                                  state.report.scope === 'history' ? 'Duração' :
                                                  'Status/Detalhes'}
                                             </TableHead>
                                             {state.report.scope === 'history' && (
-                                                <TableHead className="whitespace-nowrap text-slate-400 uppercase text-[10px] font-black tracking-widest">Tipo</TableHead>
+                                                <TableHead className="whitespace-nowrap text-gray-400 uppercase text-[10px] font-black tracking-widest">Tipo</TableHead>
                                             )}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {state.report.details && state.report.details.length > 0 ? (
                                             state.report.details.map((item: any, idx: number) => (
-                                                <TableRow key={item._id || idx} className="border-slate-800 hover:bg-slate-800/20">
-                                                    <TableCell className="text-[10px] sm:text-xs whitespace-nowrap text-slate-300">
+                                                <TableRow key={item._id || idx} className="border-gray-100 hover:bg-gray-50/60">
+                                                    <TableCell className="text-[10px] sm:text-xs whitespace-nowrap text-gray-600">
                                                         {formatSafeDate(item.date || item.timestamp)}
                                                     </TableCell>
-                                                    <TableCell className="font-bold whitespace-nowrap text-white">{item.locationName || 'N/A'}</TableCell>
-                                                    <TableCell className="whitespace-nowrap text-slate-300">{item.userName || item.auditorName || 'N/A'}</TableCell>
-                                                    <TableCell className={cn("whitespace-nowrap", state.report.scope === 'delays' ? 'text-red-400 font-black' : 'text-[10px] sm:text-xs text-slate-400')}>
+                                                    <TableCell className="font-bold whitespace-nowrap text-gray-900">{item.locationName || 'N/A'}</TableCell>
+                                                    <TableCell className="whitespace-nowrap text-gray-600">{item.userName || item.auditorName || 'N/A'}</TableCell>
+                                                    <TableCell className={cn("whitespace-nowrap", state.report.scope === 'delays' ? 'text-red-500 font-black' : 'text-[10px] sm:text-xs text-gray-500')}>
                                                         {state.report.scope === 'delays'
                                                             ? `${(item.actualDuration || 0) - (item.expectedDuration || 0)} min` :
                                                           state.report.scope === 'audit'
@@ -348,7 +348,7 @@ export function ReportsDialog({ children }: ReportsDialogProps) {
                                                         }
                                                     </TableCell>
                                                     {state.report.scope === 'history' && (
-                                                        <TableCell className="text-[10px] text-slate-400 whitespace-nowrap">
+                                                        <TableCell className="text-[10px] text-gray-500 whitespace-nowrap">
                                                             {item.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente'}
                                                         </TableCell>
                                                     )}

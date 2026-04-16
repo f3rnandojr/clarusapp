@@ -17,7 +17,7 @@ import Image from 'next/image';
 const profileLabels: Record<string, string> = {
   admin:   'Admin',
   gestor:  'Gestor',
-  usuario: 'Camareira',
+  usuario: 'Colaborador',
   auditor: 'Auditor',
 };
 

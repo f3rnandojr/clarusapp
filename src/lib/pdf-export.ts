@@ -151,7 +151,7 @@ export async function exportTableReport(
 export const delaysColumns = [
   { header: "Data",        key: "date",             format: (v: any) => formatDate(v) },
   { header: "Local",       key: "locationName",     format: (v: any) => v || "—" },
-  { header: "Camareira",   key: "userName",         format: (v: any) => v || "—" },
+  { header: "Colaborador", key: "userName",         format: (v: any) => v || "—" },
   { header: "Tipo",        key: "cleaningType",     format: (v: any) => v === "terminal" ? "Terminal" : "Concorrente" },
   { header: "Duração Real", key: "actualDuration",  format: (v: any) => minutesToHm(v) },
   { header: "Esperado",    key: "expectedDuration", format: (v: any) => minutesToHm(v) },
@@ -179,7 +179,7 @@ export const historyColumns = [
   { header: "Fim",          key: "finishTime",       format: (v: any) => formatDate(v) },
   { header: "Leito",        key: "locationName",     format: (v: any) => v || "—" },
   { header: "Tipo",         key: "cleaningType",     format: (v: any) => v === "terminal" ? "Terminal" : "Concorrente" },
-  { header: "Camareira",    key: "userName",         format: (v: any) => v || "—" },
+  { header: "Colaborador",  key: "userName",         format: (v: any) => v || "—" },
   { header: "Duração",      key: "actualDuration",   format: (v: any) => minutesToHm(v) },
   { header: "Atraso",       key: "delayed",          format: (v: any) => v ? "Sim" : "Não" },
 ];

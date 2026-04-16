@@ -148,12 +148,12 @@ const getLocationById = async (id: string): Promise<Location | null> => {
     const location: Location = {
         _id: item._id,
         name: isArea ? item.setor : item.name,
-        number: isArea ? item.shortCode : item.number,
+        number: isArea ? (item.shortCode || item.locationId || '') : (item.number || ''),
         status: normalizeStatus(item.status),
         currentCleaning: item.currentCleaning || null,
         externalCode: isArea ? item.locationId : item.externalCode,
         locationType: isArea ? 'area' : 'leito',
-        setor: isArea ? item.setor : 'Sem Setor', 
+        setor: isArea ? item.setor : (item.setor || 'Sem Setor'),
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
     };
@@ -368,10 +368,17 @@ export async function startCleaning(prevState: any, formData: FormData) {
   const cleaningSettings = await getCleaningSettings();
   const expectedDuration = cleaningSettings[type];
   
+  const buildLocationName = (loc: Location) =>
+    loc.locationType === 'area'
+      ? (loc.setor || loc.name)
+      : loc.externalCode && loc.setor
+        ? `${loc.externalCode} — ${loc.setor}`
+        : loc.number ? `${loc.name} - ${loc.number}` : loc.name;
+
   if (userProfile === 'admin' || userProfile === 'gestor') {
      const newScheduledRequest = {
       locationId: location._id.toString(),
-      locationName: `${location.name} - ${location.number}`,
+      locationName: buildLocationName(location),
       locationType: location.locationType,
       cleaningType: type,
       requestedBy: {
@@ -397,19 +404,19 @@ export async function startCleaning(prevState: any, formData: FormData) {
     await db.collection('scheduled_requests').insertOne(newScheduledRequest);
     
     // Webhook: Nova Solicitação
-    await sendWebhookNotification('newRequest', { 
-      local: `${location.name} - ${location.number}`, 
-      tipo_limpeza: type === 'terminal' ? 'Terminal' : 'Concorrente' 
+    await sendWebhookNotification('newRequest', {
+      local: buildLocationName(location),
+      tipo_limpeza: type === 'terminal' ? 'Terminal' : 'Concorrente'
     });
 
     revalidatePath('/dashboard');
-    return { success: true, message: `Solicitação de higienização para ${location.name} - ${location.number} criada com sucesso!` };
+    return { success: true, message: `Solicitação de higienização para ${buildLocationName(location)} criada com sucesso!` };
   }
 
   if (userProfile === 'usuario' || userProfile === 'auditor') {
     const newActiveCleaning: Omit<ActiveCleaning, '_id'> = {
       locationId: location._id.toString(),
-      locationName: `${location.name} - ${location.number}`,
+      locationName: buildLocationName(location),
       locationType: location.locationType,
       cleaningType: type,
       userId: new ObjectId(user._id),
@@ -425,7 +432,7 @@ export async function startCleaning(prevState: any, formData: FormData) {
     await db.collection(collectionName).updateOne({_id: new ObjectId(location._id)}, {$set: { status: 'in_cleaning', updatedAt: new Date() }});
     
     revalidatePath('/dashboard');
-    const msg = userProfile === 'auditor' ? 'Auditoria iniciada!' : `Higienização iniciada com sucesso em ${location.name} - ${location.number}!`;
+    const msg = userProfile === 'auditor' ? 'Auditoria iniciada!' : `Higienização iniciada com sucesso em ${buildLocationName(location)}!`;
     return { success: true, message: msg };
   }
   
@@ -1313,12 +1320,42 @@ export async function generateReport(prevState: any, formData: FormData) {
             ...typeFilter
         }).sort({ date: -1 }).toArray();
 
+        // Enrich locationName with current location data (fixes "undefined" in old records)
+        const locationIds = [...new Set((records || []).map((r: any) => r.locationId).filter(Boolean))];
+        const validObjIds: any[] = [];
+        locationIds.forEach(id => { try { validObjIds.push(new ObjectId(id as string)); } catch {} });
+
+        const [locationDocs, areaDocs] = validObjIds.length > 0
+            ? await Promise.all([
+                db.collection('locations').find({ _id: { $in: validObjIds } }).toArray(),
+                db.collection('areas').find({ _id: { $in: validObjIds } }).toArray(),
+              ])
+            : [[], []];
+
+        const locMap: Record<string, { type: 'leito' | 'area'; doc: any }> = {};
+        locationDocs.forEach((l: any) => { locMap[l._id.toString()] = { type: 'leito', doc: l }; });
+        areaDocs.forEach((a: any) => { locMap[a._id.toString()] = { type: 'area', doc: a }; });
+
+        const enrichedRecords = (records || []).map((r: any) => {
+            const entry = locMap[r.locationId];
+            if (!entry) return r;
+            let locationName: string;
+            if (entry.type === 'area') {
+                locationName = entry.doc.setor || r.locationName;
+            } else {
+                const code = entry.doc.externalCode || '';
+                const setor = entry.doc.setor || '';
+                locationName = code && setor ? `${code} — ${setor}` : (r.locationName || '');
+            }
+            return { ...r, locationName };
+        });
+
         return {
             success: true,
             report: {
                 scope,
-                total: (records || []).length,
-                details: convertToPlainObject(records) || [],
+                total: enrichedRecords.length,
+                details: convertToPlainObject(enrichedRecords) || [],
                 filters: validatedFields.data
             }
         };
@@ -1370,9 +1407,15 @@ export async function acceptRequest(requestId: string) {
         return { success: false, error: 'Este local já está em processo de higienização.'};
     }
 
+    const acceptLocationName = location.locationType === 'area'
+        ? (location.setor || location.name)
+        : location.externalCode && location.setor
+            ? `${location.externalCode} — ${location.setor}`
+            : location.number ? `${location.name} - ${location.number}` : location.name;
+
     const newActiveCleaning: Omit<ActiveCleaning, '_id'> = {
         locationId: location._id.toString(),
-        locationName: location.name,
+        locationName: acceptLocationName,
         locationType: location.locationType,
         cleaningType: request.cleaningType,
         userId: new ObjectId(user._id),

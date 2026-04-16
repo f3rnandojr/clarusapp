@@ -107,12 +107,12 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
     : (isAuditor ? 'Iniciar Auditoria / Checkout' : (isManager ? 'Solicitar Higienização' : 'Confirmar e Iniciar'));
 
   const dialogContent = (
-    <DialogContent className="sm:max-w-[425px] w-[95vw] border-slate-800 bg-slate-900 text-white">
+    <DialogContent className="sm:max-w-[425px] w-[95vw] border-gray-200 bg-white text-gray-900">
       <DialogHeader>
-        <DialogTitle className="text-xl font-black tracking-tight text-white">
+        <DialogTitle className="text-xl font-black tracking-tight text-[#0F4C5C]">
             {isAuditor ? 'Confirmar Auditoria' : 'Configurar Higienização'}
         </DialogTitle>
-        <DialogDescription className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+        <DialogDescription className="text-gray-400 font-bold uppercase text-[10px] tracking-widest">
           Local: {location.name} - {location.number}
         </DialogDescription>
       </DialogHeader>
@@ -120,7 +120,7 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
       {isLoadingContext ? (
           <div className="py-10 flex flex-col items-center justify-center gap-4">
               <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Buscando histórico...</p>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Buscando histórico...</p>
           </div>
       ) : (
       <form onSubmit={handleSubmit} className="space-y-6 pt-2">
@@ -130,28 +130,28 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
                 <Alert className="bg-sky-500/5 border-sky-500/20 rounded-2xl">
                     <Info className="h-4 w-4 text-sky-400" />
                     <AlertTitle className="text-sky-400 font-black uppercase text-[10px] tracking-widest mb-2">Contexto da Auditoria</AlertTitle>
-                    <AlertDescription className="text-sm text-slate-300">
+                    <AlertDescription className="text-sm text-gray-600">
                         {lastCleaning ? (
                             <div className="space-y-2">
-                                <p className="font-medium">Validando limpeza <span className="text-white font-bold">{lastCleaning.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente'}</span></p>
-                                <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                <p className="font-medium">Validando limpeza <span className="text-[#0F4C5C] font-bold">{lastCleaning.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente'}</span></p>
+                                <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-gray-400">
                                     <span className="flex items-center gap-1"><UserIcon className="h-3 w-3" /> {lastCleaning.userName}</span>
                                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {format(new Date(lastCleaning.finishTime), 'HH:mm', { locale: ptBR })}</span>
                                 </div>
                             </div>
                         ) : (
-                            <p className="italic text-slate-500 text-xs">Nenhum registro de limpeza concluído recentemente para este local.</p>
+                            <p className="italic text-gray-400 text-xs">Nenhum registro de limpeza concluído recentemente para este local.</p>
                         )}
                     </AlertDescription>
                 </Alert>
-                <p className="text-[10px] text-center text-slate-500 font-bold uppercase tracking-widest">Clique abaixo para iniciar o checkout</p>
+                <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-widest">Clique abaixo para iniciar o checkout</p>
             </div>
         ) : (
             <>
                 {isOccupied && userProfile === 'usuario' ? (
                 /* usuario + occupied: choice between concurrent and terminal */
                 <div className="space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo de Higienização</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Tipo de Higienização</p>
                     <div className="grid grid-cols-2 gap-3">
                         {[
                             { val: 'concurrent' as const, label: 'Concorrente', sub: 'Leito ocupado', color: 'orange' },
@@ -164,13 +164,13 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
                                 className={`rounded-2xl border-2 p-3 text-left transition-all active:scale-95 ${
                                     cleaningType === val
                                         ? color === 'orange'
-                                            ? 'border-orange-400 bg-orange-500/10'
-                                            : 'border-sky-400 bg-sky-500/10'
-                                        : 'border-slate-700 hover:border-slate-500'
+                                            ? 'border-orange-400 bg-orange-50'
+                                            : 'border-[#A0E9FF] bg-[#A0E9FF]/15'
+                                        : 'border-gray-200 hover:border-gray-300 bg-gray-50'
                                 }`}
                             >
-                                <p className={`font-black text-sm ${cleaningType === val ? (color === 'orange' ? 'text-orange-300' : 'text-sky-300') : 'text-white'}`}>{label}</p>
-                                <p className="text-[10px] text-slate-500 mt-0.5">{sub}</p>
+                                <p className={`font-black text-sm ${cleaningType === val ? (color === 'orange' ? 'text-orange-600' : 'text-[#0F4C5C]') : 'text-gray-700'}`}>{label}</p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
                             </button>
                         ))}
                     </div>
@@ -179,25 +179,25 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
                 <Alert className="bg-orange-500/5 border-orange-500/20 rounded-2xl">
                     <Sparkles className="h-4 w-4 text-orange-400" />
                     <AlertTitle className="text-orange-400 font-black uppercase text-[10px] tracking-widest mb-1">Local Ocupado</AlertTitle>
-                    <AlertDescription className="text-xs text-slate-300">
-                    Apenas a limpeza <span className="text-white font-bold">concorrente</span> pode ser realizada agora.
+                    <AlertDescription className="text-xs text-gray-600">
+                    Apenas a limpeza <span className="text-orange-700 font-bold">concorrente</span> pode ser realizada agora.
                     </AlertDescription>
                 </Alert>
                 ) : (
-                <Alert className="bg-sky-500/5 border-sky-500/20 rounded-2xl">
-                    <Sparkles className="h-4 w-4 text-sky-400" />
-                    <AlertTitle className="text-sky-400 font-black uppercase text-[10px] tracking-widest mb-1">Leito Disponível</AlertTitle>
-                    <AlertDescription className="text-xs text-slate-300">
-                    Apenas a higienização <span className="text-white font-bold">terminal</span> está disponível para leitos livres.
+                <Alert className="bg-[#A0E9FF]/10 border-[#A0E9FF]/40 rounded-2xl">
+                    <Sparkles className="h-4 w-4 text-[#0F4C5C]" />
+                    <AlertTitle className="text-[#0F4C5C] font-black uppercase text-[10px] tracking-widest mb-1">Leito Disponível</AlertTitle>
+                    <AlertDescription className="text-xs text-gray-600">
+                    Apenas a higienização <span className="text-[#0F4C5C] font-bold">terminal</span> está disponível para leitos livres.
                     </AlertDescription>
                 </Alert>
                 )}
             </>
         )}
 
-        <div className="border-t border-slate-800 pt-6 mt-2">
+        <div className="border-t border-gray-100 pt-6 mt-2">
             <NonConformityDialog locationId={location._id.toString()} locationName={`${location.name} - ${location.number}`}>
-                <Button type="button" variant="ghost" className="w-full text-orange-400/80 hover:text-orange-400 hover:bg-orange-500/5 h-11 font-black uppercase text-[10px] tracking-widest" disabled={isPending}>
+                <Button type="button" variant="ghost" className="w-full text-orange-500 hover:text-orange-600 hover:bg-orange-50 border border-orange-200 h-11 font-black uppercase text-[10px] tracking-widest rounded-xl" disabled={isPending}>
                     <AlertTriangle className="mr-2 h-4 w-4" />
                     Relatar Problema (NC)
                 </Button>
@@ -207,14 +207,14 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
         <DialogFooter className="flex flex-col gap-2">
           <Button 
             type="submit" 
-            className="w-full h-14 bg-sky-500 hover:bg-sky-400 text-slate-900 font-black uppercase tracking-widest text-xs rounded-2xl shadow-lg shadow-sky-500/20 transition-all active:scale-95 disabled:opacity-50" 
+            className="w-full h-14 bg-[#0F4C5C] hover:bg-[#0a3844] text-white font-black uppercase tracking-widest text-xs rounded-2xl shadow-lg transition-all active:scale-95 disabled:opacity-50" 
             disabled={isPending || !cleaningType}
           >
             {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
             {!isPending && (isAuditor ? <UserIcon className="mr-2 h-5 w-5" /> : <Sparkles className="mr-2 h-5 w-5" />)}
             {buttonLabel}
           </Button>
-          <Button type="button" variant="ghost" className="w-full text-slate-500 hover:text-white font-bold uppercase text-[10px] tracking-widest" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>
+          <Button type="button" variant="ghost" className="w-full text-gray-400 hover:text-gray-600 font-bold uppercase text-[10px] tracking-widest" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>
         </DialogFooter>
       </form>
       )}

@@ -38,8 +38,8 @@ export function WebhookSettingsDialog({ children }: WebhookSettingsDialogProps) 
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<WebhookSettings>({ 
-    url: '', 
+  const [settings, setSettings] = useState<WebhookSettings>({
+    url: '',
     template: '',
     enabledEvents: {
       newRequest:        true,
@@ -118,38 +118,38 @@ export function WebhookSettingsDialog({ children }: WebhookSettingsDialogProps) 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="max-w-2xl bg-slate-900 border-slate-800 text-white max-h-[90vh] overflow-y-auto scroll-container">
+      <DialogContent className="max-w-2xl bg-white border-gray-200 text-gray-900 max-h-[90vh] overflow-y-auto scroll-container">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-black text-sky-400 uppercase tracking-tighter">
+          <DialogTitle className="flex items-center gap-2 text-xl font-black text-[#0F4C5C] uppercase tracking-tighter">
             <Bell className="h-6 w-6" /> Integrações de Notificações
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-gray-400">
             Configure o destino e os gatilhos dos alertas de higienização via Webhook.
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
           <div className="py-10 flex flex-col items-center justify-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-sky-400" />
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Carregando configurações...</p>
+            <Loader2 className="h-8 w-8 animate-spin text-[#A0E9FF]" />
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Carregando configurações...</p>
           </div>
         ) : (
           <div className="space-y-6 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="webhook-url" className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">URL do Webhook</Label>
+              <Label htmlFor="webhook-url" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">URL do Webhook</Label>
               <div className="flex gap-2">
                 <Input
                   id="webhook-url"
                   placeholder="https://nextcloud.hospital.com/index.php/apps/talk/api/v1/external/..."
                   value={settings.url}
                   onChange={(e) => setSettings(prev => ({ ...prev, url: e.target.value }))}
-                  className="bg-slate-950 border-slate-800 focus:ring-sky-500/20"
+                  className="bg-white border-gray-200 text-gray-900 focus-visible:ring-[#A0E9FF]/50 focus-visible:border-[#A0E9FF]"
                 />
-                <Button 
-                  variant="outline" 
-                  onClick={handleTest} 
+                <Button
+                  variant="outline"
+                  onClick={handleTest}
                   disabled={testing || !settings.url}
-                  className="border-slate-800 bg-slate-800/50 hover:bg-slate-800"
+                  className="border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700"
                 >
                   {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   <span className="ml-2 hidden sm:inline text-xs font-bold uppercase">Testar</span>
@@ -159,13 +159,13 @@ export function WebhookSettingsDialog({ children }: WebhookSettingsDialogProps) 
 
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <Label htmlFor="webhook-template" className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Template da Mensagem</Label>
+                <Label htmlFor="webhook-template" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Template da Mensagem</Label>
                 <div className="flex gap-1">
                   {TEMPLATE_VARIABLES.map(v => (
-                    <Badge 
-                      key={v.tag} 
-                      variant="outline" 
-                      className="cursor-pointer hover:bg-sky-500/10 border-sky-500/20 text-sky-400 text-[9px] py-0 h-5"
+                    <Badge
+                      key={v.tag}
+                      variant="outline"
+                      className="cursor-pointer hover:bg-[#A0E9FF]/10 border-[#A0E9FF]/40 text-[#0F4C5C] text-[9px] py-0 h-5"
                       onClick={() => addVariable(v.tag)}
                     >
                       {v.label}
@@ -178,37 +178,37 @@ export function WebhookSettingsDialog({ children }: WebhookSettingsDialogProps) 
                 placeholder="Defina a estrutura da mensagem..."
                 value={settings.template}
                 onChange={(e) => setSettings(prev => ({ ...prev, template: e.target.value }))}
-                className="bg-slate-950 border-slate-800 min-h-[100px] focus:ring-sky-500/20 font-medium text-sm leading-relaxed"
+                className="bg-white border-gray-200 text-gray-900 min-h-[100px] focus-visible:ring-[#A0E9FF]/50 focus-visible:border-[#A0E9FF] font-medium text-sm leading-relaxed"
               />
-              <div className="p-3 rounded-xl bg-sky-500/5 border border-sky-500/10 flex gap-3 items-start">
-                <Variable className="h-4 w-4 text-sky-400 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-slate-400 leading-normal">
+              <div className="p-3 rounded-xl bg-[#A0E9FF]/10 border border-[#A0E9FF]/30 flex gap-3 items-start">
+                <Variable className="h-4 w-4 text-[#0F4C5C] shrink-0 mt-0.5" />
+                <p className="text-[10px] text-gray-500 leading-normal">
                   Utilize as tags acima para preenchimento automático. Exemplo: <br/>
-                  <span className="text-sky-400/60 font-mono">"Nova tarefa no {`{local}`} | {`{tipo_limpeza}`}"</span>
+                  <span className="text-[#0F4C5C]/60 font-mono">"Nova tarefa no {`{local}`} | {`{tipo_limpeza}`}"</span>
                 </p>
               </div>
             </div>
 
-            <Separator className="bg-slate-800" />
+            <Separator className="bg-gray-100" />
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-xs font-black uppercase tracking-widest text-sky-400">Eventos para Notificação</h3>
-                <Button variant="ghost" size="sm" onClick={markAll} className="h-7 text-[10px] uppercase font-bold text-slate-500 hover:text-sky-400">
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-[#0F4C5C]">Eventos para Notificação</h3>
+                <Button variant="ghost" size="sm" onClick={markAll} className="h-7 text-[10px] uppercase font-bold text-gray-400 hover:text-[#0F4C5C]">
                   <CheckSquare className="h-3 w-3 mr-1.5" /> Marcar Todos
                 </Button>
               </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {EVENT_LABELS.map(event => (
-                  <div key={event.id} className="flex items-center space-x-3 p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition-colors">
-                    <Checkbox 
-                      id={event.id} 
+                  <div key={event.id} className="flex items-center space-x-3 p-3 rounded-xl bg-gray-50 border border-gray-200 hover:border-gray-300 transition-colors">
+                    <Checkbox
+                      id={event.id}
                       checked={(settings.enabledEvents as any)[event.id]}
                       onCheckedChange={(checked) => toggleEvent(event.id, !!checked)}
-                      className="border-sky-500 data-[state=checked]:bg-sky-500 data-[state=checked]:text-slate-900"
+                      className="border-[#0F4C5C]/40 data-[state=checked]:bg-[#0F4C5C] data-[state=checked]:border-[#0F4C5C] data-[state=checked]:text-white"
                     />
-                    <Label htmlFor={event.id} className="text-xs font-bold text-slate-300 cursor-pointer flex-1 leading-tight">
+                    <Label htmlFor={event.id} className="text-xs font-bold text-gray-700 cursor-pointer flex-1 leading-tight">
                       {event.label}
                     </Label>
                   </div>
@@ -219,11 +219,11 @@ export function WebhookSettingsDialog({ children }: WebhookSettingsDialogProps) 
         )}
 
         <DialogFooter className="pt-6">
-          <Button variant="ghost" onClick={() => setOpen(false)} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Cancelar</Button>
-          <Button 
-            onClick={handleSave} 
+          <Button variant="ghost" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600 font-bold uppercase text-[10px] tracking-widest">Cancelar</Button>
+          <Button
+            onClick={handleSave}
             disabled={saving || loading}
-            className="bg-sky-500 hover:bg-sky-400 text-slate-900 font-black uppercase tracking-widest text-xs px-8 rounded-xl shadow-lg shadow-sky-500/20 h-12"
+            className="bg-[#0F4C5C] hover:bg-[#0a3844] text-white font-black uppercase tracking-widest text-xs px-8 rounded-xl h-12"
           >
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
             Salvar Configurações

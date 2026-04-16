@@ -15,10 +15,22 @@ interface AreaFormProps {
   onFinished: () => void;
 }
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export function AreaForm({ area, onFinished }: AreaFormProps) {
   const isEditing = !!area;
   const { toast } = useToast();
-  
+
+  const [setor, setSetor] = useState(area?.setor || '');
+  const [locationId, setLocationId] = useState(area?.locationId || '');
+
   const [result, setResult] = useState<{
     error?: string | null;
     fieldErrors?: Record<string, string[] | undefined>;
@@ -28,15 +40,27 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
 
   const [isPending, startTransition] = useTransition();
 
+  const handleSetorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSetor(value);
+    if (!isEditing) {
+      setLocationId(slugify(value));
+    }
+  };
+
+  const handleLocationIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocationId(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    
+
     startTransition(async () => {
-      const action = isEditing 
+      const action = isEditing
         ? () => updateArea(area!._id.toString(), null, formData)
         : () => createArea(null, formData);
-        
+
       const response = await action();
       setResult(response);
 
@@ -44,10 +68,10 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
         toast({ title: "Sucesso!", description: response.message });
         onFinished();
       } else if (response.error) {
-        toast({ 
-          title: "Erro", 
-          description: response.error, 
-          variant: "destructive" 
+        toast({
+          title: "Erro",
+          description: response.error,
+          variant: "destructive"
         });
       }
     });
@@ -56,26 +80,28 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-1">
       <div className="space-y-2">
-        <Label htmlFor="setor">Setor</Label>
-        <Input 
-          id="setor" 
-          name="setor" 
-          defaultValue={area?.setor} 
-          required 
-          placeholder="Ex: Centro Cirúrgico, UTI, Pronto Socorro"
+        <Label htmlFor="setor">Setor / Nome da Área</Label>
+        <Input
+          id="setor"
+          name="setor"
+          value={setor}
+          onChange={handleSetorChange}
+          required
+          placeholder="Ex: CENTRO CIRÚRGICO, UTI, PRONTO SOCORRO"
         />
         {result?.fieldErrors?.setor && (
           <p className="text-sm text-destructive">{result.fieldErrors.setor[0]}</p>
         )}
       </div>
-      
+
       <div className="space-y-2">
-        <Label htmlFor="locationId">ID da Localização</Label>
-        <Input 
+        <Label htmlFor="locationId">ID da Localização (QR Code)</Label>
+        <Input
           id="locationId"
-          name="locationId" 
-          defaultValue={area?.locationId} 
-          required 
+          name="locationId"
+          value={locationId}
+          onChange={handleLocationIdChange}
+          required
           readOnly={isEditing}
           disabled={isEditing}
           placeholder="Ex: sala-01, consultorio-a, uti-leito-10"
@@ -84,7 +110,9 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
           <p className="text-sm text-destructive">{result.fieldErrors.locationId[0]}</p>
         )}
         {!isEditing && (
-            <p className="text-xs text-muted-foreground">Deve ser único, sem espaços, em minúsculas. Será usado para o QR Code.</p>
+          <p className="text-xs text-muted-foreground">
+            Gerado automaticamente a partir do nome. Deve conter apenas letras minúsculas, números e hífens.
+          </p>
         )}
       </div>
 
@@ -96,11 +124,11 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
           defaultValue={area?.description}
           placeholder="Qualquer informação adicional sobre a área"
         />
-         {result?.fieldErrors?.description && (
+        {result?.fieldErrors?.description && (
           <p className="text-sm text-destructive">{result.fieldErrors.description[0]}</p>
         )}
       </div>
-      
+
       <div className="flex justify-end pt-4 space-x-2">
         <Button type="button" variant="ghost" onClick={onFinished}>
           Cancelar
