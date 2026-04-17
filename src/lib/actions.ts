@@ -170,7 +170,7 @@ export async function getLocations(): Promise<Location[]> {
     const db = await dbConnect();
 
     const [leitos, areas, mappings, activeCleanings, scheduledRequests] = await Promise.all([
-        db.collection('locations').find().sort({ name: 1, number: 1 }).toArray(),
+        db.collection('locations').find({ active: { $ne: false } }).sort({ name: 1, number: 1 }).toArray(),
         db.collection('areas').find({isActive: true}).sort({ setor: 1 }).toArray(),
         db.collection('location_mappings').find({ isActive: true }).toArray(),
         db.collection('active_cleanings').find().toArray(),
@@ -301,7 +301,7 @@ export async function getLocationByCode(code: string) {
         return convertToPlainObject(locationData);
     }
     
-    let item: any = await db.collection('areas').findOne({ locationId: code, isActive: true }) || await db.collection('locations').findOne({ externalCode: code });
+    let item: any = await db.collection('areas').findOne({ locationId: code, isActive: true }) || await db.collection('locations').findOne({ externalCode: code, active: { $ne: false } });
     if (!item) return null;
 
     const isArea = !!item.setor; 
@@ -733,10 +733,10 @@ export async function runManualSync() {
     for (const item of result.data) {
       const setor = resolveSetorByExternalCode(item.externalCode);
 
-      // Atualiza locations — inclui setor para corrigir documentos criados antes do mapeamento existir
+      // Atualiza locations — inclui setor e garante active: true para leitos em uso
       const updateResult = await db.collection('locations').updateOne(
         { externalCode: item.externalCode },
-        { $set: { status: item.status, setor, updatedAt: new Date() } }
+        { $set: { status: item.status, setor, active: true, updatedAt: new Date() } }
       );
 
       if (updateResult.modifiedCount > 0) {
@@ -750,6 +750,7 @@ export async function runManualSync() {
           status: item.status,
           locationType: 'leito',
           setor,
+          active: true,
           currentCleaning: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -767,14 +768,27 @@ export async function runManualSync() {
       }
     }
 
+    // Leitos com tipobloq = 'D' — desativar retroativamente no MongoDB
+    let deactivatedCount = 0;
+    for (const code of result.deactivated) {
+      const deactivateResult = await db.collection('locations').updateOne(
+        { externalCode: code },
+        { $set: { active: false, updatedAt: new Date() } }
+      );
+      if (deactivateResult.modifiedCount > 0) {
+        deactivatedCount++;
+        console.log(`[SYNC] Leito desativado (tipobloq=D): "${code}"`);
+      }
+    }
+
     await db.collection('integration_settings').updateOne(
       { _id: 'default' },
-      { $set: { lastSync: new Date(), lastSyncStats: { ...result.stats, updated: updatedCount, created: createdCount } } }
+      { $set: { lastSync: new Date(), lastSyncStats: { ...result.stats, updated: updatedCount, created: createdCount, deactivated: deactivatedCount } } }
     );
 
     // revalidatePath não funciona em jobs de background (node-cron) por falta de store de geração estática.
     // A atualização do dashboard ocorrerá no próximo carregamento do usuário ou via polling do cliente.
-    return { success: true, message: 'Sincronização concluída.', stats: { ...result.stats, updated: updatedCount, created: createdCount } };
+    return { success: true, message: 'Sincronização concluída.', stats: { ...result.stats, updated: updatedCount, created: createdCount, deactivated: deactivatedCount } };
   } catch (error: any) {
     return { success: false, message: error.message };
   }

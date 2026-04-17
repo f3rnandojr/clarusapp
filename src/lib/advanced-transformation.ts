@@ -6,6 +6,7 @@ import { dbConnect } from './db';
 export interface TransformationResult {
   success: boolean;
   data: any[];
+  deactivated: string[]; // externalCodes com tipobloq = 'D' — devem ter active: false no MongoDB
   stats: {
     total: number;
     transformed: number;
@@ -45,6 +46,7 @@ export class DataTransformer {
     const result: TransformationResult = {
       success: true,
       data: [],
+      deactivated: [],
       stats: {
         total: externalData.length,
         transformed: 0,
@@ -55,9 +57,18 @@ export class DataTransformer {
     };
 
     for (const item of externalData) {
+      // Leitos com tipobloq = 'D' devem ser desativados retroativamente, não mapeados como status
+      const rawStatus = (item[this.config.fieldMappings.statusField] ?? '').toString().trim().toUpperCase();
+      if (rawStatus === 'D') {
+        const code = (item[this.config.fieldMappings.codeField] ?? '').toString().trim();
+        if (code) result.deactivated.push(code);
+        result.stats.skipped++;
+        continue;
+      }
+
       try {
         const transformed = await this.transformItem(item);
-        
+
         if (transformed) {
           result.data.push(transformed);
           result.stats.transformed++;

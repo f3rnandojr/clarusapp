@@ -37,7 +37,7 @@ const borderLeftColor: Record<LocationStatus, string> = {
 
 const statusDotColor: Record<LocationStatus, string> = {
   available:   "bg-emerald-500",
-  in_cleaning: "bg-sky-400 animate-pulse",
+  in_cleaning: "bg-sky-400",
   occupied:    "bg-orange-400",
 };
 

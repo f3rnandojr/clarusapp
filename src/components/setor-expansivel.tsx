@@ -27,7 +27,7 @@ interface SetorExpansivelProps {
 
 const statusDot: Record<string, string> = {
   available:   'w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block',
-  in_cleaning: 'w-2.5 h-2.5 rounded-full bg-sky-400 inline-block animate-pulse',
+  in_cleaning: 'w-2.5 h-2.5 rounded-full bg-sky-400 inline-block',
   occupied:    'w-2.5 h-2.5 rounded-full bg-orange-400 inline-block',
 };
 
@@ -61,7 +61,7 @@ export function SetorExpansivel({
                 {setor.disponiveis} livres
               </span>
               <span className="flex items-center gap-1 text-sky-500">
-                <span className={cn('inline-block rounded-full bg-sky-400 animate-pulse', isViewOnly ? 'w-2 h-2' : 'w-1.5 h-1.5')} />
+                <span className={cn('inline-block rounded-full bg-sky-400', isViewOnly ? 'w-2 h-2' : 'w-1.5 h-1.5')} />
                 {setor.emLimpeza} limpando
               </span>
               <span className="flex items-center gap-1 text-orange-500">
@@ -98,17 +98,13 @@ export function SetorExpansivel({
                 const bgColor =
                   local.status === 'available'   ? '#1D9E75' :
                   local.status === 'in_cleaning' ? '#378ADD' : '#EF9F27';
-                const isPulsing = local.status === 'in_cleaning';
                 const displayCode = local.externalCode || local.name;
 
                 return (
                   <div
                     key={local._id.toString()}
                     title={`${displayCode} — ${statusLabel}`}
-                    className={cn(
-                      'relative group flex flex-col items-center justify-center rounded-lg cursor-default select-none transition-transform duration-150 hover:scale-110 active:scale-95',
-                      isPulsing && 'animate-pulse'
-                    )}
+                    className="relative group flex flex-col items-center justify-center rounded-lg cursor-default select-none transition-transform duration-150 hover:scale-110 active:scale-95"
                     style={{
                       width: 72,
                       height: 72,
