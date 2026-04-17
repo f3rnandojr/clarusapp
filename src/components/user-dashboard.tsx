@@ -100,8 +100,8 @@ export function UserDashboard({
       {/* Navbar */}
       <header className="flex items-center justify-between px-4 py-2.5 border-b border-[#A0E9FF]/50 bg-white dark:bg-slate-900 dark:border-slate-700 shadow-sm shrink-0 sticky top-0 z-50">
         <div className="flex items-center gap-2.5">
-          <Image src="/logo_32x32.png" alt="NAVI" width={28} height={28} className="rounded-md" />
-          <h1 className="text-lg font-black text-[#0F4C5C] tracking-tight">NAVI</h1>
+          <Image src="/logo_32x32.png" alt="navi" width={28} height={28} className="rounded-full" />
+          <h1 className="text-lg font-black text-[#1565C0] tracking-tight">navi</h1>
         </div>
         <div className="flex items-center gap-2">
           <div className="text-right">

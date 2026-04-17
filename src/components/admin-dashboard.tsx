@@ -1,18 +1,14 @@
 
 "use client";
 
-import { useEffect, useState, useTransition, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, finishCleaning, getNonConformities, getPendingRequests } from "@/lib/actions";
+import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaningOccurrences, getUsers, getAreas, getLocationByCode, getNonConformities, getPendingRequests } from "@/lib/actions";
 import Header from "@/components/header";
 import type { Location, Asg, User, CleaningSettings, CleaningOccurrence, Area, NonConformity, ScheduledRequest } from "@/lib/schemas";
 import { StartCleaningDialog } from "@/components/start-cleaning-dialog";
-import { CleaningSections } from "@/components/cleaning-sections";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SetorExpansivel } from "@/components/setor-expansivel";
-import { Building, Sparkles, Bell } from "lucide-react";
-import { Badge } from "./ui/badge";
 
 type SetorGroup = {
   nome: string;
@@ -49,7 +45,7 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
   const [data, setData] = useState<DashboardData>(initialData);
   const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isFinalizing, startFinalizingTransition] = useTransition();
+  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'occupied' | 'in_cleaning'>('all');
 
   const loadDashboardData = async () => {
     try {
@@ -125,25 +121,6 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
     }
   };
 
-  const handleFinalizeCleaning = (locationId: string) => {
-    startFinalizingTransition(async () => {
-        const result = await finishCleaning(locationId);
-        if (result.success) {
-            toast({
-                title: "Sucesso!",
-                description: result.success,
-            });
-            loadDashboardData();
-        } else {
-            toast({
-                title: "Erro",
-                description: result.error || "Não foi possível finalizar a limpeza.",
-                variant: "destructive",
-            });
-        }
-    });
-  };
-
   const setoresAgrupados: SetorGroup[] = useMemo(() => {
     const locations = data?.locations || [];
     
@@ -174,10 +151,21 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
   const occurrences = data?.occurrences || [];
   const areas = data?.areas || [];
   const nonConformities = data?.nonConformities || [];
-  const pendingRequests = data?.pendingRequests || [];
 
-  const inCleaningLocations = locations.filter((l) => l.status === "in_cleaning");
-  
+  const countByStatus = useMemo(() => ({
+    all: locations.length,
+    available: locations.filter(l => l.status === 'available').length,
+    occupied: locations.filter(l => l.status === 'occupied').length,
+    in_cleaning: locations.filter(l => l.status === 'in_cleaning').length,
+  }), [locations]);
+
+  const filteredSetores = useMemo(() => {
+    if (statusFilter === 'all') return setoresAgrupados;
+    return setoresAgrupados
+      .map(setor => ({ ...setor, locais: setor.locais.filter(l => l.status === statusFilter) }))
+      .filter(setor => setor.locais.length > 0);
+  }, [setoresAgrupados, statusFilter]);
+
   const handleLocationClick = (location: Location) => {
     setCleaningLocation(location);
     setIsDialogOpen(true);
@@ -197,59 +185,52 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
       />
       
       <main className="flex-1 p-2 md:p-4 pb-10">
-        <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4 bg-gray-100 dark:bg-slate-800 border border-[#A0E9FF]/40 dark:border-slate-700 p-1 h-11 rounded-xl">
-                <TabsTrigger value="cleaning" className="rounded-lg data-[state=active]:bg-[#A0E9FF] data-[state=active]:text-[#0F4C5C] data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest text-gray-500">
-                  <Sparkles className="mr-2 h-3.5 w-3.5" />Higienização ({inCleaningLocations.length})
-                </TabsTrigger>
-                <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-[#A0E9FF] data-[state=active]:text-[#0F4C5C] data-[state=active]:shadow-sm font-bold uppercase text-[10px] tracking-widest text-gray-500">
-                  <Building className="mr-2 h-3.5 w-3.5" />Setores
-                </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="cleaning">
-              {pendingRequests.length > 0 && (
-                <div className="mb-6 p-4 rounded-xl bg-[#A0E9FF]/10 border border-[#A0E9FF]/30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Bell className="h-4 w-4 text-[#0F4C5C]" />
-                    <h3 className="text-xs font-black uppercase tracking-widest text-[#0F4C5C]">Solicitações Pendentes ({pendingRequests.length})</h3>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {pendingRequests.map(req => (
-                      <Badge key={req._id.toString()} variant="outline" className="bg-[#A0E9FF]/20 border-[#A0E9FF]/50 text-[#0F4C5C] text-[10px] py-1 px-3">
-                        {req.locationName} • {req.cleaningType === 'terminal' ? 'Terminal' : 'Conc.'}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {/* Status filter chips */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {([
+            { key: 'all',         label: 'Todos',        activeClass: 'bg-[#0F4C5C] text-white border-[#0F4C5C]' },
+            { key: 'available',   label: 'Disponíveis',  activeClass: 'bg-emerald-500 text-white border-emerald-500' },
+            { key: 'occupied',    label: 'Ocupados',     activeClass: 'bg-amber-500 text-white border-amber-500' },
+            { key: 'in_cleaning', label: 'Em Limpeza',   activeClass: 'bg-[#A0E9FF] text-[#0F4C5C] border-[#A0E9FF]' },
+          ] as const).map(({ key, label, activeClass }) => {
+            const isActive = statusFilter === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border transition-all ${
+                  isActive
+                    ? activeClass
+                    : 'bg-transparent border-gray-300 text-gray-500 hover:border-gray-400 dark:border-slate-600 dark:text-slate-400'
+                }`}
+              >
+                {label}
+                <span className={`text-[10px] font-black ${isActive ? 'opacity-80' : 'opacity-60'}`}>
+                  {countByStatus[key]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-              <CleaningSections 
-                  locations={inCleaningLocations} 
-                  cleaningSettings={cleaningSettings}
-                  onFinalizeCleaning={handleFinalizeCleaning}
-                  isFinalizing={isFinalizing}
-                  userProfile={user.perfil}
-                  currentUserId={user._id}
-              />
-            </TabsContent>
-
-            <TabsContent value="overview">
-              <div className="space-y-3">
-                {setoresAgrupados.map((setor) => (
-                  <SetorExpansivel
-                    key={setor.nome}
-                    setor={setor}
-                    onLocationClick={handleLocationClick}
-                    userProfile={user.perfil}
-                    currentUserId={user._id}
-                    cleaningSettings={cleaningSettings}
-                    viewMode={viewMode}
-                  />
-                ))}
-              </div>
-            </TabsContent>
-        </Tabs>
+        <div className="space-y-3">
+          {filteredSetores.map((setor) => (
+            <SetorExpansivel
+              key={setor.nome}
+              setor={setor}
+              onLocationClick={handleLocationClick}
+              userProfile={user.perfil}
+              currentUserId={user._id}
+              cleaningSettings={cleaningSettings}
+              viewMode={viewMode}
+            />
+          ))}
+          {filteredSetores.length === 0 && (
+            <div className="text-center py-16 text-gray-400 text-sm">
+              Nenhum leito encontrado com este status.
+            </div>
+          )}
+        </div>
       </main>
       
       {cleaningLocation && (

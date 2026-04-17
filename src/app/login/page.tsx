@@ -43,13 +43,12 @@ export default function LoginPage() {
         <div className="flex flex-col items-center text-center mb-8">
           <Image
             src="/logo_180x180.png"
-            alt="NAVI"
-            width={60}
-            height={60}
-            className="rounded-2xl mb-4 shadow-md"
+            alt="navi"
+            width={72}
+            height={72}
+            className="rounded-full mb-4 shadow-md"
           />
-          <h1 className="text-3xl font-black text-[#0F4C5C] tracking-tight mb-1">NAVI</h1>
-          <p className="text-sm text-gray-400 font-medium">Gestão de Higienização</p>
+          <h1 className="text-3xl font-black text-[#1565C0] tracking-tight">navi</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
