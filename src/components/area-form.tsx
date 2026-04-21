@@ -17,10 +17,10 @@ interface AreaFormProps {
 
 function slugify(text: string): string {
   return text
-    .toLowerCase()
+    .toUpperCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/[^A-Z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
 
@@ -49,7 +49,7 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
   };
 
   const handleLocationIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocationId(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+    setLocationId(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''));
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -104,14 +104,14 @@ export function AreaForm({ area, onFinished }: AreaFormProps) {
           required
           readOnly={isEditing}
           disabled={isEditing}
-          placeholder="Ex: sala-01, consultorio-a, uti-leito-10"
+          placeholder="Ex: SALA-01, CONSULTORIO-A, UTI-LEITO-10"
         />
         {result?.fieldErrors?.locationId && (
           <p className="text-sm text-destructive">{result.fieldErrors.locationId[0]}</p>
         )}
         {!isEditing && (
           <p className="text-xs text-muted-foreground">
-            Gerado automaticamente a partir do nome. Deve conter apenas letras minúsculas, números e hífens.
+            Gerado automaticamente a partir do nome. Deve conter apenas letras maiúsculas, números e hífens.
           </p>
         )}
       </div>

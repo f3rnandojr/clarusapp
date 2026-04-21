@@ -135,9 +135,13 @@ export default function SyncDashboard() {
             </div>
             <div className="flex flex-col gap-1">
                 <span className="text-muted-foreground">Serviço</span>
-                <Badge variant={status.service.isRunning ? "default" : "secondary"}>
-                    {status.service.isRunning ? "Executando..." : "Parado"}
-                </Badge>
+                {status.service.isRunning ? (
+                    <Badge variant="default">Executando...</Badge>
+                ) : status.service.isScheduled ? (
+                    <Badge className="bg-emerald-500 hover:bg-emerald-500 text-white border-0">Ativo</Badge>
+                ) : (
+                    <Badge variant="secondary">Parado</Badge>
+                )}
             </div>
             <div className="flex flex-col gap-1">
                 <span className="text-muted-foreground">Última Sync</span>

@@ -1048,9 +1048,10 @@ export async function getAreas() {
 
 export async function createArea(prevState: any, formData: FormData) {
     try {
+        const rawLocationId = (formData.get('locationId') as string || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
         const rawData = {
             setor: formData.get('setor'),
-            locationId: formData.get('locationId'),
+            locationId: rawLocationId,
             description: formData.get('description'),
         };
 
