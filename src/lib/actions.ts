@@ -80,12 +80,13 @@ export async function login(prevState: any, formData: FormData) {
   }
 
   const { login, password } = validatedFields.data;
+  const normalizedLogin = login.trim().toLowerCase();
   const db = await dbConnect();
-  
-  const user = await db.collection('users').findOne({ login: login, password: password, active: true });
+
+  const user = await db.collection('users').findOne({ login: normalizedLogin, password: password, active: true });
 
   if (!user) {
-    await logAction('login_failed', { login, reason: 'Invalid credentials or inactive user.' });
+    await logAction('login_failed', { login: normalizedLogin, reason: 'Invalid credentials or inactive user.' });
     return { error: 'Credenciais inválidas ou usuário inativo.' };
   }
 
@@ -99,7 +100,7 @@ export async function login(prevState: any, formData: FormData) {
 
   cookies().set(SESSION_COOKIE_NAME, session, { expires, httpOnly: true });
 
-  await logAction('login_success', { login });
+  await logAction('login_success', { login: normalizedLogin });
   redirect('/dashboard');
 }
 

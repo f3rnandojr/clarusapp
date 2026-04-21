@@ -18,7 +18,7 @@ export default function LoginPage() {
     setLoading(true);
 
     const formData = new FormData();
-    formData.append('login', login);
+    formData.append('login', login.trim().toLowerCase());
     formData.append('password', password);
 
     try {
