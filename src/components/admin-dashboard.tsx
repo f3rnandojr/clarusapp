@@ -45,7 +45,7 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
   const [data, setData] = useState<DashboardData>(initialData);
   const [cleaningLocation, setCleaningLocation] = useState<Location | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'occupied' | 'in_cleaning'>('all');
+  const [statusFilter, setStatusFilter] = useState<'leito' | 'all' | 'available' | 'occupied' | 'in_cleaning'>('leito');
 
   const loadDashboardData = async () => {
     try {
@@ -152,15 +152,23 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
   const areas = data?.areas || [];
   const nonConformities = data?.nonConformities || [];
 
+  const leitos = locations.filter(l => l.locationType === 'leito');
+
   const countByStatus = useMemo(() => ({
-    all: locations.length,
-    available: locations.filter(l => l.status === 'available').length,
-    occupied: locations.filter(l => l.status === 'occupied').length,
+    leito:      leitos.length,
+    all:        locations.length,
+    available:  locations.filter(l => l.status === 'available').length,
+    occupied:   locations.filter(l => l.status === 'occupied').length,
     in_cleaning: locations.filter(l => l.status === 'in_cleaning').length,
-  }), [locations]);
+  }), [locations, leitos]);
 
   const filteredSetores = useMemo(() => {
     if (statusFilter === 'all') return setoresAgrupados;
+    if (statusFilter === 'leito') {
+      return setoresAgrupados
+        .map(setor => ({ ...setor, locais: setor.locais.filter(l => l.locationType === 'leito') }))
+        .filter(setor => setor.locais.length > 0);
+    }
     return setoresAgrupados
       .map(setor => ({ ...setor, locais: setor.locais.filter(l => l.status === statusFilter) }))
       .filter(setor => setor.locais.length > 0);
@@ -188,6 +196,7 @@ export function AdminDashboard({ initialData, user, viewMode = 'solicitation' }:
         {/* Status filter chips */}
         <div className="flex flex-wrap gap-2 mb-4">
           {([
+            { key: 'leito',       label: 'Leitos',       activeClass: 'bg-[#1565C0] text-white border-[#1565C0]' },
             { key: 'all',         label: 'Todos',        activeClass: 'bg-[#0F4C5C] text-white border-[#0F4C5C]' },
             { key: 'available',   label: 'Disponíveis',  activeClass: 'bg-emerald-500 text-white border-emerald-500' },
             { key: 'occupied',    label: 'Ocupados',     activeClass: 'bg-amber-500 text-white border-amber-500' },
