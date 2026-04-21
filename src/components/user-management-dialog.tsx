@@ -19,17 +19,19 @@ interface UserManagementDialogProps {
 }
 
 const profileLabels: Record<string, string> = {
-  admin:   'Administrador',
-  gestor:  'Gestor',
-  usuario: 'Usuário',
-  auditor: 'Auditor',
+  admin:        'Administrador',
+  gestor:       'Gestor',
+  usuario:      'Usuário',
+  auditor:      'Auditor',
+  visualizador: 'Visualizador',
 };
 
 const profileColors: Record<string, string> = {
-  admin:   'border-[#0F4C5C]/30 text-[#0F4C5C] bg-[#A0E9FF]/20',
-  gestor:  'border-violet-300 text-violet-700 bg-violet-50',
-  usuario: 'border-emerald-300 text-emerald-700 bg-emerald-50',
-  auditor: 'border-amber-300 text-amber-700 bg-amber-50',
+  admin:        'border-[#0F4C5C]/30 text-[#0F4C5C] bg-[#A0E9FF]/20',
+  gestor:       'border-violet-300 text-violet-700 bg-violet-50',
+  usuario:      'border-emerald-300 text-emerald-700 bg-emerald-50',
+  auditor:      'border-amber-300 text-amber-700 bg-amber-50',
+  visualizador: 'border-gray-300 text-gray-600 bg-gray-50',
 };
 
 export function UserManagementDialog({ allUsers: initialUsers, children }: UserManagementDialogProps) {

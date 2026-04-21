@@ -4,6 +4,7 @@ import { getLocations, getAsgs, getNextAsgCode, getCleaningSettings, getCleaning
 import { getSession } from "@/lib/session";
 import { AdminDashboard } from "@/components/admin-dashboard";
 import { UserDashboard } from "@/components/user-dashboard";
+import { VisualizadorDashboard } from "@/components/visualizador-dashboard";
 import type { User } from "@/lib/schemas";
 
 export default async function DashboardPage() {
@@ -56,6 +57,16 @@ export default async function DashboardPage() {
     locations, asgs, users, nextAsgCode, cleaningSettings,
     occurrences, areas, nonConformities, pendingRequests,
   };
+
+  if (user.perfil === 'visualizador') {
+    return (
+      <VisualizadorDashboard
+        locations={locations}
+        user={user}
+        cleaningSettings={cleaningSettings}
+      />
+    );
+  }
 
   if (user.perfil === 'usuario' || user.perfil === 'auditor') {
     const myActiveCleanings = (activeCleanings || []).filter(ac => ac.userId === user._id);

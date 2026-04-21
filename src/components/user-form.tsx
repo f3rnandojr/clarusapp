@@ -19,10 +19,11 @@ interface UserFormProps {
 }
 
 const profileOptions: { value: UserProfile; label: string }[] = [
-  { value: 'admin',   label: 'Administrador' },
-  { value: 'gestor',  label: 'Gestor' },
-  { value: 'usuario', label: 'Usuário' },
-  { value: 'auditor', label: 'Auditor' },
+  { value: 'admin',        label: 'Administrador' },
+  { value: 'gestor',       label: 'Gestor' },
+  { value: 'usuario',      label: 'Usuário' },
+  { value: 'auditor',      label: 'Auditor' },
+  { value: 'visualizador', label: 'Visualizador' },
 ];
 
 export function UserForm({ user, onFinished }: UserFormProps) {

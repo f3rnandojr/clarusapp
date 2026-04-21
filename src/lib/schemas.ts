@@ -235,7 +235,7 @@ export const ReportFiltersSchema = z.object({
 
 export type ReportFilters = z.infer<typeof ReportFiltersSchema>;
 
-const UserProfileEnum = z.enum(['admin', 'gestor', 'usuario', 'auditor']);
+const UserProfileEnum = z.enum(['admin', 'gestor', 'usuario', 'auditor', 'visualizador']);
 export type UserProfile = z.infer<typeof UserProfileEnum>;
 
 export const UserSchema = z.object({
