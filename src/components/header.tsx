@@ -1,7 +1,6 @@
 import type { Area, Asg, CleaningOccurrence, CleaningSettings, User, NonConformity } from '@/lib/schemas';
 import { SettingsDialog } from '@/components/settings-dialog';
 import { OccurrencesDialog } from '@/components/occurrences-dialog';
-import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { Settings, ClipboardList, LogOut, User as UserIcon } from 'lucide-react';
 import { logout } from '@/lib/actions';
@@ -49,7 +48,6 @@ export default function Header({ asgs, users, nextAsgCode, cleaningSettings, occ
         </div>
 
         <div className="flex items-center gap-1.5">
-          <ThemeToggle />
           <OccurrencesDialog occurrences={occurrences} nonConformities={nonConformities}>
             <Button
               variant="outline"

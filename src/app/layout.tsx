@@ -1,7 +1,6 @@
 
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "@/components/ui/toaster";
-import { ThemeProvider } from "@/components/theme-provider";
 import { SessionTimeout } from "@/components/session-timeout";
 import "./globals.css";
 
@@ -51,11 +50,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <ThemeProvider>
-          {children}
-          <SessionTimeout />
-          <Toaster />
-        </ThemeProvider>
+        {children}
+        <SessionTimeout />
+        <Toaster />
       </body>
     </html>
   );

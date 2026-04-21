@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import type { Location, User, CleaningSettings } from '@/lib/schemas';
 import { Button } from '@/components/ui/button';
 import { QrCode, LogOut, User as UserIcon } from 'lucide-react';
-import { ThemeToggle } from './theme-toggle';
 import { logout, finishCleaning, getLocations, getLocationByCode } from '@/lib/actions';
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from './ui/badge';
@@ -113,7 +112,6 @@ export function UserDashboard({
               {profileLabels[user.perfil] || 'Usuário'}
             </Badge>
           </div>
-          <ThemeToggle />
           <form action={logout}>
             <Button variant="ghost" type="submit" size="sm" className="h-9 px-2 text-gray-400 hover:text-red-500 hover:bg-red-50">
               <LogOut className="h-4 w-4 sm:mr-1.5" />

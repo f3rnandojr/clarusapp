@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { login as loginAction } from '@/lib/actions';
@@ -51,51 +50,33 @@ export default function LoginPage() {
           <h1 className="text-3xl font-black text-[#1565C0] tracking-tight">navi</h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="login"
-              className="text-[10px] font-black uppercase tracking-widest text-[#0F4C5C]/60 ml-1"
-            >
-              Usuário
-            </Label>
-            <Input
-              id="login"
-              type="text"
-              value={login}
-              onChange={(e) => setLogin(e.target.value)}
-              placeholder="seu.usuario"
-              required
-              disabled={loading}
-              className="bg-white border-[#A0E9FF] h-12 rounded-xl text-[#0F4C5C] placeholder:text-gray-300 focus-visible:ring-[#A0E9FF]/50 focus-visible:border-[#A0E9FF]"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="password"
-              className="text-[10px] font-black uppercase tracking-widest text-[#0F4C5C]/60 ml-1"
-            >
-              Senha
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              disabled={loading}
-              className="bg-white border-[#A0E9FF] h-12 rounded-xl text-[#0F4C5C] placeholder:text-gray-300 focus-visible:ring-[#A0E9FF]/50 focus-visible:border-[#A0E9FF]"
-            />
-          </div>
-
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <Input
+            id="login"
+            type="text"
+            value={login}
+            onChange={(e) => setLogin(e.target.value)}
+            placeholder="usuário"
+            required
+            disabled={loading}
+            className="bg-white border-[#A0E9FF] h-12 rounded-xl text-[#0F4C5C] placeholder:text-gray-300 focus-visible:ring-[#A0E9FF]/50 focus-visible:border-[#A0E9FF]"
+          />
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="senha"
+            required
+            disabled={loading}
+            className="bg-white border-[#A0E9FF] h-12 rounded-xl text-[#0F4C5C] placeholder:text-gray-300 focus-visible:ring-[#A0E9FF]/50 focus-visible:border-[#A0E9FF]"
+          />
           <Button
             type="submit"
             disabled={loading}
-            className="w-full h-12 rounded-xl bg-[#A0E9FF] hover:bg-[#7ed8f0] text-[#0F4C5C] font-black uppercase tracking-widest shadow-sm active:scale-[.98] transition-all mt-2"
+            className="w-full h-12 rounded-xl bg-[#1565C0] hover:bg-[#0d47a1] text-white font-black uppercase tracking-widest shadow-sm active:scale-[.98] transition-all mt-1"
           >
-            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Entrar no Sistema"}
+            {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Entrar"}
           </Button>
         </form>
 

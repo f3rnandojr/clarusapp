@@ -116,7 +116,60 @@ export function UserManagementDialog({ allUsers: initialUsers, children }: UserM
 
           <TabsContent value="list" className="mt-4">
             <div className="max-h-[60vh] overflow-y-auto pr-1 scroll-container">
-              <Table>
+
+              {/* Mobile: cards verticais */}
+              <div className="flex flex-col gap-3 md:hidden">
+                {users.map((user) => (
+                  <div key={user._id.toString()} className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-gray-900 text-sm leading-tight">{user.name}</p>
+                        <p className="text-gray-400 text-xs font-mono mt-0.5">{user.login}</p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={user.active
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-black uppercase tracking-widest shrink-0'
+                          : 'bg-gray-50 text-gray-400 border-gray-200 text-[10px] font-black uppercase tracking-widest shrink-0'
+                        }
+                      >
+                        {user.active ? 'Ativo' : 'Inativo'}
+                      </Badge>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] font-black uppercase tracking-widest h-5 ${profileColors[user.perfil] || profileColors.usuario}`}
+                    >
+                      {profileLabels[user.perfil] || 'Usuário'}
+                    </Badge>
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        className="flex-1 h-11 text-[#0F4C5C] border-[#A0E9FF]/60 hover:bg-[#A0E9FF]/20 font-bold text-xs uppercase tracking-widest"
+                        onClick={() => handleEditClick(user)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />Editar
+                      </Button>
+                      <Button
+                        className={`flex-1 h-11 font-bold text-xs uppercase tracking-widest ${user.active
+                          ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors'
+                          : 'bg-emerald-500 hover:bg-emerald-400 text-white border-0'
+                        }`}
+                        onClick={() => handleToggleActive(user._id.toString(), user.active)}
+                        disabled={isPending || user.login === 'admin'}
+                      >
+                        {isPending
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : (user.active ? 'Desativar' : 'Ativar')
+                        }
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop: tabela horizontal */}
+              <Table className="hidden md:table">
                 <TableHeader className="sticky top-0 z-10 bg-white">
                   <TableRow className="border-gray-100 hover:bg-transparent">
                     <TableHead className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Nome</TableHead>
@@ -178,6 +231,7 @@ export function UserManagementDialog({ allUsers: initialUsers, children }: UserM
                   ))}
                 </TableBody>
               </Table>
+
             </div>
           </TabsContent>
 

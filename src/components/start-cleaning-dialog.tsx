@@ -7,7 +7,7 @@ import { startCleaning, getLastCleaningRecord } from "@/lib/actions";
 import type { Location, UserProfile, CleaningRecord } from "@/lib/schemas";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, AlertTriangle, Info, Clock, User as UserIcon } from "lucide-react";
+import { CheckCircle2, Loader2, AlertTriangle, Info, Clock, User as UserIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { NonConformityDialog } from "./non-conformity-dialog";
 import { format } from "date-fns";
@@ -177,7 +177,7 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
                 </div>
                 ) : isOccupied ? (
                 <Alert className="bg-orange-500/5 border-orange-500/20 rounded-2xl">
-                    <Sparkles className="h-4 w-4 text-orange-400" />
+                    <Info className="h-4 w-4 text-orange-400" />
                     <AlertTitle className="text-orange-400 font-black uppercase text-[10px] tracking-widest mb-1">Local Ocupado</AlertTitle>
                     <AlertDescription className="text-xs text-gray-600">
                     Apenas a limpeza <span className="text-orange-700 font-bold">concorrente</span> pode ser realizada agora.
@@ -185,7 +185,7 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
                 </Alert>
                 ) : (
                 <Alert className="bg-[#A0E9FF]/10 border-[#A0E9FF]/40 rounded-2xl">
-                    <Sparkles className="h-4 w-4 text-[#0F4C5C]" />
+                    <Info className="h-4 w-4 text-[#0F4C5C]" />
                     <AlertTitle className="text-[#0F4C5C] font-black uppercase text-[10px] tracking-widest mb-1">Leito Disponível</AlertTitle>
                     <AlertDescription className="text-xs text-gray-600">
                     Apenas a higienização <span className="text-[#0F4C5C] font-bold">terminal</span> está disponível para leitos livres.
@@ -211,7 +211,7 @@ export function StartCleaningDialog({ location, userProfile = 'usuario', open, o
             disabled={isPending || !cleaningType}
           >
             {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-            {!isPending && (isAuditor ? <UserIcon className="mr-2 h-5 w-5" /> : <Sparkles className="mr-2 h-5 w-5" />)}
+            {!isPending && (isAuditor ? <UserIcon className="mr-2 h-5 w-5" /> : <CheckCircle2 className="mr-2 h-5 w-5" />)}
             {buttonLabel}
           </Button>
           <Button type="button" variant="ghost" className="w-full text-gray-400 hover:text-gray-600 font-bold uppercase text-[10px] tracking-widest" onClick={() => handleOpenChange(false)} disabled={isPending}>Cancelar</Button>
