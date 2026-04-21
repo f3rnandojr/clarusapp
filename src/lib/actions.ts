@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
 import { convertToPlainObject } from './utils';
 import { DataTransformer, generateSampleTransformation } from './advanced-transformation';
+import bcrypt from 'bcryptjs';
 
 // --- Logger Action ---
 async function logAction(action: string, details: Record<string, any>) {
@@ -30,38 +31,16 @@ async function logAction(action: string, details: Record<string, any>) {
 // --- Webhook Private Helper ---
 async function sendWebhookNotification(
   event: keyof WebhookSettings['enabledEvents'],
-  context: {
-    local: string;
-    tipo_limpeza?: string;
-    prioridade?: string;
-    // checklist-specific
-    auditorName?: string;
-    locationCode?: string;
-    setor?: string;
-    aptidao?: string;
-    // override the template entirely
-    fixedMessage?: string;
-  }
+  payload: Record<string, unknown>
 ) {
   try {
     const settings = await getWebhookSettings();
     if (!settings.url || !(settings.enabledEvents as any)[event]) return;
 
-    let message: string;
-    if (context.fixedMessage) {
-      message = context.fixedMessage;
-    } else {
-      message = settings.template;
-      message = message.replace('{local}', context.local);
-      message = message.replace('{tipo_limpeza}', context.tipo_limpeza || 'N/A');
-      message = message.replace('{prioridade}', context.prioridade || 'Normal');
-      message = message.replace('{horario}', new Date().toLocaleTimeString('pt-BR'));
-    }
-
     await fetch(settings.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify(payload),
     });
   } catch (error) {
     console.error(`Falha ao enviar notificação webhook para o evento ${event}:`, error);
@@ -83,9 +62,29 @@ export async function login(prevState: any, formData: FormData) {
   const normalizedLogin = login.trim().toLowerCase();
   const db = await dbConnect();
 
-  const user = await db.collection('users').findOne({ login: normalizedLogin, password: password, active: true });
+  const user = await db.collection('users').findOne({ login: normalizedLogin, active: true });
 
   if (!user) {
+    await logAction('login_failed', { login: normalizedLogin, reason: 'Invalid credentials or inactive user.' });
+    return { error: 'Credenciais inválidas ou usuário inativo.' };
+  }
+
+  const storedPassword: string = user.password || '';
+  const isHashed = storedPassword.startsWith('$2');
+
+  let passwordValid: boolean;
+  if (isHashed) {
+    passwordValid = await bcrypt.compare(password, storedPassword);
+  } else {
+    // Plaintext — comparação direta e migração automática para hash
+    passwordValid = storedPassword === password;
+    if (passwordValid) {
+      const hash = await bcrypt.hash(password, 12);
+      await db.collection('users').updateOne({ _id: user._id }, { $set: { password: hash } });
+    }
+  }
+
+  if (!passwordValid) {
     await logAction('login_failed', { login: normalizedLogin, reason: 'Invalid credentials or inactive user.' });
     return { error: 'Credenciais inválidas ou usuário inativo.' };
   }
@@ -406,8 +405,11 @@ export async function startCleaning(prevState: any, formData: FormData) {
     
     // Webhook: Nova Solicitação
     await sendWebhookNotification('newRequest', {
-      local: buildLocationName(location),
-      tipo_limpeza: type === 'terminal' ? 'Terminal' : 'Concorrente'
+      evento:  'nova_solicitacao',
+      local:   location.externalCode || location.name,
+      setor:   location.setor || '',
+      tipo:    type === 'terminal' ? 'Terminal' : 'Concorrente',
+      usuario: user.name,
     });
 
     revalidatePath('/dashboard');
@@ -515,9 +517,15 @@ export async function finishCleaning(locationId: string, isAudit: boolean = fals
 
     // Webhook: Finalização de Higienização (apenas se não for audit)
     if (!isAudit) {
-      await sendWebhookNotification('cleaningFinished', { 
-        local: activeCleaning.locationName, 
-        tipo_limpeza: activeCleaning.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente' 
+      const locDoc = await db.collection('locations').findOne({ _id: new ObjectId(activeCleaning.locationId) })
+                  || await db.collection('areas').findOne({ _id: new ObjectId(activeCleaning.locationId) });
+      await sendWebhookNotification('cleaningFinished', {
+        evento:   'finalizacao_limpeza',
+        local:    locDoc?.externalCode || activeCleaning.locationName,
+        setor:    locDoc?.setor || '',
+        tipo:     activeCleaning.cleaningType === 'terminal' ? 'Terminal' : 'Concorrente',
+        usuario:  activeCleaning.userName || activeCleaning.assignedTo?.userName || '',
+        duracao:  actualDuration,
       });
     }
 
@@ -575,16 +583,21 @@ export async function createAuditRecord(data: {
         if (finishResult.success) {
             await logAction('audit_completed', { locationId: data.locationId, locationName: data.locationName });
             
-            // Webhook: Finalização de Auditoria (genérico)
-            await sendWebhookNotification('auditFinished', { local: data.locationName });
-
-            // Webhook: Conclusão de Checklist (mensagem estruturada)
+            // Webhook: Conclusão de Checklist pelo auditor
             const aptidaoLabel = aptidao === 'apto' ? 'APTO' : 'NÃO APTO';
-            const setorLabel   = data.setor || 'Setor não informado';
-            const codeLabel    = data.locationCode || data.locationName;
+            await sendWebhookNotification('auditFinished', {
+              evento:   'conclusao_checklist',
+              local:    data.locationCode || data.locationName,
+              setor:    data.setor || '',
+              auditor:  session.user.name,
+              resultado: aptidaoLabel,
+            });
             await sendWebhookNotification('checklistFinished', {
-              local: data.locationName,
-              fixedMessage: `${session.user.name} finalizou o checklist do leito ${codeLabel} — ${setorLabel}. Status: ${aptidaoLabel} para ocupação.`,
+              evento:   'conclusao_checklist',
+              local:    data.locationCode || data.locationName,
+              setor:    data.setor || '',
+              auditor:  session.user.name,
+              resultado: aptidaoLabel,
             });
 
             return { success: true, message: "Auditoria finalizada e gravada com sucesso!" };
@@ -1505,9 +1518,9 @@ export async function createNonConformity(formData: FormData) {
     });
 
     // Webhook: Registro de NC
-    await sendWebhookNotification('ncRegistered', { 
-      local: validatedFields.data.locationName, 
-      prioridade: 'ALTA' 
+    await sendWebhookNotification('ncRegistered', {
+      evento: 'nc_registrada',
+      local:  validatedFields.data.locationName,
     });
 
     return { success: true, message: 'Não conformidade registrada com sucesso!' };
@@ -1563,8 +1576,12 @@ export async function createUser(prevState: any, formData: FormData) {
     };
   }
 
+  const { password: rawPassword, ...rest } = validatedFields.data;
+  const hashedPassword = await bcrypt.hash(rawPassword, 12);
+
   await db.collection('users').insertOne({
-    ...validatedFields.data,
+    ...rest,
+    password: hashedPassword,
     active: true,
     createdAt: new Date(),
   });
@@ -1596,7 +1613,7 @@ export async function updateUser(id: string, prevState: any, formData: FormData)
   };
 
   if (password) {
-    updateData.password = password;
+    updateData.password = await bcrypt.hash(password, 12);
   }
 
   await db.collection('users').updateOne(
