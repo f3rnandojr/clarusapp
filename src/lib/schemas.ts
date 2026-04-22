@@ -259,10 +259,10 @@ export const CreateUserSchema = UserSchema.pick({
 export const UpdateUserSchema = UserSchema.pick({
     name: true,
     login: true,
-    active: true,
     perfil: true,
 }).extend({
-    password: z.string().optional(),
+    // Optional — empty string means "don't change password"
+    password: z.string().min(4, "Senha deve ter pelo menos 4 caracteres.").optional().or(z.literal('')),
 });
 
 

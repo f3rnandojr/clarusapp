@@ -48,6 +48,7 @@ export default function LoginPage() {
             className="rounded-full mb-4 shadow-md"
           />
           <h1 className="text-3xl font-black text-[#1565C0] tracking-tight">navi</h1>
+          <p className="text-xs text-gray-400 font-medium mt-1">Gestão de Higienização Hospitalar</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
