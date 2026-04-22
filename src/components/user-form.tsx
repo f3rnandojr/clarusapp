@@ -74,6 +74,10 @@ export function UserForm({ user, onFinished }: UserFormProps) {
         {state?.fieldErrors?.name && <p className="text-xs text-destructive">{state.fieldErrors.name[0]}</p>}
       </div>
 
+      {/* Hidden inputs for fields disabled on the admin account — disabled inputs are not submitted by the browser */}
+      {user?.login === 'admin' && <input type="hidden" name="login" value={user.login} />}
+      {user?.login === 'admin' && <input type="hidden" name="perfil" value={user.perfil} />}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="login" className={labelCls}>Login</Label>
