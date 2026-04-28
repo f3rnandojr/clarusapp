@@ -269,11 +269,6 @@ export const UpdateUserSchema = UserSchema.pick({
 export const IntegrationConfigSchema = z.object({
   _id: z.union([z.string(), z.any()]),
   enabled: z.boolean().default(false),
-  host: z.string(),
-  port: z.number().default(5432),
-  database: z.string(),
-  username: z.string(),
-  password: z.string(),
   syncInterval: z.number().default(5),
   query: z.string().default("SELECT code1, tipobloq FROM cable1"),
   statusMappings: z.object({

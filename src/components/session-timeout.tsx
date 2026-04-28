@@ -2,19 +2,20 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { logout } from "@/lib/actions";
+import { logout, renewSession } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 
-const TIMEOUT_MS   = 8 * 60 * 60 * 1000; // 8 horas
-const WARNING_MS   = 5 * 60 * 1000;       // aviso 5 min antes
+const TIMEOUT_MS  = 8 * 60 * 60 * 1000; // 8 hours inactivity → auto logout
+const WARNING_MS  = 2 * 60 * 1000;       // warn 2 minutes before expiry
+const POLL_MS     = 5 * 60 * 1000;       // check server session validity every 5 minutes
 
 export function SessionTimeout() {
   const router        = useRouter();
   const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
   const warnTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown]     = useState(WARNING_MS / 1000);
-  const countdownRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const doLogout = useCallback(async () => {
     setShowWarning(false);
@@ -45,6 +46,7 @@ export function SessionTimeout() {
     timerRef.current = setTimeout(doLogout, TIMEOUT_MS);
   }, [doLogout]);
 
+  // Activity listeners — reset timer on any user interaction
   useEffect(() => {
     const events = ["mousemove", "keydown", "click", "touchstart", "scroll"];
     events.forEach(e => window.addEventListener(e, resetTimers, { passive: true }));
@@ -55,6 +57,27 @@ export function SessionTimeout() {
       if (warnTimerRef.current) clearTimeout(warnTimerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
+  }, [resetTimers]);
+
+  // Poll server every 5 minutes — if session is invalid, redirect immediately
+  useEffect(() => {
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch('/api/auth/check');
+        if (res.status === 401) {
+          console.log('[Session] Server returned 401 — redirecting to login');
+          router.push('/login');
+        }
+      } catch {
+        // network error — don't redirect, may be temporary
+      }
+    }, POLL_MS);
+    return () => clearInterval(poll);
+  }, [router]);
+
+  const handleContinue = useCallback(async () => {
+    await renewSession(); // re-issue JWT server-side
+    resetTimers();
   }, [resetTimers]);
 
   const mins = Math.floor(countdown / 60);
@@ -84,7 +107,7 @@ export function SessionTimeout() {
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={resetTimers}
+            onClick={handleContinue}
             className="flex-1 h-9 bg-[#A0E9FF] hover:bg-[#8de0f7] text-[#0F4C5C] font-black text-xs uppercase tracking-widest rounded-xl"
           >
             Continuar

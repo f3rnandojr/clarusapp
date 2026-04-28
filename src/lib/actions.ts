@@ -7,7 +7,7 @@ import { CreateAsgSchema, StartCleaningFormSchema, UpdateAsgSchema, UpdateCleani
 import { ObjectId } from 'mongodb';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { SESSION_COOKIE_NAME, encrypt, getSession } from './session';
+import { SESSION_COOKIE_NAME, encrypt, decryptJWT, getSession, invalidateSession, generateSessionId, SESSION_DURATION_MS } from './session';
 import { convertToPlainObject } from './utils';
 import { DataTransformer, generateSampleTransformation } from './advanced-transformation';
 import bcrypt from 'bcryptjs';
@@ -94,20 +94,38 @@ export async function login(prevState: any, formData: FormData) {
     user.perfil = 'admin';
   }
 
-  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
-  const session = await encrypt({ user: { _id: user._id.toString(), name: user.name, login: user.login, perfil: user.perfil || 'usuario' }, expires });
+  const sessionId = generateSessionId();
+  const expires = new Date(Date.now() + SESSION_DURATION_MS);
+  const session = await encrypt({ user: { _id: user._id.toString(), name: user.name, login: user.login, perfil: user.perfil || 'usuario' }, expires, sessionId });
 
-  cookies().set(SESSION_COOKIE_NAME, session, { expires, httpOnly: true });
+  cookies().set(SESSION_COOKIE_NAME, session, { expires, httpOnly: true, sameSite: 'lax' });
 
   await logAction('login_success', { login: normalizedLogin });
   redirect('/dashboard');
 }
 
 export async function logout() {
-  const session = await getSession();
-  await logAction('logout', { login: session?.user?.login });
+  const cookieValue = cookies().get(SESSION_COOKIE_NAME)?.value;
+  let userLogin = 'unknown';
+  if (cookieValue) {
+    const payload = await decryptJWT(cookieValue);
+    userLogin = payload?.user?.login || 'unknown';
+    // Log before invalidating so getSession() still works inside logAction
+    await logAction('logout', { login: userLogin });
+    if (payload?.sessionId) {
+      await invalidateSession(payload.sessionId, userLogin);
+    }
+  }
   cookies().set(SESSION_COOKIE_NAME, '', { expires: new Date(0) });
   redirect('/login');
+}
+
+export async function renewSession() {
+  const payload = await getSession();
+  if (!payload) return;
+  const expires = new Date(Date.now() + SESSION_DURATION_MS);
+  const newToken = await encrypt({ user: payload.user, sessionId: payload.sessionId });
+  cookies().set(SESSION_COOKIE_NAME, newToken, { expires, httpOnly: true, sameSite: 'lax' });
 }
 
 // --- Status Normalization Helper ---
@@ -658,11 +676,6 @@ export async function getIntegrationConfig(): Promise<IntegrationConfig> {
   return {
     _id: 'default',
     enabled: false,
-    host: '',
-    port: 5432,
-    database: '',
-    username: '',
-    password: '',
     syncInterval: 5,
     query: 'SELECT code1, tipobloq FROM cable1',
     statusMappings: { available: 'L', occupied: '*' },
@@ -685,9 +698,9 @@ export async function saveIntegrationConfig(config: IntegrationConfig) {
   return { success: true, message: 'Configurações de integração salvas com sucesso!' };
 }
 
-export async function testIntegrationConnection(config: IntegrationConfig) {
+export async function testIntegrationConnection() {
   const { testExternalConnection } = await import('./external-db-connection');
-  return await testExternalConnection(config);
+  return await testExternalConnection();
 }
 
 function resolveSetorByExternalCode(externalCode: string): string {

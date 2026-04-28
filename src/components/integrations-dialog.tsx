@@ -70,7 +70,7 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
     if (!config) return;
     setIsTesting(true);
     try {
-      const result = await testIntegrationConnection(config);
+      const result = await testIntegrationConnection();
       toast({
         title: result.success ? "Conexão Testada" : "Falha na Conexão",
         description: result.message,
@@ -161,38 +161,6 @@ export function IntegrationsDialog({ children, open, onOpenChange }: Integration
                   <Label htmlFor="integration-enabled">Ativar Integração Automática</Label>
                 </CardTitle>
               </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuração da Conexão</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="host">Host</Label>
-                    <Input id="host" placeholder="ex: db.hospital.com.br" value={config.host || ''} onChange={(e) => handleFieldChange('host', e.target.value)} />
-                  </div>
-                  <div>
-                    <Label htmlFor="port">Porta</Label>
-                    <Input id="port" type="number" value={config.port || 5432} onChange={(e) => handleFieldChange('port', Number(e.target.value))} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="database">Banco</Label>
-                    <Input id="database" placeholder="ex: leitos_db" value={config.database || ''} onChange={(e) => handleFieldChange('database', e.target.value)} />
-                  </div>
-                  <div>
-                    <Label htmlFor="username">Usuário</Label>
-                    <Input id="user" placeholder="ex: admin_leitos" value={config.username || ''} onChange={(e) => handleFieldChange('username', e.target.value)} />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="password">Senha</Label>
-                  <Input id="password" type="password" value={config.password || ''} onChange={(e) => handleFieldChange('password', e.target.value)} />
-                </div>
-              </CardContent>
             </Card>
 
             <Card>
